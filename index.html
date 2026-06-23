@@ -3,402 +3,240 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#090c12" />
+  <meta name="theme-color" content="#08090b" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="BOONWAVE" />
-  <title>BOONWAVE — визуальный планировщик</title>
+  <title>BOONWAVE — Test MVP</title>
   <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <section id="authScreen" class="auth-screen">
-    <div class="auth-orbit" aria-hidden="true"><span></span><i></i></div>
-    <div class="auth-card">
-      <div class="eyebrow">ВИЗУАЛЬНЫЙ ПЛАНИРОВЩИК</div>
-      <h1>BOONWAVE</h1>
-      <p class="auth-lead">Личный кабинет для целей, проектов, контактов и связанных действий.</p>
-      <div class="auth-tabs">
-        <button type="button" class="auth-tab active" data-auth-mode="login">Вход</button>
-        <button type="button" class="auth-tab" data-auth-mode="register">Регистрация</button>
+  <div id="app" class="app-shell">
+    <section id="splash" class="screen splash-screen active" aria-label="BOONWAVE loading">
+      <div class="brand-mark brand-mark--large" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
       </div>
-      <form id="authForm" novalidate>
-        <label class="field-label" for="authEmail">Электронная почта</label>
-        <input id="authEmail" class="field-input" type="email" autocomplete="email" placeholder="name@example.com" required />
-        <label class="field-label" for="authPassword">Пароль</label>
-        <div class="password-wrap"><input id="authPassword" class="field-input" type="password" autocomplete="current-password" minlength="6" placeholder="Не менее 6 символов" required /><button id="togglePasswordBtn" type="button" class="password-toggle" aria-label="Показать пароль">○</button></div>
-        <div id="confirmPasswordBlock" class="hidden">
-          <label class="field-label" for="authPasswordConfirm">Повторите пароль</label>
-          <input id="authPasswordConfirm" class="field-input" type="password" autocomplete="new-password" minlength="6" required />
-        </div>
-        <div id="authMessage" class="auth-message" role="status"></div>
-        <button id="authSubmitBtn" class="primary-btn auth-submit" type="submit">Войти</button>
-      </form>
-      <p class="auth-disclaimer">Тестовая локальная авторизация. Данные и вложения хранятся на этом устройстве.</p>
-    </div>
-  </section>
-
-  <div id="app" class="app-shell hidden">
-    <header class="topbar">
-      <div>
-        <div class="eyebrow">ВИЗУАЛЬНЫЙ ПЛАНИРОВЩИК</div>
-        <h1>BOONWAVE</h1>
-      </div>
-      <div class="topbar-actions">
-        <div id="saveStatus" class="save-status">Автосохранение: 30 с</div>
-        <button id="accountBtn" class="account-btn" aria-label="Личный кабинет"><span id="userInitial">B</span></button>
-        <button id="menuBtn" class="icon-btn" aria-label="Меню">•••</button>
-      </div>
-    </header>
-
-    <section class="section-switch" aria-label="Раздел">
-      <button class="section-pill" data-section="personal">Личное</button>
-      <button class="section-pill active" data-section="projects">Проекты</button>
+      <h1 class="brand-word">BOONWAVE</h1>
+      <p class="brand-caption">Life and work in motion</p>
     </section>
 
-    <section id="projectWorkspaceBar" class="project-workspace-bar hidden" aria-label="Текущий проект">
-      <button id="projectSwitcherBtn" class="project-switcher-btn">
-        <span class="project-orb">◌</span>
-        <span class="project-switcher-copy"><small>РАБОЧИЙ СТОЛ</small><b id="currentProjectName">Создать первый проект</b><em id="currentProjectDescription">Каждый проект — отдельное дерево</em></span>
-        <i>⌄</i>
-      </button>
-      <button id="quickAddProjectBtn" class="project-add-btn" aria-label="Добавить проект">＋</button>
-    </section>
-
-    <main>
-      <section id="treeView" class="view active" aria-label="Древо">
-        <div class="tree-toolbar">
-          <button id="addRootBtn" class="soft-btn">+ Корневой элемент</button>
-          <button id="fitBtn" class="soft-btn">Вписать</button>
-          <button id="centerBtn" class="soft-btn">Центр</button>
-          <button id="autoLayoutBtn" class="soft-btn">Автораскладка</button>
+    <section id="authScreen" class="screen auth-screen" aria-label="Вход и регистрация">
+      <div class="auth-wrap">
+        <div class="brand-mini">
+          <div class="brand-mark"><span></span><span></span><span></span><span></span></div>
+          <strong>BOONWAVE</strong>
         </div>
 
-        <div id="viewport" class="viewport">
-          <div id="linkModeBar" class="link-mode-bar hidden">
-            <span id="linkModeText">Выберите новый родительский блок</span>
-            <button id="makeRootBtn">Сделать корневым</button>
-            <button id="cancelLinkBtn" aria-label="Отмена">×</button>
-          </div>
-          <div id="world" class="world">
-            <svg id="links" class="links" aria-hidden="true"></svg>
-            <div id="nodes" class="nodes"></div>
+        <div class="auth-card glass">
+          <div class="segmented" role="tablist">
+            <button id="loginTab" class="segment active" type="button">Войти</button>
+            <button id="registerTab" class="segment" type="button">Регистрация</button>
           </div>
 
-          <div id="nodeControlPanel" class="node-control-panel hidden" role="menu" aria-label="Панель блока">
-            <button data-node-action="contacts"><span>♙</span><small>Контакты</small></button>
-            <button data-node-action="pin"><span id="panelPinIcon">⌖</span><small id="panelPinLabel">Зафиксировать</small></button>
-            <button data-node-action="files"><span>⌕</span><small>Файлы</small></button>
-            <button data-node-action="images"><span>▧</span><small>Изображения</small></button>
-            <button data-node-action="note"><span>▤</span><small>Заметки</small></button>
-            <button data-node-action="pdf"><span>PDF</span><small>PDF</small></button>
-            <button data-node-action="minimize"><span>⌛</span><small>Свернуть</small></button>
-            <button data-node-action="archive"><span>▣</span><small>Закрыть</small></button>
-            <button data-node-action="link"><span>⌁</span><small>Связь</small></button>
-            <button data-node-action="child"><span>＋</span><small>Подзадача</small></button>
-          </div>
+          <form id="authForm" novalidate>
+            <label class="field">
+              <span>Email</span>
+              <input id="emailInput" type="email" inputmode="email" autocomplete="email" placeholder="name@example.com" required />
+            </label>
+            <label class="field">
+              <span>Пароль</span>
+              <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Минимум 4 символа" required minlength="4" />
+            </label>
+            <label id="confirmField" class="field hidden">
+              <span>Повторите пароль</span>
+              <input id="confirmInput" type="password" autocomplete="new-password" placeholder="Повторите пароль" />
+            </label>
+            <p id="authError" class="form-error" role="alert"></p>
+            <button id="authSubmit" class="primary-button" type="submit">Войти</button>
+          </form>
 
-          <div class="zoom-control">
-            <button id="zoomInBtn" aria-label="Приблизить">+</button>
-            <button id="zoomOutBtn" aria-label="Отдалить">−</button>
-          </div>
+          <p class="local-note">Тестовый режим: аккаунт и данные сохраняются только на этом устройстве.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="welcomeScreen" class="screen welcome-screen" aria-label="Приветствие">
+      <div class="welcome-orbit" aria-hidden="true">
+        <div class="orbit-line orbit-line--one"></div>
+        <div class="orbit-line orbit-line--two"></div>
+        <div class="orbit-core">B</div>
+      </div>
+      <h2>Приведём личное и рабочее в порядок</h2>
+      <p>BOONWAVE формирует систему вокруг ваших реальных дел.</p>
+    </section>
+
+    <section id="workspaceScreen" class="screen workspace-screen" aria-label="Рабочий стол">
+      <header class="topbar">
+        <button id="spaceSwitcher" class="workspace-switcher" type="button" aria-label="Выбрать пространство">
+          <span id="workspaceTypeBadge" class="workspace-badge">—</span>
+          <span class="workspace-title-wrap">
+            <small id="workspaceKind">Пространство</small>
+            <strong id="workspaceTitle">BOONWAVE</strong>
+          </span>
+          <span class="chevron">⌄</span>
+        </button>
+        <div class="top-actions">
+          <button id="todayButton" class="icon-button" type="button" title="Сегодня" aria-label="Сегодня">◷</button>
+          <button id="searchButton" class="icon-button" type="button" title="Поиск" aria-label="Поиск">⌕</button>
+          <button id="profileButton" class="avatar-button" type="button" aria-label="Профиль">A</button>
+        </div>
+      </header>
+
+      <main class="canvas-wrap">
+        <div id="canvas" class="canvas" aria-label="Пространственное дерево BOONWAVE">
+          <svg id="connections" class="connections" aria-hidden="true"></svg>
           <div id="emptyState" class="empty-state hidden">
-            <div class="empty-orbit"></div>
-            <h2 id="emptyTitle">Рабочий стол пуст</h2>
-            <p id="emptyCopy">Создайте корневую цель или независимый блок.</p>
-            <button id="emptyAddBtn" class="primary-btn">Создать корневой элемент</button>
+            <div class="empty-wave" aria-hidden="true"></div>
+            <p id="emptyTitle">Создайте первое пространство</p>
+            <button id="emptyCreateButton" class="primary-button compact" type="button">+ Создать</button>
+          </div>
+          <div id="nodesLayer" class="nodes-layer"></div>
+        </div>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Основная навигация">
+        <button class="nav-item active" data-view="tree" type="button"><span>⌁</span><small>Дерево</small></button>
+        <button class="nav-item" data-view="today" type="button"><span>◷</span><small>Сегодня</small></button>
+        <button id="quickAddButton" class="quick-add" type="button" aria-label="Добавить">+</button>
+        <button class="nav-item" data-view="ideas" type="button"><span>◇</span><small>Идеи</small></button>
+        <button class="nav-item" data-view="people" type="button"><span>◎</span><small>Люди</small></button>
+      </nav>
+    </section>
+  </div>
+
+  <div id="onboardingModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+    <div class="modal-card onboarding-card glass">
+      <button class="modal-close" data-close="onboardingModal" type="button" aria-label="Закрыть">×</button>
+      <span class="eyebrow">Первый шаг</span>
+      <h2 id="onboardingTitle">С чего начнём?</h2>
+      <p>Создайте отдельное пространство для определённой части жизни.</p>
+      <div class="choice-grid">
+        <button class="space-choice" data-space-type="personal" type="button">
+          <span class="choice-icon">◉</span>
+          <strong>Личное</strong>
+          <small>Задачи, покупки, желания, встречи, люди и цели.</small>
+        </button>
+        <button class="space-choice" data-space-type="work" type="button">
+          <span class="choice-icon">▦</span>
+          <strong>Работа</strong>
+          <small>Проекты, клиенты, этапы, материалы и платежи.</small>
+        </button>
+      </div>
+      <button class="text-button" data-close="onboardingModal" type="button">Создать позже</button>
+    </div>
+  </div>
+
+  <div id="createWorkspaceModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="workspaceFormTitle">
+    <div class="modal-card glass">
+      <button class="modal-close" data-close="createWorkspaceModal" type="button" aria-label="Закрыть">×</button>
+      <span class="eyebrow">Новое пространство</span>
+      <h2 id="workspaceFormTitle">Личное пространство</h2>
+      <form id="workspaceForm">
+        <input id="workspaceTypeInput" type="hidden" value="personal" />
+        <label class="field">
+          <span>Название</span>
+          <input id="workspaceNameInput" type="text" maxlength="36" placeholder="Моя жизнь" required />
+        </label>
+        <div class="icon-picker" aria-label="Выбор символа">
+          <button type="button" class="icon-option selected" data-icon="◉">◉</button>
+          <button type="button" class="icon-option" data-icon="⌁">⌁</button>
+          <button type="button" class="icon-option" data-icon="◇">◇</button>
+          <button type="button" class="icon-option" data-icon="▦">▦</button>
+          <button type="button" class="icon-option" data-icon="◎">◎</button>
+        </div>
+        <button class="primary-button" type="submit">Создать пространство</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="createCoreModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="coreTitle">
+    <div class="modal-card glass">
+      <button class="modal-close" data-close="createCoreModal" type="button" aria-label="Закрыть">×</button>
+      <span class="eyebrow">Первое ядро</span>
+      <h2 id="coreTitle">С чего начинается эта работа?</h2>
+      <div class="choice-grid choice-grid--compact">
+        <button class="core-choice" data-core-type="project" type="button"><span>▣</span><strong>Проект</strong></button>
+        <button class="core-choice" data-core-type="goal" type="button"><span>◎</span><strong>Цель</strong></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="createNodeModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="nodeFormTitle">
+    <div class="modal-card glass node-form-card">
+      <button class="modal-close" data-close="createNodeModal" type="button" aria-label="Закрыть">×</button>
+      <span id="nodeEyebrow" class="eyebrow">Новый элемент</span>
+      <h2 id="nodeFormTitle">Создать проект</h2>
+      <form id="nodeForm">
+        <input id="nodeTypeInput" type="hidden" value="project" />
+        <label class="field">
+          <span>Название</span>
+          <input id="nodeNameInput" type="text" maxlength="48" placeholder="Название" required />
+        </label>
+        <div id="nodeExtraFields">
+          <label class="field">
+            <span>Краткое описание</span>
+            <textarea id="nodeDescriptionInput" rows="3" maxlength="180" placeholder="Что важно знать об этом элементе"></textarea>
+          </label>
+          <div class="two-columns">
+            <label class="field">
+              <span>Статус</span>
+              <select id="nodeStatusInput">
+                <option value="planning">Подготовка</option>
+                <option value="active">В работе</option>
+                <option value="paused">На паузе</option>
+                <option value="done">Завершено</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Приоритет</span>
+              <select id="nodePriorityInput">
+                <option value="medium">Средний</option>
+                <option value="high">Высокий</option>
+                <option value="low">Низкий</option>
+              </select>
+            </label>
           </div>
         </div>
-      </section>
-
-      <section id="todayView" class="view" aria-label="Сегодня">
-        <div class="list-head"><div><div class="eyebrow">ФОКУС</div><h2>Сегодня</h2></div><div id="todayCount" class="count-badge">0</div></div>
-        <div id="todayList" class="task-list"></div>
-      </section>
-
-      <section id="resultsView" class="view" aria-label="Результаты">
-        <div class="list-head"><div><div class="eyebrow">КАРТА ДВИЖЕНИЯ</div><h2>Результаты</h2></div></div>
-        <div id="resultsList" class="results-list"></div>
-      </section>
-
-      <section id="archiveView" class="view" aria-label="Архив">
-        <div class="list-head"><div><div class="eyebrow">ЗАКРЫТЫЕ БЛОКИ</div><h2>Архив</h2></div><div id="archiveCount" class="count-badge">0</div></div>
-        <div class="archive-info">Закрытые задачи сохраняются со всеми заметками, контактами и вложениями. Их можно восстановить.</div>
-        <div id="archiveList" class="archive-list"></div>
-      </section>
-    </main>
-
-    <nav class="bottom-nav" aria-label="Навигация">
-      <button class="nav-btn active" data-view="treeView"><span>⌘</span><small>Древо</small></button>
-      <button class="nav-btn" data-view="todayView"><span>✓</span><small>Сегодня</small></button>
-      <button class="nav-btn" data-view="resultsView"><span>◎</span><small>Результаты</small></button>
-      <button class="nav-btn" data-view="archiveView"><span>▣</span><small>Архив</small></button>
-    </nav>
-
-    <div id="scrim" class="scrim hidden"></div>
-
-    <aside id="editor" class="editor-sheet editor-full hidden" aria-label="Редактор узла">
-      <div class="editor-head sticky-head">
-        <button id="closeEditorBtn" class="back-btn" aria-label="Назад">←</button>
-        <div><div class="eyebrow">ПОЛНАЯ КАРТОЧКА</div><h2 id="editorTitle">Редактирование</h2></div>
-        <button id="editorMenuBtn" class="icon-btn" aria-label="Панель действий">•••</button>
-      </div>
-
-      <div class="editor-hero">
-        <label class="field-label">Название</label>
-        <input id="nodeTitleInput" class="field-input title-input" maxlength="120" />
-        <div class="editor-state-line"><span id="editorLockState">Можно перемещать</span><span id="editorAttachmentSummary">Нет вложений</span></div>
-      </div>
-
-      <div class="editor-action-grid">
-        <button id="editorArchiveBtn" class="editor-action"><span>▣</span><small>Закрыть</small></button>
-        <button id="editorMinimizeBtn" class="editor-action"><span>⌛</span><small>Свернуть</small></button>
-        <button id="editorImagesBtn" class="editor-action"><span>▧</span><small>Изображения</small></button>
-        <button id="editorPdfBtn" class="editor-action"><span>PDF</span><small>PDF</small></button>
-        <button id="editorFilesBtn" class="editor-action"><span>⌕</span><small>Файлы</small></button>
-        <button id="editorContactsBtn" class="editor-action"><span>♙</span><small>Контакты</small></button>
-        <button id="editorPinBtn" class="editor-action"><span>⌖</span><small>Зафиксировать</small></button>
-        <button id="rewireBtn" class="editor-action"><span>⌁</span><small>Связь</small></button>
-      </div>
-
-      <section id="projectEditorPanel" class="project-editor-panel hidden" aria-label="Карточка проекта">
-        <section class="project-cover-section project-form-section">
-          <div class="project-section-title">
-            <span class="project-section-icon" data-project-icon="image"></span>
-            <div><strong>Фото карточки проекта</strong><small>Используется в свёрнутой миниатюре проекта.</small></div>
-          </div>
-          <div class="project-cover-layout">
-            <div id="projectCardPreview" class="project-card-preview"><div class="project-cover-placeholder"><span>◌</span><small>Фото или логотип</small></div><img id="projectCardPreviewImage" alt="Фото проекта" /></div>
-            <div class="project-cover-actions">
-              <label class="mini-action primary-mini">Добавить / заменить<input id="projectCardImageInput" type="file" accept="image/*" /></label>
-              <button id="removeProjectCardImageBtn" type="button" class="mini-action danger-mini">Удалить фото</button>
-            </div>
-          </div>
-        </section>
-
-        <section class="project-form-section">
-          <div class="project-section-title"><span class="project-section-icon" data-project-icon="project"></span><div><strong>Основные данные</strong><small>Параметры проекта и состояние объекта.</small></div></div>
-          <div class="project-fields-grid two-columns">
-            <div><label class="field-label">Приоритет</label><select id="projectPriorityInput" class="field-input"><option value="high">Высокий</option><option value="medium">Средний</option><option value="low">Низкий</option></select></div>
-            <div><label class="field-label">Статус</label><select id="projectStatusInput" class="field-input"><option value="preparation">Стадия подготовки</option><option value="active">В работе</option><option value="paused">На паузе</option><option value="cancelled">Отменён</option></select></div>
-          </div>
-          <label class="field-label">Адрес объекта</label><input id="projectAddressInput" class="field-input" placeholder="Город, улица, объект" />
-          <div class="project-fields-grid two-columns">
-            <div><label class="field-label">Количество позиций</label><input id="projectPositionsInput" class="field-input" type="number" min="0" step="1" inputmode="numeric" placeholder="0" /></div>
-            <div><label class="field-label">Дата подписания</label><input id="projectSigningDateInput" class="field-input" type="date" /></div>
-          </div>
-        </section>
-
-        <section class="project-form-section finance-section">
-          <div class="project-section-title"><span class="project-section-icon" data-project-icon="finance"></span><div><strong>Финансы</strong><small>Бюджет, прибыль и этапы оплаты.</small></div></div>
-          <div class="project-fields-grid two-columns">
-            <div><label class="field-label">Бюджет</label><div class="money-input"><input id="projectBudgetInput" class="field-input" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /><span>₽</span></div></div>
-            <div><label class="field-label">Ожидаемая прибыль</label><div class="money-input"><input id="projectProfitInput" class="field-input" type="number" step="0.01" inputmode="decimal" placeholder="0" /><span>₽</span></div></div>
-          </div>
-          <div class="payment-row">
-            <div><label class="field-label">Сумма аванса</label><div class="money-input"><input id="projectAdvanceInput" class="field-input" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /><span>₽</span></div></div>
-            <div><label class="field-label">Дата внесения</label><input id="projectAdvanceDateInput" class="field-input" type="date" /></div>
-          </div>
-          <div class="payment-row">
-            <div><label class="field-label">Сумма остатка</label><div class="money-input"><input id="projectBalanceInput" class="field-input" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" /><span>₽</span></div></div>
-            <div><label class="field-label">Дата остатка</label><input id="projectBalanceDateInput" class="field-input" type="date" /></div>
-          </div>
-        </section>
-
-        <section class="project-form-section">
-          <div class="project-section-title"><span class="project-section-icon" data-project-icon="client"></span><div><strong>Основной контакт</strong><small>Контакт заказчика или ответственного лица.</small></div></div>
-          <label class="field-label">Имя</label><input id="projectClientNameInput" class="field-input" placeholder="Имя контактного лица" />
-          <label class="field-label">Номер телефона</label><div class="project-contact-input"><input id="projectClientPhoneInput" class="field-input" type="tel" placeholder="+7…" /><button id="callProjectClientBtn" type="button" class="contact-launch-btn" aria-label="Позвонить"></button></div>
-          <label class="field-label">Электронная почта</label><div class="project-contact-input"><input id="projectClientEmailInput" class="field-input" type="email" placeholder="name@example.com" /><button id="emailProjectClientBtn" type="button" class="contact-launch-btn mail" aria-label="Написать письмо"></button></div>
-        </section>
-
-        <section class="project-form-section">
-          <div class="project-section-title"><span class="project-section-icon" data-project-icon="note"></span><div><strong>Предварительная информация по проекту</strong><small>Основная информация, условия и ключевые задачи.</small></div></div>
-          <textarea id="projectIntroInput" class="field-input textarea project-intro-input" rows="7" placeholder="Опишите проект, договорённости, ключевые задачи и важные ограничения…"></textarea>
-        </section>
-
-        <section class="project-form-section project-materials-section">
-          <div class="project-section-title"><span class="project-section-icon" data-project-icon="attachments"></span><div><strong>Изображения / документы / файлы</strong><small>Листайте материалы влево и вправо.</small></div></div>
-          <div class="project-assets-tabs" role="tablist">
-            <button type="button" class="project-assets-tab active" data-project-assets-kind="images">Изображения <span id="projectImagesCount">0</span></button>
-            <button type="button" class="project-assets-tab" data-project-assets-kind="pdfs">Документы <span id="projectPdfsCount">0</span></button>
-            <button type="button" class="project-assets-tab" data-project-assets-kind="files">Файлы <span id="projectFilesCount">0</span></button>
-          </div>
-          <div id="projectAssetsRail" class="project-assets-rail"></div>
-          <button id="projectAddAssetBtn" type="button" class="project-add-asset-btn">＋ Добавить изображение</button>
-          <input id="projectAssetImageInput" type="file" accept="image/*" multiple hidden />
-          <input id="projectAssetPdfInput" type="file" accept="application/pdf" multiple hidden />
-          <input id="projectAssetFileInput" type="file" multiple hidden />
-          <div class="project-materials-hint">Удерживайте материал для действий: открыть, отправить, скачать или удалить.</div>
-        </section>
-
-        <section class="project-form-section">
-          <div class="project-section-title"><span class="project-section-icon" data-project-icon="people"></span><div><strong>Люди в проекте и их роли</strong><small>Команда, поставщики, мастерские и подрядчики.</small></div><button id="projectAddPersonBtn" type="button" class="round-add-btn" aria-label="Добавить человека">＋</button></div>
-          <div id="projectPeoplePreview" class="project-people-preview"></div>
-        </section>
-      </section>
-
-      <section id="editorSubtasksPanel" class="subtask-panel">
-        <div class="panel-head"><strong>Подзадачи</strong><button id="addChildBtn" class="text-btn">+ Добавить</button></div>
-        <div id="subtaskList" class="subtask-list"></div>
-      </section>
-
-      <div id="genericEditorFields" class="field-grid">
-        <div><label class="field-label">Тип</label><select id="nodeTypeInput" class="field-input"><option value="goal">Цель</option><option value="project">Проект</option><option value="stage">Этап</option><option value="task">Задача</option><option value="idea">Идея</option><option value="person">Человек</option><option value="resource">Ресурс</option></select></div>
-        <div><label class="field-label">Выполнение</label><select id="nodeStatusInput" class="field-input"><option value="todo">Не начато</option><option value="doing">В работе</option><option value="done">Готово</option></select></div>
-      </div>
-
-      <div id="genericPriorityField"><label class="field-label">Статус / приоритет</label>
-      <select id="nodePriorityInput" class="field-input">
-        <option value="urgent">Срочно</option><option value="important">Важно</option><option value="soon">Сделать в ближайшее время</option><option value="this_week">Сделать на этой неделе</option><option value="next_week">Сделать на следующей неделе</option><option value="month_end">Сделать до конца месяца</option><option value="medium">Средней важности</option><option value="low">Низкий приоритет</option>
-      </select></div>
-
-      <div id="genericDueField"><label class="field-label">Дата готовности</label>
-      <input id="nodeDueInput" type="date" class="field-input" /></div>
-
-      <button id="openNoteBtn" class="detail-row"><span><b>Заметка</b><small id="editorNotePreview">Не добавлена</small></span><i>›</i></button>
-      <button id="openContactBtn" class="detail-row"><span><b>Контакты</b><small id="editorContactsPreview">Нет контактов</small></span><i>›</i></button>
-      <button id="openAttachmentsBtn" class="detail-row"><span><b>Вложения</b><small id="editorAttachmentsPreview">Нет вложений</small></span><i>›</i></button>
-
-      <div class="editor-actions"><button id="saveNodeBtn" class="primary-btn">Сохранить изменения</button></div>
-      <div class="editor-actions two"><button id="deleteNodeBtn" class="danger-btn">Удалить блок и ветвь</button></div>
-    </aside>
-
-    <aside id="noteSheet" class="editor-sheet hidden" aria-label="Большая заметка">
-      <div class="sheet-grabber"></div>
-      <div class="editor-head"><div><div class="eyebrow">ТЕКСТ И ССЫЛКИ</div><h2>Заметка</h2></div><button id="closeNoteBtn" class="icon-btn">×</button></div>
-      <textarea id="longNoteInput" class="field-input textarea long-note" placeholder="Добавьте текст, ссылки, контакты, идеи и материалы…"></textarea>
-      <div id="noteLinksPreview" class="links-preview"></div>
-      <button id="saveNoteBtn" class="primary-btn full-btn">Сохранить заметку</button>
-    </aside>
-
-    <aside id="contactsSheet" class="editor-sheet hidden" aria-label="Контакты проекта">
-      <div class="sheet-grabber"></div>
-      <div class="editor-head"><div><div class="eyebrow">ЛЮДИ И РОЛИ</div><h2>Контакты</h2></div><button id="closeContactsBtn" class="icon-btn">×</button></div>
-      <div class="panel-head"><strong id="contactsNodeTitle">Контакты блока</strong><button id="newContactBtn" class="text-btn">+ Новый</button></div>
-      <div id="contactsList" class="contacts-list"></div>
-      <div id="contactFormCard" class="contact-form-card hidden">
-        <div class="form-caption">Короткая подпись и данные</div>
-        <label class="field-label">Роль / подпись</label><input id="contactRoleInput" class="field-input" placeholder="Поставщик 3D-печати" />
-        <label class="field-label">Имя</label><input id="contactNameInput" class="field-input" placeholder="Антон" />
-        <label class="field-label">Телефон</label><input id="contactPhoneInput" class="field-input" type="tel" placeholder="+7…" />
-        <label class="field-label">Электронная почта</label><input id="contactEmailInput" class="field-input" type="email" placeholder="name@example.com" />
-        <label class="field-label">Instagram</label><input id="contactInstagramInput" class="field-input" placeholder="@username или ссылка" />
-        <label class="field-label">Адрес</label><textarea id="contactAddressInput" class="field-input textarea" rows="2"></textarea>
-        <label class="field-label">Комментарий</label><textarea id="contactCommentInput" class="field-input textarea" rows="3"></textarea>
-        <div class="editor-actions"><button id="saveContactBtn" class="primary-btn">Сохранить контакт</button><button id="deleteContactBtn" class="danger-btn">Удалить</button></div>
-      </div>
-    </aside>
-
-    <aside id="imagesSheet" class="editor-sheet hidden" aria-label="Изображения">
-      <div class="sheet-grabber"></div>
-      <div class="editor-head"><div><div class="eyebrow">ВЛОЖЕНИЯ</div><h2>Изображения</h2></div><button id="closeImagesBtn" class="icon-btn">×</button></div>
-      <div id="imagesGrid" class="media-grid"></div>
-      <label class="primary-btn upload-btn">+ Добавить изображения<input id="imageInput" type="file" accept="image/*" multiple /></label>
-    </aside>
-
-    <aside id="pdfSheet" class="editor-sheet hidden" aria-label="PDF документы">
-      <div class="sheet-grabber"></div>
-      <div class="editor-head"><div><div class="eyebrow">ВЛОЖЕНИЯ</div><h2>PDF документы</h2></div><button id="closePdfBtn" class="icon-btn">×</button></div>
-      <div id="pdfList" class="file-list"></div>
-      <label class="primary-btn upload-btn">+ Добавить PDF<input id="pdfInput" type="file" accept="application/pdf" multiple /></label>
-    </aside>
-
-    <aside id="filesSheet" class="editor-sheet hidden" aria-label="Файлы">
-      <div class="sheet-grabber"></div>
-      <div class="editor-head"><div><div class="eyebrow">ВЛОЖЕНИЯ</div><h2>Файлы</h2></div><button id="closeFilesBtn" class="icon-btn">×</button></div>
-      <div id="filesList" class="file-list"></div>
-      <label class="primary-btn upload-btn">+ Добавить файл<input id="fileInput" type="file" multiple /></label>
-    </aside>
-
-    <aside id="attachmentsSheet" class="editor-sheet hidden" aria-label="Все вложения">
-      <div class="sheet-grabber"></div>
-      <div class="editor-head"><div><div class="eyebrow">МАТЕРИАЛЫ БЛОКА</div><h2>Вложения</h2></div><button id="closeAttachmentsBtn" class="icon-btn">×</button></div>
-      <div class="attachment-hub">
-        <button id="hubImagesBtn"><span>▧</span><b>Изображения</b><small id="hubImageCount">0</small></button>
-        <button id="hubPdfBtn"><span>PDF</span><b>PDF</b><small id="hubPdfCount">0</small></button>
-        <button id="hubFilesBtn"><span>⌕</span><b>Другие файлы</b><small id="hubFileCount">0</small></button>
-      </div>
-    </aside>
-
-    <aside id="archiveActionSheet" class="editor-sheet compact-sheet hidden" aria-label="Закрыть задачу">
-      <div class="sheet-grabber"></div>
-      <div class="editor-head"><div><div class="eyebrow">АРХИВ</div><h2>Закрыть задачу</h2></div><button id="closeArchiveActionBtn" class="icon-btn">×</button></div>
-      <p class="sheet-copy">Блок и его дочерние ветви сохранят все данные и будут перемещены в архив.</p>
-      <button id="archiveDoneBtn" class="archive-choice done-choice">✓ Выполнена</button>
-      <button id="archiveObsoleteBtn" class="archive-choice obsolete-choice">− Не актуальна</button>
-    </aside>
-
-    <aside id="mediaViewer" class="viewer-sheet hidden" aria-label="Просмотр изображения">
-      <div class="viewer-head"><strong id="mediaViewerTitle">Изображение</strong><button id="closeMediaViewerBtn" class="icon-btn">×</button></div>
-      <img id="mediaViewerImage" alt="Просмотр" />
-      <div class="viewer-actions"><button id="deleteViewedImageBtn" class="danger-btn">Удалить</button><button id="downloadViewedImageBtn" class="soft-btn">Скачать</button><button id="shareViewedImageBtn" class="soft-btn">Отправить</button></div>
-    </aside>
-
-    <aside id="pdfViewer" class="viewer-sheet hidden" aria-label="Просмотр PDF">
-      <div class="viewer-head"><strong id="pdfViewerTitle">PDF документ</strong><button id="closePdfViewerBtn" class="icon-btn">×</button></div>
-      <iframe id="pdfFrame" title="PDF документ"></iframe>
-      <div class="viewer-actions"><button id="deleteViewedPdfBtn" class="danger-btn">Убрать PDF</button><button id="downloadViewedPdfBtn" class="soft-btn">Скачать</button><button id="shareViewedPdfBtn" class="soft-btn">Отправить</button></div>
-    </aside>
-
-    <aside id="rootTypeSheet" class="editor-sheet compact-sheet hidden" aria-label="Тип корневого элемента">
-      <div class="sheet-grabber"></div>
-      <div class="editor-head"><div><div class="eyebrow">НОВЫЙ КОРНЕВОЙ ЭЛЕМЕНТ</div><h2>Что создать?</h2></div><button id="closeRootTypeBtn" class="icon-btn">×</button></div>
-      <div class="root-type-grid">
-        <button type="button" data-root-type="project"><span data-project-icon="project"></span><b>Проект</b><small>Расширенная карточка объекта</small></button>
-        <button type="button" data-root-type="goal"><span data-project-icon="goal"></span><b>Цель</b><small>Результат и путь к нему</small></button>
-        <button type="button" data-root-type="person"><span data-project-icon="people"></span><b>Человек</b><small>Контакт и взаимодействие</small></button>
-        <button type="button" data-root-type="stage"><span data-project-icon="stage"></span><b>Этап</b><small>Часть большого процесса</small></button>
-        <button type="button" data-root-type="idea"><span data-project-icon="idea"></span><b>Идея</b><small>Гипотеза или замысел</small></button>
-      </div>
-    </aside>
-
-    <aside id="attachmentActionSheet" class="editor-sheet compact-sheet hidden" aria-label="Действия с материалом">
-      <div class="sheet-grabber"></div>
-      <div class="editor-head"><div><div class="eyebrow">МАТЕРИАЛ ПРОЕКТА</div><h2 id="attachmentActionTitle">Файл</h2></div><button id="closeAttachmentActionBtn" class="icon-btn">×</button></div>
-      <div class="attachment-action-grid">
-        <button id="attachmentActionOpen" type="button"><span data-project-icon="eye"></span><b>Открыть</b></button>
-        <button id="attachmentActionShare" type="button"><span data-project-icon="share"></span><b>Отправить</b></button>
-        <button id="attachmentActionDownload" type="button"><span data-project-icon="download"></span><b>Скачать</b></button>
-        <button id="attachmentActionDelete" type="button" class="danger"><span data-project-icon="trash"></span><b>Удалить</b></button>
-      </div>
-    </aside>
-
-    <aside id="projectsSheet" class="editor-sheet hidden" aria-label="Проекты">
-      <div class="sheet-grabber"></div>
-      <div class="editor-head"><div><div class="eyebrow">РАБОЧИЕ СТОЛЫ</div><h2>Проекты</h2></div><button id="closeProjectsBtn" class="icon-btn">×</button></div>
-      <p class="sheet-copy">У каждого проекта собственное дерево, связи, контакты и вложения.</p>
-      <div id="projectsList" class="projects-list"></div>
-      <div class="project-sheet-actions"><button id="addProjectFromListBtn" class="primary-btn">＋ Добавить проект</button><button id="deleteProjectBtn" class="danger-btn">Удалить текущий</button></div>
-    </aside>
-
-    <aside id="projectSetupSheet" class="editor-sheet project-setup-sheet hidden" aria-label="Создание проекта">
-      <div class="sheet-grabber"></div>
-      <div class="editor-head"><div><div id="projectSetupEyebrow" class="eyebrow">НОВОЕ НАЧАЛО</div><h2 id="projectSetupTitle">Создайте первый проект</h2></div><button id="closeProjectSetupBtn" class="icon-btn hidden">×</button></div>
-      <div class="project-setup-orbit" aria-hidden="true"><span></span></div>
-      <p id="projectSetupLead" class="sheet-copy">В BOONWAVE нет демонстрационных данных. Назовите проект — его дерево начнётся с чистого листа.</p>
-      <label class="field-label">Название проекта</label><input id="projectNameInput" class="field-input title-input" maxlength="80" placeholder="Например, Проект Мандарин" />
-      <label class="field-label">Короткое описание</label><textarea id="projectDescriptionInput" class="field-input textarea" rows="3" maxlength="240" placeholder="Что вы создаёте и к какому результату идёте"></textarea>
-      <label class="field-label">Первая корневая цель <span class="optional">необязательно</span></label><input id="projectInitialGoalInput" class="field-input" maxlength="120" placeholder="Можно создать позже" />
-      <div class="zero-state-note"><span>0</span><div><b>Чистый рабочий стол</b><small>Без демонстрационных задач, контактов и файлов.</small></div></div>
-      <button id="createProjectBtn" class="primary-btn full-btn">Создать проект</button>
-      <button id="cancelProjectSetupBtn" class="soft-btn full-btn hidden">Отмена</button>
-    </aside>
-
-    <aside id="menuSheet" class="menu-sheet hidden" aria-label="Меню данных">
-      <div class="sheet-grabber"></div><h2>BOONWAVE</h2>
-      <div class="account-summary"><span id="menuUserInitial">B</span><div><strong id="currentUserEmail">—</strong><small>Личный кабинет</small></div></div>
-      <p class="menu-hint">Нажмите блок один раз, чтобы открыть полную карточку. Нажмите и удерживайте, чтобы вызвать панель управления.</p>
-      <button id="exportBtn" class="menu-row">Экспортировать резервную копию <span>↓</span></button>
-      <label class="menu-row file-row">Импортировать JSON <span>↑</span><input id="importInput" type="file" accept="application/json" /></label>
-      <button id="installHelpBtn" class="menu-row">Как установить на iPhone <span>›</span></button>
-      <button id="logoutBtn" class="menu-row">Выйти из аккаунта <span>⇥</span></button>
-      <button id="resetBtn" class="menu-row danger-text">Сбросить все данные <span>×</span></button>
-    </aside>
-
-    <div id="toast" class="toast hidden"></div>
+        <button class="primary-button" type="submit">Создать</button>
+      </form>
+    </div>
   </div>
+
+  <div id="quickAddModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="quickAddTitle">
+    <div class="modal-card bottom-sheet glass">
+      <button class="modal-close" data-close="quickAddModal" type="button" aria-label="Закрыть">×</button>
+      <span class="eyebrow">Добавить</span>
+      <h2 id="quickAddTitle">Что нужно создать?</h2>
+      <div id="quickActions" class="quick-actions"></div>
+    </div>
+  </div>
+
+  <div id="switcherModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="switcherTitle">
+    <div class="modal-card bottom-sheet glass">
+      <button class="modal-close" data-close="switcherModal" type="button" aria-label="Закрыть">×</button>
+      <span class="eyebrow">Пространства</span>
+      <h2 id="switcherTitle">Выберите рабочий стол</h2>
+      <div id="workspaceList" class="workspace-list"></div>
+      <button id="addWorkspaceButton" class="secondary-button" type="button">+ Новое пространство</button>
+    </div>
+  </div>
+
+  <div id="profileModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
+    <div class="modal-card bottom-sheet glass">
+      <button class="modal-close" data-close="profileModal" type="button" aria-label="Закрыть">×</button>
+      <span class="eyebrow">Аккаунт</span>
+      <h2 id="profileTitle">Профиль</h2>
+      <p id="profileEmail" class="profile-email"></p>
+      <button id="exportButton" class="secondary-button" type="button">Экспортировать данные</button>
+      <label class="secondary-button file-button">Импортировать данные<input id="importInput" type="file" accept="application/json" /></label>
+      <button id="logoutButton" class="danger-button" type="button">Выйти</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
   <script src="app.js"></script>
 </body>
 </html>

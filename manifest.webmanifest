@@ -1,16 +1,15 @@
 {
-  "name": "BOONWAVE",
+  "name": "BOONWAVE Test MVP",
   "short_name": "BOONWAVE",
-  "description": "Визуальный планировщик проектов, целей и отдельных рабочих столов.",
+  "description": "Visual planner for personal and work spaces",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0b0d12",
-  "theme_color": "#0b0d12",
-  "lang": "ru",
+  "background_color": "#050608",
+  "theme_color": "#08090b",
+  "orientation": "portrait-primary",
   "icons": [
-    {"src":"icons/icon-192.png","sizes":"192x192","type":"image/png"},
-    {"src":"icons/icon-512.png","sizes":"512x512","type":"image/png"},
-    {"src":"icons/apple-touch-icon.png","sizes":"180x180","type":"image/png"}
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
