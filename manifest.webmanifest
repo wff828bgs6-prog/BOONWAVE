@@ -1,15 +1,20 @@
 {
-  "name": "BOONWAVE Test MVP",
+  "name": "BOONWAVE Public Beta",
   "short_name": "BOONWAVE",
-  "description": "Visual planner for personal and work spaces",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "./",
   "display": "standalone",
-  "background_color": "#050608",
-  "theme_color": "#08090b",
-  "orientation": "portrait-primary",
+  "background_color": "#080b10",
+  "theme_color": "#080b10",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
   ]
 }

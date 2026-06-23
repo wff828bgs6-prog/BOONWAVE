@@ -1,245 +1,181 @@
 <!doctype html>
 <html lang="ru">
 <head>
-  <meta name="boonwave-build" content="2026-06-24-new-onboarding-v1.1">
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-  <meta name="theme-color" content="#08090b" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="BOONWAVE" />
-  <title>BOONWAVE — Test MVP</title>
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#080b10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BOONWAVE">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>BOONWAVE Public Beta</title>
+<style>
+:root{
+ --bg:#080b10;--panel:#11161f;--panel2:#161c27;--line:#293241;--text:#f5f7fb;--muted:#98a2b3;
+ --accent:#c8ff5a;--cyan:#79d7ff;--violet:#9a7cff;--orange:#ffb257;--red:#ff6f7d;
+ --safeTop:calc(env(safe-area-inset-top) + 10px);--safeBottom:calc(env(safe-area-inset-bottom) + 12px);
+}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+button,input,textarea,select{font:inherit}button{cursor:pointer}
+.hidden{display:none!important}.screen{min-height:100dvh;padding:var(--safeTop) 14px calc(var(--safeBottom) + 76px)}
+.topbar{display:flex;align-items:center;gap:9px;height:50px;margin-bottom:10px}.top-title{flex:1;min-width:0}.eyebrow{font-size:11px;color:var(--muted);font-weight:700}.title{font-size:19px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{width:38px;height:38px;border-radius:13px;border:1px solid var(--line);background:#111721;color:white;display:grid;place-items:center}
+.iconbtn svg{width:19px;height:19px}
+.card{background:linear-gradient(180deg,#161c27,#0f141c);border:1px solid var(--line);border-radius:20px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:50;display:flex;align-items:flex-end}
+.sheet{width:100%;max-height:91dvh;overflow:auto;background:#0d1219;border:1px solid var(--line);border-radius:24px 24px 0 0;padding:14px 14px calc(var(--safeBottom) + 10px)}
+.handle{width:62px;height:5px;background:#303a48;border-radius:99px;margin:0 auto 12px}
+h1{font-size:30px;line-height:1.04;margin:8px 0 10px}h2{font-size:22px;margin:0 0 10px}h3{font-size:17px;margin:0 0 4px}
+p{margin:0;color:var(--muted);line-height:1.42}
+.field{margin:12px 0}.field label{display:block;font-size:12px;font-weight:750;color:#cbd3de;margin:0 0 6px}
+input,textarea,select{width:100%;background:#0d1219;color:white;border:1px solid #2b3544;border-radius:14px;padding:12px 13px;outline:none}
+textarea{min-height:86px;resize:vertical}input:focus,textarea:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(121,215,255,.12)}
+.row{display:flex;gap:8px}.row>*{flex:1}.btn{border:0;border-radius:14px;padding:12px 14px;font-weight:850;background:#1a2230;color:white}
+.btn.primary{background:var(--accent);color:#0d1308}.btn.ghost{background:#111721;border:1px solid var(--line)}.btn.danger{background:#29151a;color:#ff9ba5;border:1px solid #5a2630}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:99px;background:#121923;border:1px solid var(--line);font-size:10px;font-weight:850;color:#cbd3de}
+.splash{position:fixed;inset:0;background:#05070a;z-index:80;display:flex;align-items:center;justify-content:center}
+.logo{font-weight:900;letter-spacing:.28em;font-size:22px}.wave{width:78px;height:78px;position:relative;margin:0 auto 15px}.wave:before,.wave:after{content:"";position:absolute;border:1px solid #3f5668;border-radius:50%;inset:6px}.wave:after{inset:20px;border-color:#576b3c}.dot{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--accent);right:5px;top:32px;box-shadow:0 0 18px rgba(200,255,90,.6)}
+.auth-wrap{min-height:100dvh;display:grid;place-items:center;padding:24px}.auth{width:min(100%,420px);padding:22px}.tabs{display:flex;gap:7px;margin:18px 0}.tabs button{flex:1;border:1px solid var(--line);background:#101620;color:var(--muted);padding:10px;border-radius:12px;font-weight:800}.tabs button.active{background:#1b2431;color:white}
+.onboard{padding:26px}.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.choice{padding:15px;text-align:left;min-height:150px}.choice svg{width:27px;height:27px;margin-bottom:12px}.choice strong{display:block;font-size:18px;margin-bottom:5px}
+.space-tabs{display:flex;gap:7px;overflow:auto;padding:2px 0 10px}.space-tabs button{white-space:nowrap;border:1px solid var(--line);background:#111721;color:#aeb7c4;border-radius:99px;padding:8px 11px;font-size:12px;font-weight:800}.space-tabs button.active{background:var(--accent);color:#10140b;border-color:var(--accent)}
+.canvas-wrap{height:calc(100dvh - 160px);min-height:560px;border:1px solid #1d2530;border-radius:22px;overflow:auto;background:
+radial-gradient(circle at 52% 33%,rgba(70,105,130,.12),transparent 32%),linear-gradient(180deg,#0b1017,#080b10)}
+.canvas{position:relative;min-width:720px;min-height:900px;touch-action:none}
+.node{position:absolute;width:168px;min-height:96px;padding:12px;border-radius:18px;background:linear-gradient(180deg,#171e29,#11161f);border:1px solid #303a49;box-shadow:0 16px 36px rgba(0,0,0,.28);user-select:none;touch-action:none}
+.node.root{width:178px;border-color:#566d3b}.node.person{border-color:#415b70}.node.idea{border-color:#695680}.node.project{border-color:#53683b}.node.goal{border-color:#3e6370}
+.node-head{display:flex;align-items:center;justify-content:space-between;gap:8px}.type{display:flex;align-items:center;gap:6px;font-size:10px;color:#aeb7c4;font-weight:850;letter-spacing:.08em}.type svg{width:14px;height:14px}.status-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.node h3{font-size:17px;margin:10px 0 4px;line-height:1.15}.node p{font-size:12px;line-height:1.35}.meta{display:flex;justify-content:space-between;margin-top:10px;font-size:10px;color:#7f8a99}
+.connector{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--safeBottom) + 4px);width:56px;height:56px;border-radius:18px;border:0;background:var(--accent);color:#10140b;display:grid;place-items:center;z-index:20;box-shadow:0 12px 30px rgba(0,0,0,.42)}
+.fab svg{width:28px;height:28px}.nav{position:fixed;left:12px;right:12px;bottom:calc(var(--safeBottom) + 4px);height:56px;border:1px solid var(--line);border-radius:18px;background:rgba(15,20,28,.95);backdrop-filter:blur(18px);display:flex;align-items:center;justify-content:space-around;z-index:15;padding:0 60px 0 8px}
+.nav button{border:0;background:transparent;color:#8994a4;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9px;font-weight:800;min-width:45px}.nav button.active{color:var(--accent)}.nav svg{width:18px;height:18px}
+.list{display:grid;gap:8px}.list-item{padding:12px;border-radius:16px;background:#121923;border:1px solid var(--line)}.list-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.list-item h3{font-size:15px}.list-item p{font-size:12px;margin-top:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}.type-btn{min-height:74px;padding:12px;border:1px solid var(--line);background:#121923;color:white;border-radius:16px;text-align:left;font-weight:800}.type-btn svg{width:20px;height:20px;display:block;margin-bottom:7px}
+.searchbar{display:flex;gap:8px;margin-bottom:10px}.searchbar input{flex:1}.empty{text-align:center;padding:42px 18px}.toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#18202b;border:1px solid var(--line);padding:10px 13px;border-radius:12px;z-index:90;font-size:12px}
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}.kpi .card{padding:10px}.kpi b{display:block;font-size:16px}.kpi span{font-size:10px;color:var(--muted)}
+.progress{height:6px;background:#202836;border-radius:99px;overflow:hidden}.progress i{display:block;height:100%;background:var(--accent)}
+@media(min-width:760px){.screen{max-width:980px;margin:auto}.modal{align-items:center;justify-content:center}.sheet{max-width:560px;border-radius:24px;max-height:86vh}}
+</style>
 </head>
 <body>
-  <div id="app" class="app-shell">
-    <section id="splash" class="screen splash-screen active" aria-label="BOONWAVE loading">
-      <div class="brand-mark brand-mark--large" aria-hidden="true">
-        <span></span><span></span><span></span><span></span>
-      </div>
-      <h1 class="brand-word">BOONWAVE</h1>
-      <p class="brand-caption">Life and work in motion</p>
-    </section>
+<div id="splash" class="splash"><div style="text-align:center"><div class="wave"><span class="dot"></span></div><div class="logo">BOONWAVE</div></div></div>
+<main id="app"></main>
+<div id="modal" class="modal hidden" onclick="if(event.target===this)closeModal()"><div class="sheet"><div class="handle"></div><div id="modalBody"></div></div></div>
+<div id="toast" class="toast hidden"></div>
+<script>
+const K='boonwave_public_beta_v1',SK='boonwave_session_beta';
+let state=load(), current=localStorage.getItem(SK)||null, dragging=null, off={x:0,y:0};
 
-    <section id="authScreen" class="screen auth-screen" aria-label="Вход и регистрация">
-      <div class="auth-wrap">
-        <div class="brand-mini">
-          <div class="brand-mark"><span></span><span></span><span></span><span></span></div>
-          <strong>BOONWAVE</strong>
-        </div>
+const ICONS={
+person:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3"/><path d="M5 20c.7-4.2 3-6 7-6s6.3 1.8 7 6"/></svg>',
+project:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M8 5V3h8v2M3 10h18"/></svg>',
+goal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1"/></svg>',
+task:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 2.5 2.5L16 9"/></svg>',
+stage:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 6h14M5 12h10M5 18h6"/><circle cx="19" cy="12" r="2"/><circle cx="15" cy="18" r="2"/></svg>',
+idea:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18h6M10 21h4M8 15c-1.4-1.2-2-2.6-2-4.3A6 6 0 0 1 18 11c0 1.6-.6 3-2 4.2-.8.7-1 1.5-1 2.8H9c0-1.3-.2-2.2-1-3z"/></svg>',
+file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v5h5"/></svg>',
+payment:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/></svg>',
+purchase:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h2l2 10h9l2-7H7"/><circle cx="10" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>',
+meeting:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>',
+self:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="9" r="2.2"/><path d="M8 17c.8-2.4 2.1-3.5 4-3.5s3.2 1.1 4 3.5"/></svg>',
+note:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
+search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>',
+menu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16"/></svg>',
+plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
+tree:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M8 6h8M12 8v8"/></svg>',
+today:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v6l4 2"/></svg>',
+archive:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg>'
+};
 
-        <div class="auth-card glass">
-          <div class="segmented" role="tablist">
-            <button id="loginTab" class="segment active" type="button">Войти</button>
-            <button id="registerTab" class="segment" type="button">Регистрация</button>
-          </div>
+function load(){try{return JSON.parse(localStorage.getItem(K))||{users:{}}}catch{return{users:{}}}}
+function save(){localStorage.setItem(K,JSON.stringify(state))}
+function u(){return current?state.users[current]:null}
+function id(){return Math.random().toString(36).slice(2,9)}
+function esc(s=''){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function toast(t){let e=document.getElementById('toast');e.textContent=t;e.classList.remove('hidden');setTimeout(()=>e.classList.add('hidden'),1800)}
+function openModal(h){document.getElementById('modalBody').innerHTML=h;document.getElementById('modal').classList.remove('hidden')}
+function closeModal(){document.getElementById('modal').classList.add('hidden')}
+function activeSpace(){let x=u();return x?.spaces.find(s=>s.id===x.activeSpace)||x?.spaces[0]||null}
+function tlabel(t){return({self:'Я',project:'Проект',goal:'Цель',task:'Задача',stage:'Этап',person:'Человек',idea:'Идея',file:'Файл',payment:'Платёж',purchase:'Покупка',meeting:'Встреча',note:'Заметка'})[t]||t}
 
-          <form id="authForm" novalidate>
-            <label class="field">
-              <span>Email</span>
-              <input id="emailInput" type="email" inputmode="email" autocomplete="email" placeholder="name@example.com" required />
-            </label>
-            <label class="field">
-              <span>Пароль</span>
-              <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Минимум 4 символа" required minlength="4" />
-            </label>
-            <label id="confirmField" class="field hidden">
-              <span>Повторите пароль</span>
-              <input id="confirmInput" type="password" autocomplete="new-password" placeholder="Повторите пароль" />
-            </label>
-            <p id="authError" class="form-error" role="alert"></p>
-            <button id="authSubmit" class="primary-button" type="submit">Войти</button>
-          </form>
+function render(){
+ let app=document.getElementById('app');
+ if(!current||!u()){app.innerHTML=auth();bindAuth();return}
+ if(!u().onboarded){app.innerHTML=onboarding();return}
+ app.innerHTML=workspace();requestAnimationFrame(drawLinks)
+}
+function auth(){return `<div class="auth-wrap"><div class="card auth"><div class="wave"><span class="dot"></span></div><div class="logo" style="text-align:center">BOONWAVE</div><p style="text-align:center;margin-top:10px">Личное и рабочее в одной системе.</p><div class="tabs"><button id="lt" class="active">Войти</button><button id="rt">Регистрация</button></div><div class="field"><label>Email</label><input id="email" type="email"></div><div class="field"><label>Пароль</label><input id="pass" type="password"></div><button id="submit" class="btn primary" style="width:100%">Войти</button><p style="font-size:11px;text-align:center;margin-top:12px">Beta: данные сохраняются на этом устройстве.</p></div></div>`}
+function bindAuth(){let mode='login',lt=document.getElementById('lt'),rt=document.getElementById('rt'),s=document.getElementById('submit');
+ lt.onclick=()=>{mode='login';lt.classList.add('active');rt.classList.remove('active');s.textContent='Войти'}
+ rt.onclick=()=>{mode='reg';rt.classList.add('active');lt.classList.remove('active');s.textContent='Создать аккаунт'}
+ s.onclick=()=>{let e=email.value.trim().toLowerCase(),p=pass.value;if(!e||p.length<4)return toast('Введите email и пароль');
+ if(mode==='reg'){if(state.users[e])return toast('Аккаунт уже существует');state.users[e]={password:p,onboarded:false,spaces:[],activeSpace:null};save();current=e;localStorage.setItem(SK,e);welcome()}
+ else{if(!state.users[e]||state.users[e].password!==p)return toast('Неверные данные');current=e;localStorage.setItem(SK,e);render()}}
+}
+function welcome(){document.getElementById('app').innerHTML=`<div class="auth-wrap"><div style="text-align:center"><div class="wave"><span class="dot"></span></div><h1>Добро пожаловать</h1><p>Соберём процессы в понятную систему.</p></div></div>`;setTimeout(render,900)}
+function onboarding(){return `<section class="screen" style="display:grid;place-items:center"><div class="card onboard" style="width:min(100%,520px)"><span class="badge">ПЕРВЫЙ ШАГ</span><h1>С чего начнём?</h1><p style="margin-bottom:18px">Создайте отдельное пространство для определённой части жизни.</p><div class="choice-grid"><button class="card choice" onclick="spaceForm('personal')">${ICONS.self}<strong>Личное</strong><p>Задачи, покупки, встречи, люди и цели.</p></button><button class="card choice" onclick="spaceForm('work')">${ICONS.project}<strong>Работа</strong><p>Проекты, этапы, материалы и платежи.</p></button></div><button class="btn ghost" style="width:100%;margin-top:12px" onclick="skipOnboarding()">Создать позже</button></div></section>`}
+function skipOnboarding(){u().onboarded=true;save();render()}
+function spaceForm(type){openModal(`<h2>${type==='personal'?'Личное пространство':'Рабочее пространство'}</h2><div class="field"><label>Название</label><input id="spaceName" placeholder="${type==='personal'?'Моя жизнь':'Студия'}"></div><button class="btn primary" style="width:100%" onclick="createSpace('${type}')">Создать</button>`)}
+function createSpace(type){let name=spaceName.value.trim()||(type==='personal'?'Моя жизнь':'Работа'),s={id:id(),type,name,nodes:[],links:[],archive:[]};
+ if(type==='personal')s.nodes.push({id:id(),type:'self',title:'Я',note:'Личный центр',x:70,y:80,root:true,status:'active',priority:'medium',progress:0});
+ u().spaces.push(s);u().activeSpace=s.id;u().onboarded=true;save();closeModal();if(type==='work')rootChooser();else render()}
+function rootChooser(){openModal(`<h2>Первое ядро</h2><p style="margin-bottom:12px">Создайте проект или цель.</p><div class="grid2"><button class="type-btn" onclick="entityForm('project',true)">${ICONS.project}Проект</button><button class="type-btn" onclick="entityForm('goal',true)">${ICONS.goal}Цель</button></div>`)}
 
-          <p class="local-note">Тестовый режим: аккаунт и данные сохраняются только на этом устройстве.</p>
-        </div>
-      </div>
-    </section>
+function workspace(){let s=activeSpace();if(!s)return `<section class="screen"><div class="topbar"><div class="top-title"><div class="eyebrow">BOONWAVE</div><div class="title">Нет пространств</div></div></div><div class="card empty"><h2>Создайте пространство</h2><div class="row" style="margin-top:14px"><button class="btn ghost" onclick="spaceForm('personal')">Личное</button><button class="btn primary" onclick="spaceForm('work')">Работа</button></div></div></section>`;
+ return `<section class="screen"><div class="topbar"><button class="iconbtn" onclick="spacesMenu()">${ICONS.menu}</button><div class="top-title"><div class="eyebrow">${s.type==='personal'?'ЛИЧНОЕ':'РАБОТА'}</div><div class="title">${esc(s.name)}</div></div><button class="iconbtn" onclick="searchView()">${ICONS.search}</button><button class="iconbtn" onclick="settings()">${ICONS.person}</button></div>
+ <div class="space-tabs">${u().spaces.map(x=>`<button class="${x.id===s.id?'active':''}" onclick="switchSpace('${x.id}')">${esc(x.name)}</button>`).join('')}<button onclick="newSpace()">＋</button></div>
+ <div class="canvas-wrap"><div id="canvas" class="canvas"><svg id="links" class="connector"></svg>${s.nodes.length?s.nodes.map(nodeHTML).join(''):`<div class="empty"><h2>Пустой стол</h2><p>Создайте проект, цель или другой элемент.</p></div>`}</div></div>
+ <nav class="nav"><button class="active">${ICONS.tree}<span>Дерево</span></button><button onclick="today()">${ICONS.today}<span>Сегодня</span></button><button onclick="ideas()">${ICONS.idea}<span>Идеи</span></button><button onclick="archiveView()">${ICONS.archive}<span>Архив</span></button></nav><button class="fab" onclick="addMenu()">${ICONS.plus}</button></section>`}
+function nodeHTML(n){let cls=(n.root?'root ':'')+(n.type==='person'?'person ':n.type==='idea'?'idea ':n.type==='project'?'project ':n.type==='goal'?'goal ':'');return `<div class="node ${cls}" data-id="${n.id}" style="left:${n.x}px;top:${n.y}px" onpointerdown="dragStart(event,'${n.id}')" ondblclick="openEntity('${n.id}')"><div class="node-head"><span class="type">${ICONS[n.type]||ICONS.note}${tlabel(n.type).toUpperCase()}</span><span class="status-dot" style="background:${statusColor(n.status)}"></span></div><h3>${esc(n.title)}</h3><p>${esc(n.note||'')}</p><div class="meta"><span>${n.priority||'—'}</span><span>${n.progress||0}%</span></div><div class="progress"><i style="width:${n.progress||0}%"></i></div></div>`}
+function statusColor(s){return s==='done'?'#79d7ff':s==='paused'?'#ffb257':s==='cancelled'?'#ff6f7d':'#c8ff5a'}
+function addMenu(){let s=activeSpace(),types=s.type==='personal'?[['goal','Цель'],['task','Задача'],['person','Человек'],['idea','Идея'],['purchase','Покупка'],['meeting','Встреча'],['note','Заметка']]:[['project','Проект'],['goal','Цель'],['stage','Этап'],['task','Задача'],['person','Человек'],['idea','Идея'],['file','Файл'],['payment','Платёж'],['note','Заметка']];
+ openModal(`<h2>Добавить</h2><div class="grid2">${types.map(([t,l])=>`<button class="type-btn" onclick="entityForm('${t}',false)">${ICONS[t]}${l}</button>`).join('')}</div>`)}
+function entityForm(type,root=false,nid=''){let n=nid?activeSpace().nodes.find(x=>x.id===nid):null;
+ openModal(`<h2>${n?'Редактировать':root?'Создать ядро':'Добавить'}: ${tlabel(type)}</h2>
+ <div class="field"><label>Название</label><input id="eTitle" value="${esc(n?.title||'')}"></div>
+ <div class="field"><label>Описание</label><textarea id="eNote">${esc(n?.note||'')}</textarea></div>
+ <div class="row"><div class="field"><label>Статус</label><select id="eStatus"><option value="active">В работе</option><option value="paused">На паузе</option><option value="done">Готово</option><option value="cancelled">Отменено</option></select></div><div class="field"><label>Приоритет</label><select id="ePriority"><option value="high">Высокий</option><option value="medium">Средний</option><option value="low">Низкий</option></select></div></div>
+ <div class="row"><div class="field"><label>Срок</label><input id="eDue" type="date" value="${n?.due||''}"></div><div class="field"><label>Прогресс %</label><input id="eProgress" type="number" min="0" max="100" value="${n?.progress||0}"></div></div>
+ ${type==='project'?`<div class="row"><div class="field"><label>Бюджет</label><input id="eBudget" type="number" value="${n?.budget||''}"></div><div class="field"><label>Затраты</label><input id="eCost" type="number" value="${n?.cost||''}"></div></div><div class="row"><div class="field"><label>Аванс</label><input id="eAdvance" type="number" value="${n?.advance||''}"></div><div class="field"><label>Остаток</label><input id="eBalance" type="number" value="${n?.balance||''}"></div></div>`:''}
+ ${type==='person'?`<div class="field"><label>Телефон</label><input id="ePhone" value="${esc(n?.phone||'')}"></div><div class="field"><label>Email / соцсеть</label><input id="eContact" value="${esc(n?.contact||'')}"></div>`:''}
+ ${type==='idea'?`<div class="field"><label>Ссылка на источник</label><input id="eLink" value="${esc(n?.link||'')}"></div>`:''}
+ <div class="row"><button class="btn primary" onclick="saveEntity('${type}',${root},'${nid}')">${n?'Сохранить':'Создать'}</button>${n?`<button class="btn danger" onclick="archiveEntity('${nid}')">В архив</button>`:''}</div>`)
+ if(n){setTimeout(()=>{eStatus.value=n.status||'active';ePriority.value=n.priority||'medium'},0)}
+}
+function saveEntity(type,root,nid){let s=activeSpace(),n=nid?s.nodes.find(x=>x.id===nid):null;let data={title:eTitle.value.trim()||tlabel(type),note:eNote.value.trim(),status:eStatus.value,priority:ePriority.value,due:eDue.value,progress:Math.max(0,Math.min(100,+eProgress.value||0))};
+ if(type==='project')Object.assign(data,{budget:+eBudget.value||0,cost:+eCost.value||0,advance:+eAdvance.value||0,balance:+eBalance.value||0});
+ if(type==='person')Object.assign(data,{phone:ePhone.value.trim(),contact:eContact.value.trim()});
+ if(type==='idea')data.link=eLink.value.trim();
+ if(n)Object.assign(n,data);else{n={id:id(),type,x:60+Math.random()*260,y:80+s.nodes.length*72,root:root||(!s.nodes.some(x=>x.root)&&['project','goal'].includes(type)),...data};s.nodes.push(n);let r=s.nodes.find(x=>x.root&&x.id!==n.id);if(!n.root&&r)s.links.push({from:r.id,to:n.id})}
+ save();closeModal();render()}
+function openEntity(nid){let n=activeSpace().nodes.find(x=>x.id===nid);if(!n)return;let extra='';
+ if(n.type==='project')extra=`<div class="kpi"><div class="card"><b>${n.budget||0}</b><span>Бюджет</span></div><div class="card"><b>${n.cost||0}</b><span>Затраты</span></div><div class="card"><b>${n.balance||0}</b><span>Остаток</span></div></div>`;
+ if(n.type==='person')extra=`<p>${esc(n.phone||'')}</p><p>${esc(n.contact||'')}</p>`;
+ if(n.type==='idea'&&n.link)extra=`<p style="word-break:break-all">${esc(n.link)}</p>`;
+ openModal(`<span class="badge">${tlabel(n.type).toUpperCase()}</span><h2 style="margin-top:10px">${esc(n.title)}</h2><p>${esc(n.note||'')}</p>${extra}<div style="margin-top:14px" class="row"><button class="btn primary" onclick="entityForm('${n.type}',${!!n.root},'${n.id}')">Редактировать</button><button class="btn ghost" onclick="linkChooser('${n.id}')">Связать</button></div>`)
+}
+function archiveEntity(nid){let s=activeSpace(),i=s.nodes.findIndex(x=>x.id===nid);if(i<0)return;s.archive.push(s.nodes[i]);s.nodes.splice(i,1);s.links=s.links.filter(l=>l.from!==nid&&l.to!==nid);save();closeModal();render()}
+function linkChooser(nid){let s=activeSpace(),items=s.nodes.filter(n=>n.id!==nid);openModal(`<h2>Связать с элементом</h2><div class="list">${items.map(n=>`<button class="list-item" style="text-align:left;color:white" onclick="makeLink('${nid}','${n.id}')"><div class="list-top"><h3>${esc(n.title)}</h3><span class="badge">${tlabel(n.type)}</span></div></button>`).join('')}</div>`)}
+function makeLink(a,b){let s=activeSpace();if(!s.links.some(l=>(l.from===a&&l.to===b)||(l.from===b&&l.to===a)))s.links.push({from:a,to:b});save();closeModal();render()}
+function dragStart(e,nid){let el=e.currentTarget;el.setPointerCapture(e.pointerId);dragging=nid;off.x=e.clientX-el.offsetLeft;off.y=e.clientY-el.offsetTop;el.onpointermove=dragMove;el.onpointerup=dragEnd}
+function dragMove(e){if(!dragging)return;let n=activeSpace().nodes.find(x=>x.id===dragging);n.x=Math.max(8,e.clientX-off.x);n.y=Math.max(8,e.clientY-off.y);e.currentTarget.style.left=n.x+'px';e.currentTarget.style.top=n.y+'px';drawLinks()}
+function dragEnd(e){save();dragging=null;e.currentTarget.onpointermove=null}
+function drawLinks(){let s=activeSpace(),svg=document.getElementById('links');if(!s||!svg)return;svg.setAttribute('width','100%');svg.setAttribute('height','100%');svg.innerHTML=s.links.map(l=>{let a=s.nodes.find(n=>n.id===l.from),b=s.nodes.find(n=>n.id===l.to);if(!a||!b)return'';let x1=a.x+84,y1=a.y+48,x2=b.x+84,y2=b.y+48,m=(x1+x2)/2;return `<path d="M${x1} ${y1} C${m} ${y1},${m} ${y2},${x2} ${y2}" fill="none" stroke="#67834a" stroke-width="2" opacity=".78"/>`}).join('')}
+function switchSpace(id){u().activeSpace=id;save();render()}
+function spacesMenu(){openModal(`<h2>Пространства</h2><div class="list">${u().spaces.map(s=>`<button class="list-item" style="text-align:left;color:white" onclick="switchSpace('${s.id}');closeModal()"><h3>${esc(s.name)}</h3><p>${s.type==='personal'?'Личное':'Работа'}</p></button>`).join('')}</div><button class="btn primary" style="width:100%;margin-top:10px" onclick="newSpace()">Создать пространство</button>`)}
+function newSpace(){openModal(`<h2>Новое пространство</h2><div class="grid2"><button class="type-btn" onclick="spaceForm('personal')">${ICONS.self}Личное</button><button class="type-btn" onclick="spaceForm('work')">${ICONS.project}Работа</button></div>`)}
+function today(){let a=u().spaces.flatMap(s=>s.nodes.map(n=>({...n,space:s.name}))).filter(n=>['task','meeting','payment','purchase'].includes(n.type));openModal(`<h2>Сегодня</h2><div class="list">${a.length?a.map(n=>`<div class="list-item"><div class="list-top"><h3>${esc(n.title)}</h3><span class="badge">${tlabel(n.type)}</span></div><p>${esc(n.space)}${n.due?' · '+n.due:''}</p></div>`).join(''):'<p>Актуальных элементов пока нет.</p>'}</div>`)}
+function ideas(){let a=u().spaces.flatMap(s=>s.nodes.map(n=>({...n,space:s.name}))).filter(n=>n.type==='idea');openModal(`<h2>Идеи</h2><div class="list">${a.length?a.map(n=>`<div class="list-item"><h3>${esc(n.title)}</h3><p>${esc(n.space)}</p></div>`).join(''):'<p>Идей пока нет.</p>'}</div>`)}
+function archiveView(){let a=u().spaces.flatMap(s=>s.archive.map(n=>({...n,space:s.name})));openModal(`<h2>Архив</h2><div class="list">${a.length?a.map(n=>`<div class="list-item"><h3>${esc(n.title)}</h3><p>${esc(n.space)} · ${tlabel(n.type)}</p></div>`).join(''):'<p>Архив пуст.</p>'}</div>`)}
+function searchView(){openModal(`<h2>Поиск</h2><div class="searchbar"><input id="q" placeholder="Проект, человек, идея..." oninput="doSearch()"></div><div id="results"></div>`)}
+function doSearch(){let q=document.getElementById('q').value.toLowerCase(),a=u().spaces.flatMap(s=>s.nodes.map(n=>({...n,space:s.name}))).filter(n=>(n.title+' '+(n.note||'')).toLowerCase().includes(q));results.innerHTML=`<div class="list">${a.map(n=>`<div class="list-item"><div class="list-top"><h3>${esc(n.title)}</h3><span class="badge">${tlabel(n.type)}</span></div><p>${esc(n.space)}</p></div>`).join('')}</div>`}
+function settings(){openModal(`<h2>Профиль и данные</h2><p>${esc(current)}</p><button class="btn ghost" style="width:100%;margin-top:12px" onclick="exportData()">Экспорт JSON</button><label class="btn ghost" style="display:block;text-align:center;width:100%;margin-top:8px">Импорт JSON<input class="hidden" type="file" accept="application/json" onchange="importData(event)"></label><button class="btn danger" style="width:100%;margin-top:8px" onclick="logout()">Выйти</button>`)}
+function exportData(){let b=new Blob([JSON.stringify(u(),null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='boonwave-beta-backup.json';a.click();URL.revokeObjectURL(a.href)}
+function importData(e){let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{state.users[current]=JSON.parse(r.result);save();closeModal();render();toast('Импорт завершён')}catch{toast('Ошибка файла')}};r.readAsText(f)}
+function logout(){localStorage.removeItem(SK);current=null;closeModal();render()}
 
-    <section id="welcomeScreen" class="screen welcome-screen" aria-label="Приветствие">
-      <div class="welcome-orbit" aria-hidden="true">
-        <div class="orbit-line orbit-line--one"></div>
-        <div class="orbit-line orbit-line--two"></div>
-        <div class="orbit-core">B</div>
-      </div>
-      <h2>Приведём личное и рабочее в порядок</h2>
-      <p>BOONWAVE формирует систему вокруг ваших реальных дел.</p>
-    </section>
-
-    <section id="workspaceScreen" class="screen workspace-screen" aria-label="Рабочий стол">
-      <header class="topbar">
-        <button id="spaceSwitcher" class="workspace-switcher" type="button" aria-label="Выбрать пространство">
-          <span id="workspaceTypeBadge" class="workspace-badge">—</span>
-          <span class="workspace-title-wrap">
-            <small id="workspaceKind">Пространство</small>
-            <strong id="workspaceTitle">BOONWAVE</strong>
-          </span>
-          <span class="chevron">⌄</span>
-        </button>
-        <div class="top-actions">
-          <button id="todayButton" class="icon-button" type="button" title="Сегодня" aria-label="Сегодня">◷</button>
-          <button id="searchButton" class="icon-button" type="button" title="Поиск" aria-label="Поиск">⌕</button>
-          <button id="profileButton" class="avatar-button" type="button" aria-label="Профиль">A</button>
-        </div>
-      </header>
-
-      <main class="canvas-wrap">
-        <div id="canvas" class="canvas" aria-label="Пространственное дерево BOONWAVE">
-          <svg id="connections" class="connections" aria-hidden="true"></svg>
-          <div id="emptyState" class="empty-state hidden">
-            <div class="empty-wave" aria-hidden="true"></div>
-            <p id="emptyTitle">Создайте первое пространство</p>
-            <button id="emptyCreateButton" class="primary-button compact" type="button">+ Создать</button>
-          </div>
-          <div id="nodesLayer" class="nodes-layer"></div>
-        </div>
-      </main>
-
-      <nav class="bottom-nav" aria-label="Основная навигация">
-        <button class="nav-item active" data-view="tree" type="button"><span>⌁</span><small>Дерево</small></button>
-        <button class="nav-item" data-view="today" type="button"><span>◷</span><small>Сегодня</small></button>
-        <button id="quickAddButton" class="quick-add" type="button" aria-label="Добавить">+</button>
-        <button class="nav-item" data-view="ideas" type="button"><span>◇</span><small>Идеи</small></button>
-        <button class="nav-item" data-view="people" type="button"><span>◎</span><small>Люди</small></button>
-      </nav>
-    </section>
-  </div>
-
-  <div id="onboardingModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
-    <div class="modal-card onboarding-card glass">
-      <button class="modal-close" data-close="onboardingModal" type="button" aria-label="Закрыть">×</button>
-      <span class="eyebrow">Первый шаг</span>
-      <h2 id="onboardingTitle">С чего начнём?</h2>
-      <p>Создайте отдельное пространство для определённой части жизни.</p>
-      <div class="choice-grid">
-        <button class="space-choice" data-space-type="personal" type="button">
-          <span class="choice-icon">◉</span>
-          <strong>Личное</strong>
-          <small>Задачи, покупки, желания, встречи, люди и цели.</small>
-        </button>
-        <button class="space-choice" data-space-type="work" type="button">
-          <span class="choice-icon">▦</span>
-          <strong>Работа</strong>
-          <small>Проекты, клиенты, этапы, материалы и платежи.</small>
-        </button>
-      </div>
-      <button class="text-button" data-close="onboardingModal" type="button">Создать позже</button>
-    </div>
-  </div>
-
-  <div id="createWorkspaceModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="workspaceFormTitle">
-    <div class="modal-card glass">
-      <button class="modal-close" data-close="createWorkspaceModal" type="button" aria-label="Закрыть">×</button>
-      <span class="eyebrow">Новое пространство</span>
-      <h2 id="workspaceFormTitle">Личное пространство</h2>
-      <form id="workspaceForm">
-        <input id="workspaceTypeInput" type="hidden" value="personal" />
-        <label class="field">
-          <span>Название</span>
-          <input id="workspaceNameInput" type="text" maxlength="36" placeholder="Моя жизнь" required />
-        </label>
-        <div class="icon-picker" aria-label="Выбор символа">
-          <button type="button" class="icon-option selected" data-icon="◉">◉</button>
-          <button type="button" class="icon-option" data-icon="⌁">⌁</button>
-          <button type="button" class="icon-option" data-icon="◇">◇</button>
-          <button type="button" class="icon-option" data-icon="▦">▦</button>
-          <button type="button" class="icon-option" data-icon="◎">◎</button>
-        </div>
-        <button class="primary-button" type="submit">Создать пространство</button>
-      </form>
-    </div>
-  </div>
-
-  <div id="createCoreModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="coreTitle">
-    <div class="modal-card glass">
-      <button class="modal-close" data-close="createCoreModal" type="button" aria-label="Закрыть">×</button>
-      <span class="eyebrow">Первое ядро</span>
-      <h2 id="coreTitle">С чего начинается эта работа?</h2>
-      <div class="choice-grid choice-grid--compact">
-        <button class="core-choice" data-core-type="project" type="button"><span>▣</span><strong>Проект</strong></button>
-        <button class="core-choice" data-core-type="goal" type="button"><span>◎</span><strong>Цель</strong></button>
-      </div>
-    </div>
-  </div>
-
-  <div id="createNodeModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="nodeFormTitle">
-    <div class="modal-card glass node-form-card">
-      <button class="modal-close" data-close="createNodeModal" type="button" aria-label="Закрыть">×</button>
-      <span id="nodeEyebrow" class="eyebrow">Новый элемент</span>
-      <h2 id="nodeFormTitle">Создать проект</h2>
-      <form id="nodeForm">
-        <input id="nodeTypeInput" type="hidden" value="project" />
-        <label class="field">
-          <span>Название</span>
-          <input id="nodeNameInput" type="text" maxlength="48" placeholder="Название" required />
-        </label>
-        <div id="nodeExtraFields">
-          <label class="field">
-            <span>Краткое описание</span>
-            <textarea id="nodeDescriptionInput" rows="3" maxlength="180" placeholder="Что важно знать об этом элементе"></textarea>
-          </label>
-          <div class="two-columns">
-            <label class="field">
-              <span>Статус</span>
-              <select id="nodeStatusInput">
-                <option value="planning">Подготовка</option>
-                <option value="active">В работе</option>
-                <option value="paused">На паузе</option>
-                <option value="done">Завершено</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>Приоритет</span>
-              <select id="nodePriorityInput">
-                <option value="medium">Средний</option>
-                <option value="high">Высокий</option>
-                <option value="low">Низкий</option>
-              </select>
-            </label>
-          </div>
-        </div>
-        <button class="primary-button" type="submit">Создать</button>
-      </form>
-    </div>
-  </div>
-
-  <div id="quickAddModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="quickAddTitle">
-    <div class="modal-card bottom-sheet glass">
-      <button class="modal-close" data-close="quickAddModal" type="button" aria-label="Закрыть">×</button>
-      <span class="eyebrow">Добавить</span>
-      <h2 id="quickAddTitle">Что нужно создать?</h2>
-      <div id="quickActions" class="quick-actions"></div>
-    </div>
-  </div>
-
-  <div id="switcherModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="switcherTitle">
-    <div class="modal-card bottom-sheet glass">
-      <button class="modal-close" data-close="switcherModal" type="button" aria-label="Закрыть">×</button>
-      <span class="eyebrow">Пространства</span>
-      <h2 id="switcherTitle">Выберите рабочий стол</h2>
-      <div id="workspaceList" class="workspace-list"></div>
-      <button id="addWorkspaceButton" class="secondary-button" type="button">+ Новое пространство</button>
-    </div>
-  </div>
-
-  <div id="profileModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="profileTitle">
-    <div class="modal-card bottom-sheet glass">
-      <button class="modal-close" data-close="profileModal" type="button" aria-label="Закрыть">×</button>
-      <span class="eyebrow">Аккаунт</span>
-      <h2 id="profileTitle">Профиль</h2>
-      <p id="profileEmail" class="profile-email"></p>
-      <button id="exportButton" class="secondary-button" type="button">Экспортировать данные</button>
-      <label class="secondary-button file-button">Импортировать данные<input id="importInput" type="file" accept="application/json" /></label>
-      <button id="logoutButton" class="danger-button" type="button">Выйти</button>
-    </div>
-  </div>
-
-  <div id="toast" class="toast hidden" role="status"></div>
-
-  <script src="app.js"></script>
-
-<div id="buildBadge" style="position:fixed;right:10px;bottom:10px;z-index:9999;padding:5px 8px;border:1px solid rgba(152,255,76,.35);border-radius:999px;background:rgba(7,11,18,.82);color:#b8ff65;font:600 10px/1.2 -apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:.04em;pointer-events:none">NEW FLOW · v1.1</div>
-</body>
-</html>
+setTimeout(()=>document.getElementById('splash').classList.add('hidden'),900);setTimeout(render,920);
+if('serviceWorker'in navigator){let reloading=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloading)return;reloading=true;location.reload()});addEventListener('load',()=>navigator.serviceWorker.register('./sw.js'))}
+</script>
+</body></html>
