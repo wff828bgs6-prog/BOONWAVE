@@ -1,0 +1,5 @@
+// Добавить внутрь существующего обработчика install:
+event.waitUntil(self.skipWaiting());
+
+// Добавить внутрь существующего обработчика activate:
+event.waitUntil(self.clients.claim());
