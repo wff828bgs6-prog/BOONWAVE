@@ -333,3 +333,28 @@ html,body{background:#06070c}
   .auth-mark-wrap{height:138px;margin-bottom:10px}
   .auth-mark{width:min(76vw,330px);height:132px}
 }
+
+
+/* BOONWAVE v5.4.3 — real auth logo enlargement using compact asset */
+.auth-mark-wrap{
+  width:100%;
+  height:190px;
+  margin:0 auto 18px;
+  overflow:visible;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.auth-mark{
+  width:min(86vw,390px);
+  height:180px;
+  object-fit:contain;
+  object-position:center;
+  display:block;
+  filter:drop-shadow(0 0 22px rgba(93,92,255,.16));
+  border-radius:20px;
+}
+@media (max-width:430px){
+  .auth-mark-wrap{height:172px;margin-bottom:16px}
+  .auth-mark{width:min(84vw,360px);height:164px}
+}
