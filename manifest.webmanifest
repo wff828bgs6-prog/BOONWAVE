@@ -1,10 +1,12 @@
 {
   "name": "BOONWAVE",
   "short_name": "BOONWAVE",
-  "start_url": ".",
   "display": "standalone",
-  "background_color": "#090a0e",
-  "theme_color": "#090a0e",
-  "orientation": "portrait",
-  "description": "BOONWAVE Workspace v5.4.2"
+  "background_color": "#090b12",
+  "theme_color": "#090b12",
+  "start_url": "./index.html?v=5.4.6",
+  "icons": [
+    {"src":"boonwave-mark.png","sizes":"512x512","type":"image/png"},
+    {"src":"boonwave-approved.png","sizes":"1024x1024","type":"image/png"}
+  ]
 }

@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-  <meta name="theme-color" content="#0a0b0f">
+  <meta name="theme-color" content="#090b12">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=5.4.5">
-  <title>BOONWAVE</title>
+  <meta name="format-detection" content="telephone=no">
+  <title>BOONWAVE V5.4.6</title>
+  <link rel="manifest" href="manifest.webmanifest?v=5.4.6">
+  <link rel="stylesheet" href="styles.css?v=5.4.6">
 </head>
 <body>
   <section id="splashScreen" class="splash-screen" aria-label="BOONWAVE">
@@ -50,156 +51,102 @@
     </div>
   </section>
 
-  <div id="app" class="app-hidden">
-    <header class="topbar workspace-topbar">
-      <div class="top-mark top-mark-solo"><img src="boonwave-mark.png" alt="BOONWAVE"></div>
-      <div class="space-switch workspace-switch">
-        <button data-space="personal">Личное</button>
-        <button class="active" data-space="work">Проекты</button>
+  <main id="app" class="app hidden">
+    <div class="app-bg-glow bg-left"></div>
+    <div class="app-bg-glow bg-right"></div>
+
+    <header class="workspace-topbar">
+      <button id="brandMark" class="brand-mark-btn touchable" aria-label="BOONWAVE">
+        <img src="boonwave-mark.png" alt="BOONWAVE">
+      </button>
+      <div class="space-switch" role="tablist" aria-label="Переключение пространства">
+        <button class="touchable" data-space="personal">Личное</button>
+        <button class="touchable active" data-space="work">Проекты</button>
       </div>
-      <button class="icon-btn settings-btn" data-action="menu" aria-label="Меню настроек">•••</button>
+      <button id="settingsBtn" class="icon-button touchable" aria-label="Меню настроек"></button>
     </header>
 
-    <section class="workspace-toolbar">
-      <button class="workspace-action primary" data-action="openCreate">＋ Корневой элемент</button>
-      <button class="workspace-action" data-action="fitAll">Вписать</button>
-      <button class="workspace-action" data-action="centerRoot">В центр</button>
+    <section class="toolbar-strip">
+      <button id="createRootBtn" class="toolbar-btn primary touchable"><span class="btn-icon" data-icon="18"></span><span>Корневой элемент</span></button>
+      <button id="fitBtn" class="toolbar-btn touchable">Вписать</button>
+      <button id="centerBtn" class="toolbar-btn touchable">В центр</button>
     </section>
 
-    <main id="workspaceWrap">
-      <canvas id="workspaceDots" aria-hidden="true"></canvas>
-      <svg id="links" aria-hidden="true"></svg>
-      <div id="workspace"></div>
+    <section id="workspaceShell" class="workspace-shell">
+      <canvas id="dotCanvas"></canvas>
+      <svg id="linkLayer" class="link-layer"></svg>
+      <div id="workspaceViewport">
+        <div id="workspaceInner"></div>
+      </div>
       <div id="emptyState" class="empty-state hidden">
         <div class="empty-mark">≈</div>
         <h2>Поле возможностей</h2>
-        <p>Начните с проекта, цели, человека или идеи — и пространство оживёт.</p>
-        <div id="addCue" class="add-cue"><div class="cue-v v1"></div><div class="cue-v v2"></div><div class="cue-v v3"></div><div class="cue-label">Нажмите +</div></div>
+        <p>Создайте корневой элемент — проект, цель, человека или идею.</p>
       </div>
-    </main>
-
-    <section id="todayPanel" class="sheet hidden">
-      <div class="sheet-head"><h2>Сегодня</h2><button data-action="closeSheet">×</button></div>
-      <div id="todayList"></div>
+      <div class="zoom-controls">
+        <button class="touchable" id="zoomInBtn">+</button>
+        <button class="touchable" id="zoomOutBtn">−</button>
+      </div>
     </section>
 
-    <section id="resultsPanel" class="sheet hidden">
-      <div class="sheet-head"><h2>Результаты</h2><button data-action="closeSheet">×</button></div>
-      <div id="resultsList"></div>
-    </section>
-
-    <section id="archivePanel" class="sheet hidden">
-      <div class="sheet-head"><h2>Архив</h2><button data-action="closeSheet">×</button></div>
-      <div id="archiveList"></div>
-    </section>
-
-    <section id="guidePanel" class="sheet hidden guide-sheet">
-      <div class="sheet-head"><h2>Визуальное знакомство</h2><button data-action="closeGuide">×</button></div>
-      <div class="guide-hero"><div class="guide-mark"><img src="boonwave-approved.png" alt=""></div><p>Краткий тестовый сценарий будущей визуальной инструкции.</p></div>
-      <div class="guide-card"><b>1. Поле возможностей</b><small>Рабочий стол живой: точки реагируют на перемещение карточек и создают ощущение пространства.</small></div>
-      <div class="guide-card"><b>2. Создание ядра</b><small>Нажмите «Создать проект» или кнопку +, чтобы добавить первую карточку.</small></div>
-      <div class="guide-card"><b>3. Подсказка</b><small>У новой карточки проекта мигает значок подсказки 17. Нажмите его для следующего шага.</small></div>
-      <button class="primary brand-btn" data-action="enterWorkspace">Перейти в поле возможностей</button>
-    </section>
-
-    <nav class="bottom-nav workspace-nav">
-      <button class="active" data-action="tree">
-        <span class="nav-icon">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="gradTree" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c85cff"/><stop offset="55%" stop-color="#6d67ff"/><stop offset="100%" stop-color="#67e9f8"/></linearGradient></defs><rect x="5" y="6" width="22" height="20" rx="3.2" fill="none" stroke="url(#gradTree)" stroke-width="2.3"/><path d="M16 6v20M5 16h22" fill="none" stroke="url(#gradTree)" stroke-width="2.3" stroke-linecap="round"/></svg>
-        </span><small>Древо</small></button>
-      <button data-action="today">
-        <span class="nav-icon">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="gradToday" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c85cff"/><stop offset="55%" stop-color="#6d67ff"/><stop offset="100%" stop-color="#67e9f8"/></linearGradient></defs><circle cx="16" cy="16" r="10.8" fill="none" stroke="url(#gradToday)" stroke-width="2.3"/><path d="M16 10.2v6.2h5" fill="none" stroke="url(#gradToday)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </span><small>Сегодня</small></button>
-      <button data-action="results">
-        <span class="nav-icon">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="gradResults" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c85cff"/><stop offset="55%" stop-color="#6d67ff"/><stop offset="100%" stop-color="#67e9f8"/></linearGradient></defs><path d="M16 7.5c1.9 0 3.4 1.5 3.4 3.4S17.9 14.3 16 14.3s-3.4-1.5-3.4-3.4S14.1 7.5 16 7.5Zm-7.3 14.2V16l3.3 3.2L16 14l4 5.2 3.3-3.2v5.7" fill="none" stroke="url(#gradResults)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </span><small>Результаты</small></button>
-      <button data-action="archive">
-        <span class="nav-icon">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="gradArchive" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c85cff"/><stop offset="55%" stop-color="#6d67ff"/><stop offset="100%" stop-color="#67e9f8"/></linearGradient></defs><path d="M8 10.5h16M10 10.5v11.3a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10.5M7.2 8.2h17.6a1.2 1.2 0 0 1 1.2 1.2v1.1H6V9.4a1.2 1.2 0 0 1 1.2-1.2Z" fill="none" stroke="url(#gradArchive)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.3 16h5.4" fill="none" stroke="url(#gradArchive)" stroke-width="2.3" stroke-linecap="round"/></svg>
-        </span><small>Архив</small></button>
+    <nav class="bottom-nav">
+      <button class="nav-btn touchable active" data-view="tree"><span class="nav-icon" data-icon="32"></span><small>Древо</small></button>
+      <button class="nav-btn touchable" data-view="today"><span class="nav-icon" data-icon="9"></span><small>Сегодня</small></button>
+      <button class="nav-btn touchable" data-view="results"><span class="nav-icon" data-icon="25"></span><small>Результаты</small></button>
+      <button class="nav-btn touchable" data-view="archive"><span class="nav-icon" data-icon="4"></span><small>Архив</small></button>
     </nav>
+  </main>
 
-    <div class="zoom-controls">
-      <button data-action="zoomIn">＋</button>
-      <button data-action="zoomOut">−</button>
+  <div id="sheetOverlay" class="sheet-overlay hidden"></div>
+
+  <section id="sideSheet" class="sheet hidden">
+    <div class="sheet-head">
+      <div>
+        <small id="sheetKicker"></small>
+        <h2 id="sheetTitle">Панель</h2>
+      </div>
+      <button id="sheetClose" class="icon-button touchable" aria-label="Закрыть"></button>
     </div>
+    <div id="sheetContent" class="sheet-content"></div>
+  </section>
 
-    <div id="createMenu" class="popover hidden">
-      <button data-create="project">Проект</button>
-      <button data-create="goal">Цель</button>
-      <button data-create="person">Человек</button>
-      <button data-create="idea">Идея</button>
-      <button data-create="stage">Этап</button>
-    </div>
+  <section id="modalOverlay" class="modal-overlay hidden"></section>
 
-    <div id="contextMenu" class="context-menu hidden"></div>
-
-    <div id="accountMenu" class="account-menu hidden" role="menu" aria-label="Меню аккаунта">
-      <div class="account-menu-head">
+  <section id="editorModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
         <div>
-          <small>BOONWAVE</small>
-          <b>Меню аккаунта</b>
+          <small id="editorKicker"></small>
+          <h2 id="editorTitle">Карточка</h2>
         </div>
-        <button class="account-close" data-action="closeAccountMenu" aria-label="Закрыть">×</button>
+        <button id="editorClose" class="icon-button touchable" aria-label="Закрыть"></button>
       </div>
-      <button class="account-action" data-action="logout">
-        <span class="account-action-icon">↪</span>
-        <span><b>Выйти из аккаунта</b><small>Сохранённые проекты останутся на устройстве</small></span>
-      </button>
-      <button class="account-action danger" data-action="fullReset">
-        <span class="account-action-icon">⌫</span>
-        <span><b>Полный сброс</b><small>Удалить аккаунт, проекты, файлы, кэш и настройки</small></span>
-      </button>
-      <div class="account-version">Версия V5.4.5</div>
+      <div id="editorBody" class="modal-body"></div>
+      <div class="modal-actions">
+        <button id="editorDelete" class="toolbar-btn danger touchable">Удалить</button>
+        <button id="editorCancel" class="toolbar-btn touchable">Отмена</button>
+        <button id="editorSave" class="toolbar-btn primary touchable">Сохранить</button>
+      </div>
     </div>
+  </section>
 
-    <dialog id="editor">
-      <form method="dialog" id="editorForm">
-        <div class="dialog-head">
-          <div>
-            <small id="editorTypeLabel"></small>
-            <h2 id="editorTitle">Карточка</h2>
-          </div>
-          <button value="cancel" class="icon-btn">×</button>
-        </div>
-        <div id="editorFields"></div>
-        <div class="dialog-actions">
-          <button type="button" class="ghost" data-action="deleteNode">Удалить</button>
-          <button value="cancel" class="ghost">Отмена</button>
-          <button value="default" class="primary" data-action="saveNode">Сохранить</button>
-        </div>
-      </form>
-    </dialog>
+  <section id="createMenu" class="floating-menu hidden">
+    <button class="menu-item touchable" data-create-type="project"><span class="menu-item-icon" data-icon="32"></span><span>Проект</span></button>
+    <button class="menu-item touchable" data-create-type="goal"><span class="menu-item-icon" data-icon="21"></span><span>Цель</span></button>
+    <button class="menu-item touchable" data-create-type="person"><span class="menu-item-icon" data-icon="7"></span><span>Человек</span></button>
+    <button class="menu-item touchable" data-create-type="idea"><span class="menu-item-icon" data-icon="21"></span><span>Идея</span></button>
+  </section>
 
-    <dialog id="detail">
-      <div class="dialog-head sticky">
-        <div><small id="detailType"></small><h2 id="detailTitle"></h2></div>
-        <button class="icon-btn" data-action="closeDetail">×</button>
-      </div>
-      <div id="detailBody"></div>
-    </dialog>
+  <section id="cardMenu" class="floating-menu hidden"></section>
 
-    <input id="filePicker" type="file" multiple hidden>
-  </div>
-  <script>
-(function() {
-  const RESET_KEY = 'boonwave_hard_reset_5.4.5';
-  const current = localStorage.getItem(RESET_KEY);
-  if (current !== 'done' && 'serviceWorker' in navigator) {
-    Promise.all([
-      navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(r => r.unregister()))),
-      ('caches' in window ? caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))) : Promise.resolve())
-    ]).then(() => {
-      localStorage.setItem(RESET_KEY, 'done');
-      const u = new URL(location.href);
-      u.searchParams.set('v', '5.4.5');
-      location.replace(u.toString());
-    }).catch(() => localStorage.setItem(RESET_KEY, 'done'));
-  }
-})();
-</script>
-<script src="app.js?v=5.4.5"></script>
+  <section id="settingsMenu" class="floating-menu hidden settings-menu">
+    <button class="menu-item touchable" data-settings-action="logout"><span class="menu-item-icon" data-icon="12"></span><span>Выйти</span></button>
+    <button class="menu-item touchable danger" data-settings-action="reset"><span class="menu-item-icon" data-icon="13"></span><span>Полный сброс</span></button>
+    <div class="menu-version">Версия v5.4.6</div>
+  </section>
+
+  <input id="imageInput" type="file" accept="image/*" hidden>
+
+  <script src="app.js?v=5.4.6"></script>
 </body>
 </html>
