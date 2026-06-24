@@ -1,55 +1,52 @@
-const CACHE="boonwave-workspace-v5-1";
-const ASSETS=[
-  "styles.css?v=5.1",
-  "app.js?v=5.1",
-  "manifest.webmanifest?v=5.1",
-  "boonwave-logo.png",
-  "boonwave-mark.png",
-  "boonwave-full.png"
+const CACHE = "boonwave-5.3.0";
+const CORE = [
+  "./",
+  "index.html?v=5.3.0",
+  "styles.css?v=5.3.0",
+  "app.js?v=5.3.0",
+  "manifest.webmanifest",
+  "boonwave-approved.png"
 ];
 
-self.addEventListener("install",event=>{
+self.addEventListener("install", event => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)).catch(() => undefined));
 });
 
-self.addEventListener("activate",event=>{
-  event.waitUntil((async()=>{
-    const keys=await caches.keys();
-    await Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)));
+self.addEventListener("activate", event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)));
     await self.clients.claim();
   })());
 });
 
-self.addEventListener("fetch",event=>{
-  const request=event.request;
-  const url=new URL(request.url);
+self.addEventListener("fetch", event => {
+  const req = event.request;
+  if (req.method !== "GET") return;
 
-  if(request.mode==="navigate"){
-    event.respondWith((async()=>{
-      try{
-        const fresh=await fetch(request,{cache:"no-store"});
-        const cache=await caches.open(CACHE);
-        cache.put("index.html",fresh.clone());
+  if (req.mode === "navigate") {
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(req, { cache: "no-store" });
+        const cache = await caches.open(CACHE);
+        cache.put("index.html?v=5.3.0", fresh.clone());
         return fresh;
-      }catch{
-        return (await caches.match("index.html")) || Response.error();
+      } catch {
+        return (await caches.match("index.html?v=5.3.0")) || (await caches.match("./"));
       }
     })());
     return;
   }
 
-  if(url.origin===self.location.origin){
-    event.respondWith((async()=>{
-      const cached=await caches.match(request);
-      const network=fetch(request,{cache:"no-cache"}).then(async response=>{
-        if(response && response.ok){
-          const cache=await caches.open(CACHE);
-          cache.put(request,response.clone());
-        }
-        return response;
-      }).catch(()=>null);
-      return cached || await network || Response.error();
-    })());
-  }
+  event.respondWith((async () => {
+    try {
+      const fresh = await fetch(req, { cache: "no-store" });
+      const cache = await caches.open(CACHE);
+      cache.put(req, fresh.clone());
+      return fresh;
+    } catch {
+      return caches.match(req);
+    }
+  })());
 });

@@ -389,13 +389,10 @@ $("#detailBody").addEventListener("change",e=>{
 window.addEventListener("beforeunload",save);document.addEventListener("visibilitychange",()=>{if(document.hidden)save()});
 setInterval(save,30000);
 if("serviceWorker" in navigator){
- navigator.serviceWorker.register("sw.js?v=5.1",{updateViaCache:"none"}).then(reg=>{
-   reg.update();
-   setInterval(()=>reg.update(),60000);
+ window.addEventListener("load",()=>{
+  navigator.serviceWorker.register("sw.js?v=5.2.0",{updateViaCache:"none"}).then(reg=>reg.update()).catch(()=>{});
  });
  let refreshing=false;
- navigator.serviceWorker.addEventListener("controllerchange",()=>{
-   if(!refreshing){refreshing=true;location.reload()}
- });
+ navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!refreshing){refreshing=true;location.reload()}})
 }
 render();

@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#0a0b0f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="manifest" href="manifest.webmanifest?v=5.1">
-  <link rel="stylesheet" href="styles.css?v=5.1">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css?v=5.3.0">
   <title>BOONWAVE</title>
 </head>
 <body>
@@ -17,18 +17,18 @@
     <div class="splash-orbit orbit-b"></div>
     <div class="splash-dots"></div>
     <div class="splash-content">
-      <div class="splash-full-wrap"><img src="boonwave-full.png" alt="BOONWAVE" class="splash-full"></div>
+      <div class="splash-full-wrap"><img src="boonwave-approved.png" alt="BOONWAVE" class="splash-full"></div>
       <p class="splash-tagline">Твоё пространство возможностей</p>
       <div class="splash-progress"><span></span></div>
     </div>
   </section>
 
-  <section id="authScreen" class="auth-screen hidden" class="auth-screen hidden">
+  <section id="authScreen" class="auth-screen hidden">
     <div class="auth-glow glow-one"></div>
     <div class="auth-glow glow-two"></div>
     <div class="auth-card">
       <div class="auth-brand">
-        <div class="auth-mark-wrap"><img src="boonwave-mark.png" alt="BOONWAVE" class="auth-mark"></div>
+        <div class="auth-mark-wrap"><img src="boonwave-approved.png" alt="BOONWAVE" class="auth-mark"></div>
         <h1>BOONWAVE</h1>
         <p>Твоё пространство возможностей</p>
       </div>
@@ -54,12 +54,12 @@
 
   <div id="app" class="app-hidden">
     <header class="topbar">
-      <div class="brand-cluster"><div class="top-mark"><img src="boonwave-mark.png" alt=""></div><button class="brand-line" data-action="home">Твоё пространство <b>BOONWAVE</b></button></div>
+      <div class="brand-cluster"><div class="top-mark"><img src="boonwave-approved.png" alt=""></div><button class="brand-line" data-action="home">Твоё пространство <b>BOONWAVE</b></button></div>
       <div class="space-switch">
         <button data-space="personal">Личное</button>
         <button class="active" data-space="work">Работа</button>
       </div>
-      <div class="build-mark">V5.1</div><button class="icon-btn" data-action="menu" aria-label="Меню">•••</button>
+      <div class="version-chip">V5.3.0</div><button class="icon-btn" data-action="menu" aria-label="Меню">•••</button>
     </header>
 
     <main id="workspaceWrap">
@@ -94,7 +94,7 @@
 
     <section id="guidePanel" class="sheet hidden guide-sheet">
       <div class="sheet-head"><h2>Визуальное знакомство</h2><button data-action="closeGuide">×</button></div>
-      <div class="guide-hero"><div class="guide-mark"><img src="boonwave-mark.png" alt=""></div><p>Краткий тестовый сценарий будущей визуальной инструкции.</p></div>
+      <div class="guide-hero"><div class="guide-mark"><img src="boonwave-approved.png" alt=""></div><p>Краткий тестовый сценарий будущей визуальной инструкции.</p></div>
       <div class="guide-card"><b>1. Поле возможностей</b><small>Рабочий стол живой: точки реагируют на перемещение карточек и создают ощущение пространства.</small></div>
       <div class="guide-card"><b>2. Создание ядра</b><small>Нажмите «Создать проект» или кнопку +, чтобы добавить первую карточку.</small></div>
       <div class="guide-card"><b>3. Подсказка</b><small>У новой карточки проекта мигает значок подсказки 17. Нажмите его для следующего шага.</small></div>
@@ -141,6 +141,23 @@
 
     <input id="filePicker" type="file" multiple hidden>
   </div>
-  <script src="app.js?v=5.1"></script>
+  <script>
+(function() {
+  const RESET_KEY = 'boonwave_hard_reset_5.3.0';
+  const current = localStorage.getItem(RESET_KEY);
+  if (current !== 'done' && 'serviceWorker' in navigator) {
+    Promise.all([
+      navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(r => r.unregister()))),
+      ('caches' in window ? caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))) : Promise.resolve())
+    ]).then(() => {
+      localStorage.setItem(RESET_KEY, 'done');
+      const u = new URL(location.href);
+      u.searchParams.set('v', '5.3.0');
+      location.replace(u.toString());
+    }).catch(() => localStorage.setItem(RESET_KEY, 'done'));
+  }
+})();
+</script>
+<script src="app.js?v=5.3.0"></script>
 </body>
 </html>
