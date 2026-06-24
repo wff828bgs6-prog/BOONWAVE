@@ -89,3 +89,35 @@ dialog::backdrop{background:#0009;backdrop-filter:blur(7px)}
 .expense-add button{border-radius:12px;background:var(--accent);color:#111}
 .toast{position:fixed;z-index:100;left:50%;bottom:95px;transform:translateX(-50%);padding:10px 14px;border-radius:14px;background:#eaf9bd;color:#111;font-size:12px;box-shadow:0 10px 35px #0009}
 @media(min-width:700px){dialog{border-radius:26px;bottom:auto;top:50%;transform:translateY(-50%)}}
+
+.app-hidden{visibility:hidden;opacity:0}
+#app.app-ready{visibility:visible;opacity:1;transition:opacity .45s ease}
+.splash-screen,.auth-screen{position:fixed;inset:0;z-index:1000;background:radial-gradient(circle at 50% 38%,#19214a66 0,#0a0c17 38%,#05060b 76%);display:grid;place-items:center;overflow:hidden}
+.splash-screen{transition:opacity .45s ease,visibility .45s ease}
+.splash-screen.leaving{opacity:0;visibility:hidden}
+.splash-content{position:relative;z-index:2;text-align:center;animation:splashRise 2s cubic-bezier(.22,.78,.23,1) both}
+.splash-logo{width:min(72vw,430px);height:240px;object-fit:cover;object-position:center 22%;filter:saturate(1.08) drop-shadow(0 0 28px #6549ff42);border-radius:26px}
+.splash-content h1{margin:-48px 0 9px;letter-spacing:.26em;font-size:clamp(25px,7vw,45px);font-weight:400}
+.splash-content p{margin:0;color:#9ea5b8;letter-spacing:.05em;font-size:14px}
+.splash-progress{width:150px;height:2px;margin:30px auto 0;background:#282c3a;border-radius:5px;overflow:hidden}
+.splash-progress span{display:block;width:100%;height:100%;background:linear-gradient(90deg,#8b42ff,#476cff,#26dcf0);transform-origin:left;animation:loadLine 1.75s ease both}
+.splash-orbit{position:absolute;border:1px solid #725cff24;border-radius:50%;animation:orbitPulse 2s ease-in-out both}
+.orbit-a{width:430px;height:430px}.orbit-b{width:610px;height:610px;animation-delay:.12s}
+@keyframes splashRise{0%{opacity:0;transform:translateY(14px) scale(.94);filter:blur(8px)}45%{opacity:1;filter:blur(0)}100%{transform:translateY(0) scale(1)}}
+@keyframes loadLine{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes orbitPulse{0%{opacity:0;transform:scale(.72)}55%{opacity:.8}100%{opacity:.15;transform:scale(1.08)}}
+.auth-screen{z-index:900;padding:calc(18px + var(--safe-top)) 18px calc(18px + var(--safe-bottom));background:radial-gradient(circle at 14% 16%,#6e35ff24,transparent 31%),radial-gradient(circle at 86% 75%,#00cfea1d,transparent 34%),#06070c}
+.auth-card{position:relative;z-index:2;width:min(100%,390px);padding:22px;background:#11141dd9;border:1px solid #303646;border-radius:28px;box-shadow:0 30px 80px #000c;backdrop-filter:blur(22px)}
+.auth-brand{text-align:center;margin-bottom:18px}.auth-logo-crop{height:96px;overflow:hidden;margin:-6px auto 0;border-radius:18px}
+.auth-logo-crop img{width:210px;height:150px;object-fit:cover;object-position:center 19%;transform:translateY(-3px)}
+.auth-brand h1{margin:-21px 0 6px;font-size:26px;font-weight:400;letter-spacing:.23em}.auth-brand p{margin:0;color:#a9b0c0;font-size:13px}
+.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:#090b11;border-radius:15px;margin-bottom:14px}
+.auth-tabs button{padding:10px;border-radius:11px;color:#7f879a;font-size:13px}.auth-tabs button.active{background:#232836;color:#fff;box-shadow:inset 0 0 0 1px #3c4457}
+.auth-form{display:grid;gap:12px}.auth-form label{font-size:11px;color:#a4acbc}
+.auth-form input{width:100%;margin-top:6px;padding:13px 14px;border-radius:14px;border:1px solid #303747;background:#090b11;outline:none;font-size:14px}
+.auth-form input:focus{border-color:#7761ee;box-shadow:0 0 0 3px #6f56ff1f}
+.auth-submit{width:100%;margin-top:3px;background:linear-gradient(100deg,#a14cff,#4e70ff 55%,#28d8e8);color:#fff}
+.skip-auth{width:100%;margin-top:12px;padding:11px;border-radius:13px;border:1px solid #313747;color:#c4cad6;background:#171a23}
+.auth-note{display:block;text-align:center;margin-top:11px;color:#666e80;font-size:9px;line-height:1.35}
+.auth-glow{position:absolute;border-radius:50%;filter:blur(70px);opacity:.24}.glow-one{width:240px;height:240px;background:#7f3cff;left:-100px;top:80px}.glow-two{width:250px;height:250px;background:#18cfe4;right:-130px;bottom:50px}
+.brand-stack{display:flex;flex-direction:column;min-width:92px}.brand-stack small{font-size:6px;color:#747d91;white-space:nowrap;letter-spacing:.02em;margin-top:1px}

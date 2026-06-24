@@ -11,9 +11,51 @@
   <title>BOONWAVE</title>
 </head>
 <body>
-  <div id="app">
+  <section id="splashScreen" class="splash-screen" aria-label="BOONWAVE">
+    <div class="splash-orbit orbit-a"></div>
+    <div class="splash-orbit orbit-b"></div>
+    <div class="splash-content">
+      <img src="boonwave-logo.png" alt="BOONWAVE" class="splash-logo">
+      <h1>BOONWAVE</h1>
+      <p>Твоё пространство возможностей</p>
+      <div class="splash-progress"><span></span></div>
+    </div>
+  </section>
+
+  <section id="authScreen" class="auth-screen hidden">
+    <div class="auth-glow glow-one"></div>
+    <div class="auth-glow glow-two"></div>
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="auth-logo-crop">
+          <img src="boonwave-logo.png" alt="BOONWAVE">
+        </div>
+        <h1>BOONWAVE</h1>
+        <p>Твоё пространство возможностей</p>
+      </div>
+      <div class="auth-tabs" role="tablist">
+        <button type="button" class="active" data-auth-tab="login">Вход</button>
+        <button type="button" data-auth-tab="register">Регистрация</button>
+      </div>
+      <form id="loginForm" class="auth-form">
+        <label>Email<input name="email" type="email" autocomplete="email" placeholder="name@example.com" required></label>
+        <label>Пароль<input name="password" type="password" autocomplete="current-password" placeholder="••••••••" minlength="4" required></label>
+        <button class="primary auth-submit" type="submit">Войти</button>
+      </form>
+      <form id="registerForm" class="auth-form hidden">
+        <label>Имя<input name="name" type="text" autocomplete="name" placeholder="Ваше имя" required></label>
+        <label>Email<input name="email" type="email" autocomplete="email" placeholder="name@example.com" required></label>
+        <label>Пароль<input name="password" type="password" autocomplete="new-password" placeholder="Минимум 4 символа" minlength="4" required></label>
+        <button class="primary auth-submit" type="submit">Создать аккаунт</button>
+      </form>
+      <button id="skipAuth" class="skip-auth" type="button">Пропустить пока</button>
+      <small class="auth-note">Тестовый локальный вход. Данные остаются на этом устройстве.</small>
+    </div>
+  </section>
+
+  <div id="app" class="app-hidden">
     <header class="topbar">
-      <button class="brand" data-action="home">BOONWAVE</button>
+      <div class="brand-stack"><button class="brand" data-action="home">BOONWAVE</button><small>Твоё пространство возможностей</small></div>
       <div class="space-switch">
         <button data-space="personal">Личное</button>
         <button class="active" data-space="work">Работа</button>

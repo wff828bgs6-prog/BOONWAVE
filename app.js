@@ -1,3 +1,38 @@
+
+const AUTH_KEY="boonwave_auth_v1";
+function showWorkspace(){
+  document.querySelector("#authScreen")?.classList.add("hidden");
+  const app=document.querySelector("#app");
+  app?.classList.remove("app-hidden");
+  requestAnimationFrame(()=>app?.classList.add("app-ready"));
+}
+function showAuth(){document.querySelector("#authScreen")?.classList.remove("hidden")}
+function initializeOnboarding(){
+  const splash=document.querySelector("#splashScreen");
+  const hasSession=!!localStorage.getItem(AUTH_KEY);
+  setTimeout(()=>{
+    splash?.classList.add("leaving");
+    setTimeout(()=>{splash?.classList.add("hidden");hasSession?showWorkspace():showAuth()},430);
+  },2000);
+  document.querySelectorAll("[data-auth-tab]").forEach(btn=>btn.addEventListener("click",()=>{
+    document.querySelectorAll("[data-auth-tab]").forEach(x=>x.classList.remove("active"));
+    btn.classList.add("active");
+    const login=btn.dataset.authTab==="login";
+    document.querySelector("#loginForm")?.classList.toggle("hidden",!login);
+    document.querySelector("#registerForm")?.classList.toggle("hidden",login);
+  }));
+  document.querySelector("#skipAuth")?.addEventListener("click",showWorkspace);
+  document.querySelector("#loginForm")?.addEventListener("submit",e=>{
+    e.preventDefault();const fd=new FormData(e.currentTarget);
+    localStorage.setItem(AUTH_KEY,JSON.stringify({email:fd.get("email"),mode:"login",date:Date.now()}));showWorkspace();
+  });
+  document.querySelector("#registerForm")?.addEventListener("submit",e=>{
+    e.preventDefault();const fd=new FormData(e.currentTarget);
+    localStorage.setItem(AUTH_KEY,JSON.stringify({name:fd.get("name"),email:fd.get("email"),mode:"register",date:Date.now()}));showWorkspace();
+  });
+}
+document.addEventListener("DOMContentLoaded",initializeOnboarding);
+
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const TYPES={
  project:{label:"Проект",icon:"◆"},goal:{label:"Цель",icon:"◎"},person:{label:"Человек",icon:"●"},
