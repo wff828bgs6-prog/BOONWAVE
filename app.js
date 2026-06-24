@@ -351,7 +351,7 @@ async function fullResetApp(){
    if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(reg=>reg.unregister()))}
    if('indexedDB' in window && indexedDB.databases){const dbs=await indexedDB.databases();dbs.forEach(db=>{if(db.name)indexedDB.deleteDatabase(db.name)})}
  }catch(err){console.error('BOONWAVE reset error',err)}
- location.replace(location.pathname+'?v=5.4.0&reset='+Date.now());
+ location.replace(location.pathname+'?v=5.4.4&reset='+Date.now());
 }
 function closeSheets(){$$(".sheet").forEach(x=>x.classList.add("hidden"));$("#createMenu").classList.add("hidden");$("#contextMenu").classList.add("hidden")}
 
@@ -420,7 +420,7 @@ window.addEventListener("beforeunload",save);document.addEventListener("visibili
 setInterval(save,30000);
 if("serviceWorker" in navigator){
  window.addEventListener("load",()=>{
-  navigator.serviceWorker.register("sw.js?v=5.4.2",{updateViaCache:"none"}).then(reg=>reg.update()).catch(()=>{});
+  navigator.serviceWorker.register("sw.js?v=5.4.4",{updateViaCache:"none"}).then(reg=>reg.update()).catch(()=>{});
  });
  let refreshing=false;
  navigator.serviceWorker.addEventListener("controllerchange",()=>{if(!refreshing){refreshing=true;location.reload()}})

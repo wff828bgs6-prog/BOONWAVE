@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=5.4.2">
+  <link rel="stylesheet" href="styles.css?v=5.4.4">
   <title>BOONWAVE</title>
 </head>
 <body>
@@ -29,8 +29,7 @@
     <div class="auth-card">
       <div class="auth-brand">
         <div class="auth-mark-wrap"><img src="boonwave-approved-splash.png" alt="BOONWAVE" class="auth-mark"></div>
-        <h1>BOONWAVE</h1>
-        <p>Твоё пространство возможностей</p>
+        <p class="auth-slogan">Твоё пространство возможностей</p>
       </div>
       <div class="auth-tabs" role="tablist">
         <button type="button" class="active" data-auth-tab="login">Вход</button>
@@ -58,7 +57,7 @@
         <button data-space="personal">Личное</button>
         <button class="active" data-space="work">Работа</button>
       </div>
-      <div class="version-chip">V5.4.2</div><button class="icon-btn" data-action="menu" aria-label="Меню">•••</button>
+      <div class="version-chip">V5.4.4</div><button class="icon-btn" data-action="menu" aria-label="Меню">•••</button>
     </header>
 
     <main id="workspaceWrap">
@@ -128,7 +127,7 @@
         <span class="account-action-icon">⌫</span>
         <span><b>Полный сброс</b><small>Удалить аккаунт, проекты, файлы, кэш и настройки</small></span>
       </button>
-      <div class="account-version">Версия V5.4.2</div>
+      <div class="account-version">Версия V5.4.4</div>
     </div>
 
     <dialog id="editor">
@@ -161,7 +160,7 @@
   </div>
   <script>
 (function() {
-  const RESET_KEY = 'boonwave_hard_reset_5.4.3';
+  const RESET_KEY = 'boonwave_hard_reset_5.4.4';
   const current = localStorage.getItem(RESET_KEY);
   if (current !== 'done' && 'serviceWorker' in navigator) {
     Promise.all([
@@ -170,12 +169,12 @@
     ]).then(() => {
       localStorage.setItem(RESET_KEY, 'done');
       const u = new URL(location.href);
-      u.searchParams.set('v', '5.4.2');
+      u.searchParams.set('v', '5.4.4');
       location.replace(u.toString());
     }).catch(() => localStorage.setItem(RESET_KEY, 'done'));
   }
 })();
 </script>
-<script src="app.js?v=5.4.2"></script>
+<script src="app.js?v=5.4.4"></script>
 </body>
 </html>
