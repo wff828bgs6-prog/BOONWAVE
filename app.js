@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.2-project-edit-only";
+const VERSION = "6.0.2-safe";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
 const DATA_PREFIX = "boonwave_v6_data_";
@@ -1003,7 +1003,7 @@ function renderEditorBody() {
     <div class="field-grid"><div class="field"><label>Количество позиций</label><input name="positions" inputmode="numeric" value="${esc(d.positions || "")}"></div><div class="field"><label>Дата подписания</label><input name="signDate" type="date" value="${esc(d.signDate || "")}"></div></div>
     <div class="field-grid"><div class="field"><label>Бюджет</label><input name="budget" inputmode="decimal" value="${esc(d.budget || "")}"></div><div class="field"><label>Срок</label><input name="deadline" type="date" value="${esc(d.deadline || "")}"></div></div>
     <div class="field-grid"><div class="field"><label>Аванс</label><input name="advance" inputmode="decimal" value="${esc(d.advance || "")}"></div><div class="field"><label>Остаток</label><input name="balance" inputmode="decimal" value="${esc(d.balance || "")}"></div></div>
-    <div class="editor-group project-assets-group"><h3 class="project-section-label">Основные материалы</h3><button type="button" class="ghost" data-editor-action="addAssets">＋ Изображения, PDF и векторные файлы</button></div>
+    <div class="editor-group materials-editor"><h3>Основные материалы</h3><button type="button" class="ghost" data-editor-action="addAssets">＋ Изображения, PDF и векторные файлы</button></div>
     ${coverEditorHtml(d)}`;
   if (d.type === "person") html += `
     <div class="field"><label>Специализация</label><input name="speciality" value="${esc(d.speciality || "")}"></div>
@@ -1025,11 +1025,14 @@ function coverEditorHtml(d) {
   const images = (d.assets || []).filter(asset => String(asset.type || "").startsWith("image/"));
   if (!images.length) return `<div class="editor-group cover-editor"><h3>Заглавное изображение</h3><div class="cover-empty">Добавьте изображение в материалы проекта — оно станет обложкой.</div></div>`;
   if (!d.coverAssetId || !images.some(asset => asset.id === d.coverAssetId)) d.coverAssetId = images[0].id;
-  return `<div class="editor-group cover-editor"><h3 class="project-section-label">Заглавное изображение</h3>
-    <div class="cover-preview" data-cover-preview="${esc(d.coverAssetId)}"><img class="cover-preview-image" alt=""><span>Предпросмотр обложки</span></div>
+  const scale = Math.max(1, Number(d.coverScale || 1));
+  const x = Number(d.coverOffsetX || 0);
+  const y = Number(d.coverOffsetY || 0);
+  return `<div class="editor-group cover-editor"><h3>Заглавное изображение</h3>
+    <div class="cover-preview" data-cover-preview="${esc(d.coverAssetId)}" aria-label="Предпросмотр позиционирования обложки"><img class="cover-preview-img" alt="" style="transform:translate(${x}px, ${y}px) scale(${scale});"><span class="cover-preview-hint">Перетащите изображение для позиционирования</span></div>
     <div class="field"><label>Выбрать изображение</label><select name="coverAssetId" id="coverAssetSelect">${images.map(asset => `<option value="${asset.id}" ${asset.id === d.coverAssetId ? "selected" : ""}>${esc(asset.name || "Изображение")}</option>`).join("")}</select></div>
-    <div class="field-grid"><div class="field"><label>Масштаб</label><input id="coverScaleRange" type="range" min="0.6" max="2.5" step="0.01" value="${Number(d.coverScale || 1)}"></div><div class="field"><label>Позиция X</label><input id="coverOffsetXRange" type="range" min="-180" max="180" step="1" value="${Number(d.coverOffsetX || 0)}"></div></div>
-    <div class="field"><label>Позиция Y</label><input id="coverOffsetYRange" type="range" min="-140" max="140" step="1" value="${Number(d.coverOffsetY || 0)}"></div>
+    <div class="field-grid"><div class="field"><label>Масштаб</label><input id="coverScaleRange" type="range" min="1" max="2.5" step="0.01" value="${scale}"></div><div class="field"><label>Позиция X</label><input id="coverOffsetXRange" type="range" min="-180" max="180" step="1" value="${x}"></div></div>
+    <div class="field"><label>Позиция Y</label><input id="coverOffsetYRange" type="range" min="-140" max="140" step="1" value="${y}"></div>
     <div class="cover-tools"><button type="button" class="ghost" data-editor-action="coverFit">По размеру</button><button type="button" class="ghost" data-editor-action="coverFill">Заполнить</button><button type="button" class="ghost" data-editor-action="coverReset">Сбросить позицию</button></div>
   </div>`;
 }
@@ -1071,22 +1074,46 @@ function bindEditorDynamicActions() {
   });
   hydrateEditorCoverPreview();
 }
+function applyEditorCoverPreviewTransform() {
+  const img = $(".cover-preview-img", $("#editorBody"));
+  if (!img || !state.editDraft) return;
+  const scale = Math.max(1, Number(state.editDraft.coverScale || 1));
+  const x = Number(state.editDraft.coverOffsetX || 0);
+  const y = Number(state.editDraft.coverOffsetY || 0);
+  img.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+}
+function bindEditorCoverDrag() {
+  const preview = $("[data-cover-preview]", $("#editorBody"));
+  if (!preview || preview.dataset.dragBound === "1") return;
+  preview.dataset.dragBound = "1";
+  let start = null;
+  preview.addEventListener("pointerdown", event => {
+    if (!state.editDraft) return;
+    event.preventDefault();
+    preview.setPointerCapture?.(event.pointerId);
+    start = { x: event.clientX, y: event.clientY, ox: Number(state.editDraft.coverOffsetX || 0), oy: Number(state.editDraft.coverOffsetY || 0) };
+  });
+  preview.addEventListener("pointermove", event => {
+    if (!start || !state.editDraft) return;
+    state.editDraft.coverOffsetX = clamp(Math.round(start.ox + event.clientX - start.x), -180, 180);
+    state.editDraft.coverOffsetY = clamp(Math.round(start.oy + event.clientY - start.y), -140, 140);
+    const xRange = $("#coverOffsetXRange"); if (xRange) xRange.value = state.editDraft.coverOffsetX;
+    const yRange = $("#coverOffsetYRange"); if (yRange) yRange.value = state.editDraft.coverOffsetY;
+    applyEditorCoverPreviewTransform();
+  });
+  const end = () => { start = null; };
+  preview.addEventListener("pointerup", end);
+  preview.addEventListener("pointercancel", end);
+}
 async function hydrateEditorCoverPreview() {
   const preview = $("[data-cover-preview]", $("#editorBody"));
-  if (!preview || !state.editDraft?.coverAssetId) return;
+  const img = $(".cover-preview-img", $("#editorBody"));
+  if (!preview || !img || !state.editDraft?.coverAssetId) return;
   const url = await assetUrl(state.editDraft.coverAssetId).catch(() => null);
   if (!url || !preview.isConnected) return;
-  const image = $(".cover-preview-image", preview);
-  if (image) {
-    image.src = url;
-    const scale = Math.max(.2, Number(state.editDraft.coverScale || 1));
-    const x = Number(state.editDraft.coverOffsetX || 0);
-    const y = Number(state.editDraft.coverOffsetY || 0);
-    image.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${scale})`;
-    return;
-  }
-  preview.style.backgroundImage = `url("${url}")`;
-  applyCoverStyle(preview, state.editDraft);
+  img.src = url;
+  applyEditorCoverPreviewTransform();
+  bindEditorCoverDrag();
 }
 function syncDraftDynamicFields() {
   const d = state.editDraft; if (!d || d.type !== "process") return;

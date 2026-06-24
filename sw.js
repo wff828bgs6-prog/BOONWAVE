@@ -1,10 +1,10 @@
-const VERSION = "6.0.2-project-edit-only";
+const VERSION = "6.0.2-safe";
 const CACHE = `boonwave-clean-${VERSION}`;
 const CORE = [
   "./",
   "./index.html",
-  "./styles.css?v=6.0.2-project-edit-only",
-  "./app.js?v=6.0.2-project-edit-only",
+  "./styles.css?v=6.0.2-safe",
+  "./app.js?v=6.0.2-safe",
   "./manifest.webmanifest",
   "./boonwave-approved-splash.png",
   "./boonwave-mark-full.png",
