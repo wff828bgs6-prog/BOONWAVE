@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=5.3.0">
+  <link rel="stylesheet" href="styles.css?v=5.4.0">
   <title>BOONWAVE</title>
 </head>
 <body>
@@ -59,7 +59,7 @@
         <button data-space="personal">Личное</button>
         <button class="active" data-space="work">Работа</button>
       </div>
-      <div class="version-chip">V5.3.0</div><button class="icon-btn" data-action="menu" aria-label="Меню">•••</button>
+      <div class="version-chip">V5.4.0</div><button class="icon-btn" data-action="menu" aria-label="Меню">•••</button>
     </header>
 
     <main id="workspaceWrap">
@@ -113,6 +113,25 @@
 
     <div id="contextMenu" class="context-menu hidden"></div>
 
+    <div id="accountMenu" class="account-menu hidden" role="menu" aria-label="Меню аккаунта">
+      <div class="account-menu-head">
+        <div>
+          <small>BOONWAVE</small>
+          <b>Меню аккаунта</b>
+        </div>
+        <button class="account-close" data-action="closeAccountMenu" aria-label="Закрыть">×</button>
+      </div>
+      <button class="account-action" data-action="logout">
+        <span class="account-action-icon">↪</span>
+        <span><b>Выйти из аккаунта</b><small>Сохранённые проекты останутся на устройстве</small></span>
+      </button>
+      <button class="account-action danger" data-action="fullReset">
+        <span class="account-action-icon">⌫</span>
+        <span><b>Полный сброс</b><small>Удалить аккаунт, проекты, файлы, кэш и настройки</small></span>
+      </button>
+      <div class="account-version">Версия V5.4.0</div>
+    </div>
+
     <dialog id="editor">
       <form method="dialog" id="editorForm">
         <div class="dialog-head">
@@ -143,7 +162,7 @@
   </div>
   <script>
 (function() {
-  const RESET_KEY = 'boonwave_hard_reset_5.3.0';
+  const RESET_KEY = 'boonwave_hard_reset_5.4.0';
   const current = localStorage.getItem(RESET_KEY);
   if (current !== 'done' && 'serviceWorker' in navigator) {
     Promise.all([
@@ -158,6 +177,6 @@
   }
 })();
 </script>
-<script src="app.js?v=5.3.0"></script>
+<script src="app.js?v=5.4.0"></script>
 </body>
 </html>

@@ -328,6 +328,31 @@ function doSearch(q){
  $("#searchResults").innerHTML=found.map(n=>`<button class="list-card" data-search-node="${n.id}"><b>${esc(n.title)}</b><small>${TYPES[n.type]?.label||n.type} · ${esc(n.speciality||n.client||n.source||"")}</small></button>`).join("")||"<p>Ничего не найдено.</p>"
 }
 function toast(text){const t=document.createElement("div");t.className="toast";t.textContent=text;document.body.appendChild(t);setTimeout(()=>t.remove(),1800)}
+function openAccountMenu(){
+ closeSheets();
+ $("#accountMenu")?.classList.remove("hidden");
+}
+function closeAccountMenu(){ $("#accountMenu")?.classList.add("hidden") }
+function logoutAccount(){
+ closeAccountMenu();
+ localStorage.removeItem(AUTH_KEY);
+ document.querySelector("#app")?.classList.remove("app-ready");
+ document.querySelector("#app")?.classList.add("app-hidden");
+ document.querySelector("#authScreen")?.classList.remove("hidden");
+ toast("Вы вышли из аккаунта");
+}
+async function fullResetApp(){
+ const approved=window.confirm("Полный сброс удалит все проекты, карточки, локальный аккаунт, настройки и кэш BOONWAVE на этом устройстве. Продолжить?");
+ if(!approved)return;
+ try{
+   localStorage.clear();
+   sessionStorage.clear();
+   if('caches' in window){const keys=await caches.keys();await Promise.all(keys.map(key=>caches.delete(key)))}
+   if('serviceWorker' in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(reg=>reg.unregister()))}
+   if('indexedDB' in window && indexedDB.databases){const dbs=await indexedDB.databases();dbs.forEach(db=>{if(db.name)indexedDB.deleteDatabase(db.name)})}
+ }catch(err){console.error('BOONWAVE reset error',err)}
+ location.replace(location.pathname+'?v=5.4.0&reset='+Date.now());
+}
 function closeSheets(){$$(".sheet").forEach(x=>x.classList.add("hidden"));$("#createMenu").classList.add("hidden");$("#contextMenu").classList.add("hidden")}
 
 document.addEventListener("click",e=>{
@@ -335,7 +360,11 @@ document.addEventListener("click",e=>{
  if(create){createNode(create.dataset.create);return}
  if(a){
   const act=a.dataset.action;
-  if(act==="openCreate"){closeSheets();$("#createMenu").classList.toggle("hidden")}
+  if(act==="openCreate"){closeSheets();closeAccountMenu();$("#createMenu").classList.toggle("hidden")}
+  if(act==="menu"){const menu=$("#accountMenu");menu?.classList.toggle("hidden")}
+  if(act==="closeAccountMenu")closeAccountMenu();
+  if(act==="logout")logoutAccount();
+  if(act==="fullReset")fullResetApp();
   if(act==="today"){closeSheets();$("#todayPanel").classList.remove("hidden")}
   if(act==="search"){closeSheets();$("#searchPanel").classList.remove("hidden");$("#searchInput").focus()}
   if(act==="inbox"){closeSheets();$("#inboxPanel").classList.remove("hidden")}
@@ -359,7 +388,8 @@ document.addEventListener("click",e=>{
  const pi=e.target.closest("[data-add-image]"); if(pi){pickImages(nodeById(pi.dataset.addImage)); return;}
  const pf=e.target.closest("[data-files]");if(pf)pickFiles(nodeById(pf.dataset.files));
  const sn=e.target.closest("[data-search-node]");if(sn){const n=nodeById(sn.dataset.searchNode);closeSheets();state.space=n.space;focusNode(n)}
- if(!e.target.closest(".context-menu,.node"))$("#contextMenu").classList.add("hidden")
+ if(!e.target.closest(".context-menu,.node"))$("#contextMenu").classList.add("hidden");
+ if(!e.target.closest("#accountMenu,[data-action=\"menu\"]")) closeAccountMenu();
 });
 $("#editorForm").addEventListener("submit",e=>{if(e.submitter?.dataset.action==="saveNode")saveEditor()});
 $("#searchInput").addEventListener("input",e=>doSearch(e.target.value));
