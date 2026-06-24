@@ -12,24 +12,24 @@
 </head>
 <body>
   <section id="splashScreen" class="splash-screen" aria-label="BOONWAVE">
+    <div class="splash-noise"></div>
     <div class="splash-orbit orbit-a"></div>
     <div class="splash-orbit orbit-b"></div>
+    <div class="splash-dots"></div>
     <div class="splash-content">
-      <img src="boonwave-logo.png" alt="BOONWAVE" class="splash-logo">
+      <div class="splash-mark-wrap"><img src="boonwave-mark.png" alt="BOONWAVE" class="splash-mark"></div>
       <h1>BOONWAVE</h1>
       <p>Твоё пространство возможностей</p>
       <div class="splash-progress"><span></span></div>
     </div>
   </section>
 
-  <section id="authScreen" class="auth-screen hidden">
+  <section id="authScreen" class="auth-screen hidden" class="auth-screen hidden">
     <div class="auth-glow glow-one"></div>
     <div class="auth-glow glow-two"></div>
     <div class="auth-card">
       <div class="auth-brand">
-        <div class="auth-logo-crop">
-          <img src="boonwave-logo.png" alt="BOONWAVE">
-        </div>
+        <div class="auth-mark-wrap"><img src="boonwave-mark.png" alt="BOONWAVE" class="auth-mark"></div>
         <h1>BOONWAVE</h1>
         <p>Твоё пространство возможностей</p>
       </div>
@@ -48,14 +48,14 @@
         <label>Пароль<input name="password" type="password" autocomplete="new-password" placeholder="Минимум 4 символа" minlength="4" required></label>
         <button class="primary auth-submit" type="submit">Создать аккаунт</button>
       </form>
-      <button id="skipAuth" class="skip-auth" type="button">Пропустить пока</button>
-      <small class="auth-note">Тестовый локальный вход. Данные остаются на этом устройстве.</small>
+      <button id="skipAuth" class="skip-auth" type="button">Визуальное знакомство</button>
+      <small class="auth-note">Локальная тестовая версия. Кнопка «Визуальное знакомство» временно открывает краткую инструкцию.</small>
     </div>
   </section>
 
   <div id="app" class="app-hidden">
     <header class="topbar">
-      <div class="brand-stack"><button class="brand" data-action="home">BOONWAVE</button><small>Твоё пространство возможностей</small></div>
+      <div class="brand-cluster"><div class="top-mark"><img src="boonwave-mark.png" alt=""></div><div class="brand-stack"><button class="brand" data-action="home">BOONWAVE</button><small>Твоё пространство возможностей</small></div></div>
       <div class="space-switch">
         <button data-space="personal">Личное</button>
         <button class="active" data-space="work">Работа</button>
@@ -64,13 +64,14 @@
     </header>
 
     <main id="workspaceWrap">
+      <canvas id="workspaceDots" aria-hidden="true"></canvas>
       <svg id="links" aria-hidden="true"></svg>
       <div id="workspace"></div>
       <div id="emptyState" class="empty-state hidden">
         <div class="empty-mark">≈</div>
-        <h2>Пустое пространство</h2>
-        <p>Создайте ядро: проект, цель, человека или идею.</p>
-        <button class="primary" data-action="openCreate">Создать</button>
+        <h2>Поле возможностей</h2>
+        <p>Начните с проекта, цели, человека или идеи — и пространство оживёт.</p>
+        <button class="primary brand-btn" data-action="createProject">Создать проект</button>
       </div>
     </main>
 
@@ -90,6 +91,15 @@
       <textarea id="inboxText" placeholder="Мысль, ссылка, задача, заметка…"></textarea>
       <button class="primary" data-action="saveInbox">Сохранить во входящие</button>
       <div id="inboxList"></div>
+    </section>
+
+    <section id="guidePanel" class="sheet hidden guide-sheet">
+      <div class="sheet-head"><h2>Визуальное знакомство</h2><button data-action="closeGuide">×</button></div>
+      <div class="guide-hero"><div class="guide-mark"><img src="boonwave-mark.png" alt=""></div><p>Краткий тестовый сценарий будущей визуальной инструкции.</p></div>
+      <div class="guide-card"><b>1. Поле возможностей</b><small>Рабочий стол живой: точки реагируют на перемещение карточек и создают ощущение пространства.</small></div>
+      <div class="guide-card"><b>2. Создание ядра</b><small>Нажмите «Создать проект» или кнопку +, чтобы добавить первую карточку.</small></div>
+      <div class="guide-card"><b>3. Подсказка</b><small>У новой карточки проекта мигает значок подсказки 17. Нажмите его для следующего шага.</small></div>
+      <button class="primary brand-btn" data-action="enterWorkspace">Перейти в поле возможностей</button>
     </section>
 
     <nav class="bottom-nav">

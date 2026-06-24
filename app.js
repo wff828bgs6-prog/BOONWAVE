@@ -1,18 +1,21 @@
 
-const AUTH_KEY="boonwave_auth_v1";
+const AUTH_KEY="boonwave_auth_v2";
 function showWorkspace(){
   document.querySelector("#authScreen")?.classList.add("hidden");
+  document.querySelector("#guidePanel")?.classList.add("hidden");
   const app=document.querySelector("#app");
   app?.classList.remove("app-hidden");
   requestAnimationFrame(()=>app?.classList.add("app-ready"));
+  setTimeout(renderDotField,100);
 }
 function showAuth(){document.querySelector("#authScreen")?.classList.remove("hidden")}
+function openGuide(){document.querySelector("#guidePanel")?.classList.remove("hidden")}
 function initializeOnboarding(){
   const splash=document.querySelector("#splashScreen");
   const hasSession=!!localStorage.getItem(AUTH_KEY);
   setTimeout(()=>{
     splash?.classList.add("leaving");
-    setTimeout(()=>{splash?.classList.add("hidden");hasSession?showWorkspace():showAuth()},430);
+    setTimeout(()=>{splash?.classList.add("hidden");hasSession?showWorkspace():showAuth()},420);
   },2000);
   document.querySelectorAll("[data-auth-tab]").forEach(btn=>btn.addEventListener("click",()=>{
     document.querySelectorAll("[data-auth-tab]").forEach(x=>x.classList.remove("active"));
@@ -21,7 +24,7 @@ function initializeOnboarding(){
     document.querySelector("#loginForm")?.classList.toggle("hidden",!login);
     document.querySelector("#registerForm")?.classList.toggle("hidden",login);
   }));
-  document.querySelector("#skipAuth")?.addEventListener("click",showWorkspace);
+  document.querySelector("#skipAuth")?.addEventListener("click",()=>{document.querySelector("#authScreen")?.classList.add("hidden");openGuide()});
   document.querySelector("#loginForm")?.addEventListener("submit",e=>{
     e.preventDefault();const fd=new FormData(e.currentTarget);
     localStorage.setItem(AUTH_KEY,JSON.stringify({email:fd.get("email"),mode:"login",date:Date.now()}));showWorkspace();
@@ -40,7 +43,7 @@ const TYPES={
 };
 const state={
  data:null,space:"work",scale:.82,tx:-250,ty:-180,selected:null,editing:null,linkMode:null,
- pointers:new Map(),gesture:null
+ pointers:new Map(),gesture:null,dragNodeId:null,dragScreen:null
 };
 const blank=()=>({version:"5-expanded",space:"work",nodes:[],links:[],inbox:[],updated:Date.now()});
 function load(){try{return JSON.parse(localStorage.getItem("boonwave_v5_expanded"))||blank()}catch{return blank()}}
@@ -52,6 +55,31 @@ function esc(s=""){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt
 function nodes(){return state.data.nodes.filter(n=>n.space===state.space)}
 function nodeById(id){return state.data.nodes.find(n=>n.id===id)}
 function money(v){return Number(v||0).toLocaleString("ru-RU")+" ₽"}
+
+function cardDims(n){const level=typeLevel(n);return level===1?{w:132,h:94}:level===3?{w:316,h:260}:{w:210,h:118}}
+function renderDotField(){
+ const canvas=$("#workspaceDots"); if(!canvas) return;
+ const rect=canvas.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+ if(!rect.width||!rect.height) return;
+ if(canvas.width!==Math.round(rect.width*dpr)||canvas.height!==Math.round(rect.height*dpr)){
+   canvas.width=Math.round(rect.width*dpr); canvas.height=Math.round(rect.height*dpr);
+ }
+ const ctx=canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,rect.width,rect.height);
+ const spacing=24, nodesInSpace=nodes();
+ for(let y=12;y<rect.height;y+=spacing){
+   for(let x=12;x<rect.width;x+=spacing){
+     let a=.11, r=1.05, hue=(x+y)%48<24?0:1;
+     nodesInSpace.forEach(n=>{
+       const dim=cardDims(n); const cx=(n.x+dim.w/2)*state.scale+state.tx; const cy=(n.y+dim.h/2)*state.scale+state.ty;
+       const dist=Math.hypot(x-cx,y-cy); const infl=n.id===state.dragNodeId?180:120;
+       if(dist<infl){const k=1-dist/infl; a+=k*(n.id===state.dragNodeId ? .28 : .17); r+=k*(n.id===state.dragNodeId?2.0:1.2)}
+     });
+     if(state.dragScreen){const dist=Math.hypot(x-state.dragScreen.x,y-state.dragScreen.y); if(dist<120){const k=1-dist/120; a+=k*.22; r+=k*1.5}}
+     ctx.beginPath(); ctx.fillStyle=hue?`rgba(97,222,242,${Math.min(a,.7)})`:`rgba(126,107,255,${Math.min(a,.7)})`; ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+   }
+ }
+}
+window.addEventListener('resize',renderDotField);
 function typeLevel(n){
  if(n.manualLevel)return n.manualLevel;
  if(state.scale<.58)return 1;
@@ -60,7 +88,7 @@ function typeLevel(n){
 }
 function applyTransform(){
  const t=`translate(${state.tx}px,${state.ty}px) scale(${state.scale})`;
- $("#workspace").style.transform=t;$("#links").style.transform=t;renderLinks()
+ $("#workspace").style.transform=t;$("#links").style.transform=t;renderLinks();renderDotField()
 }
 function render(){
  const ws=$("#workspace");ws.innerHTML="";
@@ -76,7 +104,7 @@ function render(){
     n.type==="idea"?(n.source||"Сохранённая идея"):
     n.type==="goal"?(n.deadline?`до ${n.deadline}`:"Цель"):
     (n.note||"");
-  el.innerHTML=`<div class="cover" ${cover}></div><span class="status"></span><div class="content">
+  el.innerHTML=`<div class="cover" ${cover}></div><span class="status"></span>${n.showHint?'<button class=\"hint-btn\" data-hint=\"'+n.id+'\" aria-label=\"Подсказка\"></button>':''}<div class="content">
     <h3>${esc(n.title||TYPES[n.type]?.label||"Элемент")}</h3>
     <p>${esc(subtitle)}</p>
     <div class="meta">
@@ -99,19 +127,19 @@ function attachNodeEvents(el,n){
  let timer=null,start=null,moved=false;
  el.addEventListener("pointerdown",e=>{
   if(e.target.closest("input,button"))return;
-  e.stopPropagation();el.setPointerCapture(e.pointerId);
-  start={x:e.clientX,y:e.clientY,nx:n.x,ny:n.y};moved=false;
+  e.stopPropagation();if(e.target.closest('.hint-btn')) return; el.setPointerCapture(e.pointerId);
+  start={x:e.clientX,y:e.clientY,nx:n.x,ny:n.y};moved=false;state.dragNodeId=n.id;state.dragScreen={x:e.clientX,y:e.clientY};renderDotField();
   timer=setTimeout(()=>{timer=null;navigator.vibrate?.(15);openContext(n,e.clientX,e.clientY)},480)
  });
  el.addEventListener("pointermove",e=>{
   if(!start||n.locked)return;
-  const dx=(e.clientX-start.x)/state.scale,dy=(e.clientY-start.y)/state.scale;
-  if(Math.hypot(dx,dy)>5){moved=true;if(timer)clearTimeout(timer);n.x=start.nx+dx;n.y=start.ny+dy;el.style.left=n.x+"px";el.style.top=n.y+"px";renderLinks()}
+  const dx=(e.clientX-start.x)/state.scale,dy=(e.clientY-start.y)/state.scale; state.dragScreen={x:e.clientX,y:e.clientY};
+  if(Math.hypot(dx,dy)>5){moved=true;if(timer)clearTimeout(timer);n.x=start.nx+dx;n.y=start.ny+dy;el.style.left=n.x+"px";el.style.top=n.y+"px";renderLinks();renderDotField()}
  });
  el.addEventListener("pointerup",e=>{
   if(timer)clearTimeout(timer);
   if(start&&moved){save()}else if(timer!==null){selectNode(n.id)}
-  start=null
+  start=null; state.dragNodeId=null; state.dragScreen=null; renderDotField()
  });
  el.addEventListener("dblclick",e=>{e.stopPropagation();focusNode(n)});
 }
@@ -137,11 +165,15 @@ function renderLinks(){
   svg.appendChild(path)
  })
 }
-function createNode(type){
+function createNode(type,opts={}){
  const center={x:(innerWidth/2-state.tx)/state.scale-105,y:(innerHeight/2-state.ty)/state.scale-70};
- const n={id:uid(),type,space:state.space,title:TYPES[type].label,x:center.x+Math.random()*60,y:center.y+Math.random()*60,
-  status:"active",priority:"medium",note:"",tasks:[],expenses:[],contacts:[],files:[],counts:{images:0,pdf:0,files:0},progress:0};
- state.data.nodes.push(n);save();$("#createMenu").classList.add("hidden");openEditor(n);render()
+ const defaults={project:{title:'Новый проект',client:'',address:'',status:'Подготовка',showHint:true},goal:{title:'Новая цель'},person:{title:'Новый человек'},idea:{title:'Новая идея'},stage:{title:'Новый этап'}};
+ const base=defaults[type]||{};
+ const n={id:uid(),type,space:state.space,title:base.title||TYPES[type].label,x:center.x+Math.random()*40,y:center.y+Math.random()*40,
+  status:base.status||'active',priority:'medium',note:'',tasks:[],expenses:[],contacts:[],files:[],counts:{images:0,pdf:0,files:0},progress:0,client:base.client||'',address:base.address||'',showHint:!!base.showHint};
+ state.data.nodes.push(n);save();$("#createMenu").classList.add("hidden");render(); renderDotField(); focusNode(n);
+ if(opts.openEditor!==false) openEditor(n);
+ return n
 }
 function fieldsFor(n){
  const common=`<div class="field"><label>Название</label><input name="title" value="${esc(n.title)}"></div>
@@ -200,6 +232,10 @@ function openContext(n,x,y){
  c.style.left=Math.min(x,innerWidth-300)+"px";c.style.top=Math.max(70,y-55)+"px";c.classList.remove("hidden")
 }
 function startLink(n){state.linkMode=n.id;toast("Выберите второй элемент для связи")}
+function openHint(n){
+ toast('Подсказка: заполните проект и добавьте первую задачу');
+ n.showHint=false; save(); render(); setTimeout(()=>openEditor(n),350)
+}
 function addTask(n){
  const title=prompt("Новая задача");if(!title)return;
  n.tasks.push({id:uid(),title,done:false,due:""});save();render();toast("Задача добавлена")
@@ -271,6 +307,7 @@ document.addEventListener("click",e=>{
   if(act==="deleteNode")deleteNode();
   if(act==="closeDetail")$("#detail").close();
  }
+ const hint=e.target.closest('[data-hint]'); if(hint){openHint(nodeById(hint.dataset.hint)); return;}
  const q=e.target.closest("[data-quick-expense]");if(q){
   const box=q.closest(".quick-expense"),n=nodeById(q.dataset.quickExpense);
   addExpense(n,box.querySelector(".expense-name").value,box.querySelector(".expense-value").value);
