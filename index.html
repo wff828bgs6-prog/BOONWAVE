@@ -3,11 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-  <meta name="theme-color" content="#0a0b0f">
+  <meta name="theme-color" content="#06070c">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BOONWAVE">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=5.6.0">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="styles.css?v=6.0.0">
   <title>BOONWAVE</title>
 </head>
 <body>
@@ -17,7 +19,7 @@
     <div class="splash-orbit orbit-b"></div>
     <div class="splash-dots"></div>
     <div class="splash-content">
-      <div class="splash-full-wrap"><img src="boonwave-approved-splash.png" alt="BOONWAVE" class="splash-full"></div>
+      <div class="splash-full-wrap"><img src="boonwave-mark-full.png" alt="" class="splash-full-mark"><div class="brand-wordmark" aria-label="BOONWAVE"><span>BOON</span><strong>WAVE</strong></div></div>
       <p class="splash-tagline">Твоё пространство возможностей</p>
       <div class="splash-progress"><span></span></div>
     </div>
@@ -28,7 +30,7 @@
     <div class="auth-glow glow-two"></div>
     <div class="auth-card">
       <div class="auth-brand">
-        <div class="auth-mark-wrap"><img src="boonwave-approved-splash.png" alt="BOONWAVE" class="auth-mark"></div>
+        <div class="auth-mark-wrap"><div class="auth-logo-stack"><img src="boonwave-mark-full.png" alt="" class="auth-mark"><div class="brand-wordmark auth-wordmark" aria-label="BOONWAVE"><span>BOON</span><strong>WAVE</strong></div></div></div>
         <p class="auth-slogan">Твоё пространство возможностей</p>
       </div>
       <div class="auth-tabs" role="tablist">
@@ -50,155 +52,99 @@
     </div>
   </section>
 
-  <div id="app" class="app-hidden">
-    <header class="topbar workspace-topbar">
-      <div class="top-mark top-mark-solo" aria-label="BOONWAVE"><img src="boonwave-mark.png" alt="BOONWAVE"></div>
-      <div class="space-switch workspace-switch">
+  <div id="app" class="app-hidden" aria-hidden="true">
+    <header class="app-header">
+      <button id="brandHome" class="brand-button" aria-label="Обзор пространств">
+        <img src="boonwave-mark.png" alt="BOONWAVE">
+      </button>
+      <div class="space-switch" role="tablist" aria-label="Пространство">
         <button data-space="personal">Личное</button>
         <button class="active" data-space="work">Проекты</button>
       </div>
-      <button class="icon-btn settings-btn" data-action="menu" aria-label="Меню настроек">•••</button>
+      <button id="menuButton" class="round-button" aria-label="Меню">
+        <span></span><span></span><span></span>
+      </button>
     </header>
 
-    <section class="workspace-toolbar" aria-label="Управление полем">
-      <button class="workspace-action" data-action="fitAll" aria-label="Вписать всё">⌗</button>
-      <button class="workspace-action" data-action="centerRoot" aria-label="К корневому элементу">◎</button>
-    </section>
-
-    <main id="workspaceWrap">
-      <canvas id="workspaceDots" aria-hidden="true"></canvas>
-      <svg id="links" aria-hidden="true"></svg>
-      <div id="workspace"></div>
-      <div id="emptyState" class="empty-state hidden">
-        <div class="empty-mark">≈</div>
-        <h2>Поле возможностей</h2>
-        <p>Начните с проекта, цели, человека или идеи — и пространство оживёт.</p>
-        <div id="addCue" class="add-cue"><div class="cue-v v1"></div><div class="cue-v v2"></div><div class="cue-v v3"></div><div class="cue-label">Нажмите +</div></div>
+    <main id="canvasViewport" aria-label="Рабочее поле">
+      <canvas id="dotCanvas" aria-hidden="true"></canvas>
+      <div id="world">
+        <svg id="linkLayer" width="3600" height="2600" viewBox="0 0 3600 2600" aria-hidden="true"></svg>
+        <div id="cardLayer"></div>
       </div>
+      <div id="emptyState" class="empty-state hidden">
+        <div class="empty-symbol">≈</div>
+        <h1>Поле возможностей</h1>
+        <p>Создайте проект, цель, человека или идею.</p>
+      </div>
+      <div id="gestureHint" class="gesture-hint hidden">
+        <span>Перемещайте поле одним пальцем</span>
+        <span>Масштабируйте двумя пальцами</span>
+        <span>Удерживайте карточку 2 секунды для редактирования</span>
+        <button data-action="dismissHint">Понятно</button>
+      </div>
+      <button id="fitButton" class="canvas-utility" aria-label="Вписать все карточки"></button>
     </main>
 
-    <section id="todayPanel" class="sheet hidden">
-      <div class="sheet-head"><h2>Сегодня</h2><button data-action="closeSheet">×</button></div>
-      <div id="todayList"></div>
-    </section>
+    <button id="createButton" class="create-button" aria-label="Создать"><span></span></button>
 
-    <section id="resultsPanel" class="sheet hidden">
-      <div class="sheet-head"><h2>Результаты</h2><button data-action="closeSheet">×</button></div>
-      <div id="resultsList"></div>
-    </section>
-
-    <section id="archivePanel" class="sheet hidden">
-      <div class="sheet-head"><h2>Архив</h2><button data-action="closeSheet">×</button></div>
-      <div id="archiveList"></div>
-    </section>
-
-    <section id="guidePanel" class="sheet hidden guide-sheet">
-      <div class="sheet-head"><h2>Визуальное знакомство</h2><button data-action="closeGuide">×</button></div>
-      <div class="guide-hero"><div class="guide-mark"><img src="boonwave-approved.png" alt=""></div><p>Краткий тестовый сценарий будущей визуальной инструкции.</p></div>
-      <div class="guide-card"><b>1. Поле возможностей</b><small>Рабочий стол живой: точки реагируют на перемещение карточек и создают ощущение пространства.</small></div>
-      <div class="guide-card"><b>2. Создание ядра</b><small>Нажмите «Создать проект» или кнопку +, чтобы добавить первую карточку.</small></div>
-      <div class="guide-card"><b>3. Подсказка</b><small>У новой карточки проекта мигает значок подсказки 17. Нажмите его для следующего шага.</small></div>
-      <button class="primary brand-btn" data-action="enterWorkspace">Перейти в поле возможностей</button>
-    </section>
-
-    <nav class="bottom-nav workspace-nav">
-      <button class="active" data-action="tree">
-        <span class="nav-icon">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="gradTree" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c85cff"/><stop offset="55%" stop-color="#6d67ff"/><stop offset="100%" stop-color="#67e9f8"/></linearGradient></defs><rect x="5" y="6" width="22" height="20" rx="3.2" fill="none" stroke="url(#gradTree)" stroke-width="2.3"/><path d="M16 6v20M5 16h22" fill="none" stroke="url(#gradTree)" stroke-width="2.3" stroke-linecap="round"/></svg>
-        </span><small>Древо</small></button>
-      <button data-action="today">
-        <span class="nav-icon">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="gradToday" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c85cff"/><stop offset="55%" stop-color="#6d67ff"/><stop offset="100%" stop-color="#67e9f8"/></linearGradient></defs><circle cx="16" cy="16" r="10.8" fill="none" stroke="url(#gradToday)" stroke-width="2.3"/><path d="M16 10.2v6.2h5" fill="none" stroke="url(#gradToday)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </span><small>Сегодня</small></button>
-      <button data-action="results">
-        <span class="nav-icon">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="gradResults" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c85cff"/><stop offset="55%" stop-color="#6d67ff"/><stop offset="100%" stop-color="#67e9f8"/></linearGradient></defs><path d="M16 7.5c1.9 0 3.4 1.5 3.4 3.4S17.9 14.3 16 14.3s-3.4-1.5-3.4-3.4S14.1 7.5 16 7.5Zm-7.3 14.2V16l3.3 3.2L16 14l4 5.2 3.3-3.2v5.7" fill="none" stroke="url(#gradResults)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </span><small>Результаты</small></button>
-      <button data-action="archive">
-        <span class="nav-icon">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="gradArchive" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c85cff"/><stop offset="55%" stop-color="#6d67ff"/><stop offset="100%" stop-color="#67e9f8"/></linearGradient></defs><path d="M8 10.5h16M10 10.5v11.3a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10.5M7.2 8.2h17.6a1.2 1.2 0 0 1 1.2 1.2v1.1H6V9.4a1.2 1.2 0 0 1 1.2-1.2Z" fill="none" stroke="url(#gradArchive)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.3 16h5.4" fill="none" stroke="url(#gradArchive)" stroke-width="2.3" stroke-linecap="round"/></svg>
-        </span><small>Архив</small></button>
+    <nav class="bottom-nav" aria-label="Навигация">
+      <button class="active" data-panel="tree"><span class="nav-icon" data-icon="tree"></span><small>Древо</small></button>
+      <button data-panel="today"><span class="nav-icon" data-icon="today"></span><small>Сегодня</small></button>
+      <button data-panel="results"><span class="nav-icon" data-icon="results"></span><small>Результаты</small></button>
+      <button data-panel="archive"><span class="nav-icon" data-icon="archive"></span><small>Архив</small></button>
     </nav>
-
-    <div class="zoom-controls">
-      <button data-action="zoomIn">＋</button>
-      <button data-action="zoomOut">−</button>
-    </div>
-
-    <div id="createMenu" class="popover hidden">
-      <button data-create="project">Проект</button>
-      <button data-create="goal">Цель</button>
-      <button data-create="person">Человек</button>
-      <button data-create="idea">Идея</button>
-      <button data-create="stage">Этап</button>
-    </div>
-
-    <div id="contextMenu" class="context-menu hidden"></div>
-
-    <div id="accountMenu" class="account-menu hidden" role="menu" aria-label="Меню аккаунта">
-      <div class="account-menu-head">
-        <div>
-          <small>BOONWAVE</small>
-          <b>Меню аккаунта</b>
-        </div>
-        <button class="account-close" data-action="closeAccountMenu" aria-label="Закрыть">×</button>
-      </div>
-      <button class="account-action" data-action="logout">
-        <span class="account-action-icon">↪</span>
-        <span><b>Выйти из аккаунта</b><small>Сохранённые проекты останутся на устройстве</small></span>
-      </button>
-      <button class="account-action danger" data-action="fullReset">
-        <span class="account-action-icon">⌫</span>
-        <span><b>Полный сброс</b><small>Удалить аккаунт, проекты, файлы, кэш и настройки</small></span>
-      </button>
-      <div class="account-version">Версия V5.4.5</div>
-    </div>
-
-    <dialog id="editor">
-      <form method="dialog" id="editorForm">
-        <div class="dialog-head">
-          <div>
-            <small id="editorTypeLabel"></small>
-            <h2 id="editorTitle">Карточка</h2>
-          </div>
-          <button value="cancel" class="icon-btn">×</button>
-        </div>
-        <div id="editorFields"></div>
-        <div class="dialog-actions">
-          <button type="button" class="ghost" data-action="deleteNode">Удалить</button>
-          <button value="cancel" class="ghost">Отмена</button>
-          <button value="default" class="primary" data-action="saveNode">Сохранить</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="detail">
-      <div class="dialog-head sticky">
-        <div><small id="detailType"></small><h2 id="detailTitle"></h2></div>
-        <button class="icon-btn" data-action="closeDetail">×</button>
-      </div>
-      <div id="detailBody"></div>
-    </dialog>
-
-    <input id="filePicker" type="file" multiple hidden>
   </div>
-  <script>
-(function() {
-  const RESET_KEY = 'boonwave_hard_reset_5.6.0';
-  const current = localStorage.getItem(RESET_KEY);
-  if (current !== 'done' && 'serviceWorker' in navigator) {
-    Promise.all([
-      navigator.serviceWorker.getRegistrations().then(regs => Promise.all(regs.map(r => r.unregister()))),
-      ('caches' in window ? caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))) : Promise.resolve())
-    ]).then(() => {
-      localStorage.setItem(RESET_KEY, 'done');
-      const u = new URL(location.href);
-      u.searchParams.set('v', '5.6.0');
-      location.replace(u.toString());
-    }).catch(() => localStorage.setItem(RESET_KEY, 'done'));
-  }
-})();
-</script>
-<script src="app.js?v=5.4.5"></script>
+
+  <div id="scrim" class="scrim hidden"></div>
+
+  <section id="createMenu" class="action-sheet hidden" aria-label="Создание">
+    <div class="sheet-grabber"></div>
+    <header><div><small>ДОБАВИТЬ В ПРОСТРАНСТВО</small><h2 id="createMenuTitle">Создать</h2></div><button data-close-sheet="createMenu">×</button></header>
+    <div id="createActions" class="creation-grid"></div>
+  </section>
+
+  <section id="accountMenu" class="account-menu hidden">
+    <header><div><small>BOONWAVE</small><b id="accountLabel">Локальный аккаунт</b></div><button data-close-sheet="accountMenu">×</button></header>
+    <button class="menu-row" data-menu-action="export"><span data-icon="export"></span><div><b>Экспорт</b><small>Сохранить резервную копию JSON</small></div></button>
+    <button class="menu-row" data-menu-action="import"><span data-icon="import"></span><div><b>Импорт</b><small>Восстановить структуру из файла</small></div></button>
+    <button class="menu-row" data-menu-action="fit"><span data-icon="focus"></span><div><b>Вписать всё</b><small>Вернуть все карточки в обзор</small></div></button>
+    <button class="menu-row" data-menu-action="logout"><span data-icon="logout"></span><div><b>Выйти</b><small>Проекты останутся на устройстве</small></div></button>
+    <button class="menu-row danger" data-menu-action="reset"><span data-icon="trash"></span><div><b>Полный сброс</b><small>Удалить локальные данные и вложения</small></div></button>
+    <footer>BOONWAVE 6.0.0 · CLEAN WORKSPACE</footer>
+  </section>
+
+  <section id="sidePanel" class="side-panel hidden">
+    <header><div><small id="panelEyebrow">BOONWAVE</small><h2 id="panelTitle">Сегодня</h2></div><button data-close-sheet="sidePanel">×</button></header>
+    <div id="panelBody" class="panel-body"></div>
+  </section>
+
+  <dialog id="detailDialog" class="app-dialog">
+    <form method="dialog" class="dialog-shell">
+      <header class="dialog-header"><div><small id="detailType">ПРОЕКТ</small><h2 id="detailTitle">Название</h2></div><button value="cancel" aria-label="Закрыть">×</button></header>
+      <div id="detailBody" class="dialog-body"></div>
+      <footer class="dialog-footer"><button type="button" class="ghost" id="detailBranchButton">Создать ветвь</button><button type="button" class="primary" id="detailEditButton">Редактировать</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="editorDialog" class="app-dialog editor-dialog">
+    <form id="editorForm" class="dialog-shell">
+      <header class="dialog-header"><div><small id="editorType">РЕДАКТИРОВАНИЕ</small><h2 id="editorTitle">Карточка</h2></div><button type="button" data-editor-close aria-label="Закрыть">×</button></header>
+      <div id="editorBody" class="dialog-body"></div>
+      <footer class="dialog-footer"><button type="button" class="danger-text" id="archiveNodeButton">В архив</button><span></span><button type="button" class="ghost" data-editor-close>Отмена</button><button type="submit" class="primary">Сохранить</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="assetViewer" class="asset-viewer">
+    <header><div><small id="assetTypeLabel">МАТЕРИАЛ</small><b id="assetTitle">Файл</b></div><button id="assetClose">×</button></header>
+    <div id="assetStage"></div>
+    <footer><button id="assetPrev" aria-label="Предыдущий">‹</button><button id="assetShare">Поделиться</button><button id="assetDownload">Скачать</button><button id="assetDelete" class="danger-text">Удалить</button><button id="assetNext" aria-label="Следующий">›</button></footer>
+  </dialog>
+
+  <input id="assetInput" type="file" multiple accept="image/*,.pdf,.svg,.ai,.eps,.cdr,.dxf,.dwg,.stl,.obj,.3mf,.step,.stp" hidden>
+  <input id="importInput" type="file" accept="application/json,.json" hidden>
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js?v=6.0.0"></script>
 </body>
 </html>
