@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.1-fixed";
+const VERSION = "6.0.2-project-edit";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
 const DATA_PREFIX = "boonwave_v6_data_";
