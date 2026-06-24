@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.1-cover-preview";
+const VERSION = "6.0.1-fixed";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
 const DATA_PREFIX = "boonwave_v6_data_";
@@ -1003,7 +1003,7 @@ function renderEditorBody() {
     <div class="field-grid"><div class="field"><label>Количество позиций</label><input name="positions" inputmode="numeric" value="${esc(d.positions || "")}"></div><div class="field"><label>Дата подписания</label><input name="signDate" type="date" value="${esc(d.signDate || "")}"></div></div>
     <div class="field-grid"><div class="field"><label>Бюджет</label><input name="budget" inputmode="decimal" value="${esc(d.budget || "")}"></div><div class="field"><label>Срок</label><input name="deadline" type="date" value="${esc(d.deadline || "")}"></div></div>
     <div class="field-grid"><div class="field"><label>Аванс</label><input name="advance" inputmode="decimal" value="${esc(d.advance || "")}"></div><div class="field"><label>Остаток</label><input name="balance" inputmode="decimal" value="${esc(d.balance || "")}"></div></div>
-    <div class="editor-group"><h3>Основные материалы</h3><button type="button" class="ghost" data-editor-action="addAssets">＋ Изображения, PDF и векторные файлы</button></div>
+    <div class="editor-group project-editor-group"><h3>Основные материалы</h3><button type="button" class="ghost" data-editor-action="addAssets">＋ Изображения, PDF и векторные файлы</button></div>
     ${coverEditorHtml(d)}`;
   if (d.type === "person") html += `
     <div class="field"><label>Специализация</label><input name="speciality" value="${esc(d.speciality || "")}"></div>
@@ -1023,9 +1023,9 @@ function renderEditorBody() {
 }
 function coverEditorHtml(d) {
   const images = (d.assets || []).filter(asset => String(asset.type || "").startsWith("image/"));
-  if (!images.length) return `<div class="editor-group cover-editor"><h3>Заглавное изображение</h3><div class="cover-empty">Добавьте изображение в материалы проекта — оно станет обложкой.</div></div>`;
+  if (!images.length) return `<div class="editor-group cover-editor project-editor-group"><h3>Заглавное изображение</h3><div class="cover-empty">Добавьте изображение в материалы проекта — оно станет обложкой.</div></div>`;
   if (!d.coverAssetId || !images.some(asset => asset.id === d.coverAssetId)) d.coverAssetId = images[0].id;
-  return `<div class="editor-group cover-editor"><h3>Заглавное изображение</h3>
+  return `<div class="editor-group cover-editor project-editor-group"><h3>Заглавное изображение</h3>
     <div class="cover-preview" data-cover-preview="${esc(d.coverAssetId)}" style="${coverBgStyle(d)}"><span>Предпросмотр обложки</span></div>
     <div class="field"><label>Выбрать изображение</label><select name="coverAssetId" id="coverAssetSelect">${images.map(asset => `<option value="${asset.id}" ${asset.id === d.coverAssetId ? "selected" : ""}>${esc(asset.name || "Изображение")}</option>`).join("")}</select></div>
     <div class="field-grid"><div class="field"><label>Масштаб</label><input id="coverScaleRange" type="range" min="0.6" max="2.5" step="0.01" value="${Number(d.coverScale || 1)}"></div><div class="field"><label>Позиция X</label><input id="coverOffsetXRange" type="range" min="-180" max="180" step="1" value="${Number(d.coverOffsetX || 0)}"></div></div>
