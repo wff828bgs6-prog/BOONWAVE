@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=5.5.0">
+  <link rel="stylesheet" href="styles.css?v=5.4.4">
   <title>BOONWAVE</title>
 </head>
 <body>
@@ -51,20 +51,14 @@
   </section>
 
   <div id="app" class="app-hidden">
-    <header class="topbar workspace-topbar">
-      <div class="top-mark top-mark-solo"><img src="boonwave-mark.png" alt="BOONWAVE"></div>
-      <div class="space-switch workspace-switch">
+    <header class="topbar">
+      <div class="brand-cluster"><div class="top-mark"><img src="boonwave-approved.png" alt=""></div><button class="brand-line" data-action="home">Твоё пространство <b>BOONWAVE</b></button></div>
+      <div class="space-switch">
         <button data-space="personal">Личное</button>
-        <button class="active" data-space="work">Проекты</button>
+        <button class="active" data-space="work">Работа</button>
       </div>
-      <button class="icon-btn settings-btn" data-action="menu" aria-label="Меню настроек">•••</button>
+      <div class="version-chip">V5.4.4</div><button class="icon-btn" data-action="menu" aria-label="Меню">•••</button>
     </header>
-
-    <section class="workspace-toolbar">
-      <button class="workspace-action primary" data-action="openCreate">＋ Корневой элемент</button>
-      <button class="workspace-action" data-action="fitAll">Вписать</button>
-      <button class="workspace-action" data-action="centerRoot">В центр</button>
-    </section>
 
     <main id="workspaceWrap">
       <canvas id="workspaceDots" aria-hidden="true"></canvas>
@@ -83,14 +77,17 @@
       <div id="todayList"></div>
     </section>
 
-    <section id="resultsPanel" class="sheet hidden">
-      <div class="sheet-head"><h2>Результаты</h2><button data-action="closeSheet">×</button></div>
-      <div id="resultsList"></div>
+    <section id="searchPanel" class="sheet hidden">
+      <div class="sheet-head"><h2>Поиск</h2><button data-action="closeSheet">×</button></div>
+      <input id="searchInput" class="search-input" placeholder="Человек, материал, проект, тег…">
+      <div id="searchResults"></div>
     </section>
 
-    <section id="archivePanel" class="sheet hidden">
-      <div class="sheet-head"><h2>Архив</h2><button data-action="closeSheet">×</button></div>
-      <div id="archiveList"></div>
+    <section id="inboxPanel" class="sheet hidden">
+      <div class="sheet-head"><h2>Входящие</h2><button data-action="closeSheet">×</button></div>
+      <textarea id="inboxText" placeholder="Мысль, ссылка, задача, заметка…"></textarea>
+      <button class="primary" data-action="saveInbox">Сохранить во входящие</button>
+      <div id="inboxList"></div>
     </section>
 
     <section id="guidePanel" class="sheet hidden guide-sheet">
@@ -102,29 +99,7 @@
       <button class="primary brand-btn" data-action="enterWorkspace">Перейти в поле возможностей</button>
     </section>
 
-    <nav class="bottom-nav workspace-nav">
-      <button class="active" data-action="tree">
-        <span class="nav-icon">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="gradTree" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c85cff"/><stop offset="55%" stop-color="#6d67ff"/><stop offset="100%" stop-color="#67e9f8"/></linearGradient></defs><rect x="5" y="6" width="22" height="20" rx="3.2" fill="none" stroke="url(#gradTree)" stroke-width="2.3"/><path d="M16 6v20M5 16h22" fill="none" stroke="url(#gradTree)" stroke-width="2.3" stroke-linecap="round"/></svg>
-        </span><small>Древо</small></button>
-      <button data-action="today">
-        <span class="nav-icon">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="gradToday" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c85cff"/><stop offset="55%" stop-color="#6d67ff"/><stop offset="100%" stop-color="#67e9f8"/></linearGradient></defs><circle cx="16" cy="16" r="10.8" fill="none" stroke="url(#gradToday)" stroke-width="2.3"/><path d="M16 10.2v6.2h5" fill="none" stroke="url(#gradToday)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </span><small>Сегодня</small></button>
-      <button data-action="results">
-        <span class="nav-icon">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="gradResults" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c85cff"/><stop offset="55%" stop-color="#6d67ff"/><stop offset="100%" stop-color="#67e9f8"/></linearGradient></defs><path d="M16 7.5c1.9 0 3.4 1.5 3.4 3.4S17.9 14.3 16 14.3s-3.4-1.5-3.4-3.4S14.1 7.5 16 7.5Zm-7.3 14.2V16l3.3 3.2L16 14l4 5.2 3.3-3.2v5.7" fill="none" stroke="url(#gradResults)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </span><small>Результаты</small></button>
-      <button data-action="archive">
-        <span class="nav-icon">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="gradArchive" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c85cff"/><stop offset="55%" stop-color="#6d67ff"/><stop offset="100%" stop-color="#67e9f8"/></linearGradient></defs><path d="M8 10.5h16M10 10.5v11.3a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10.5M7.2 8.2h17.6a1.2 1.2 0 0 1 1.2 1.2v1.1H6V9.4a1.2 1.2 0 0 1 1.2-1.2Z" fill="none" stroke="url(#gradArchive)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.3 16h5.4" fill="none" stroke="url(#gradArchive)" stroke-width="2.3" stroke-linecap="round"/></svg>
-        </span><small>Архив</small></button>
-    </nav>
-
-    <div class="zoom-controls">
-      <button data-action="zoomIn">＋</button>
-      <button data-action="zoomOut">−</button>
-    </div>
+    <nav class="bottom-nav"><button class="add-main only-add" data-action="openCreate"><span>＋</span></button></nav>
 
     <div id="createMenu" class="popover hidden">
       <button data-create="project">Проект</button>
@@ -152,7 +127,7 @@
         <span class="account-action-icon">⌫</span>
         <span><b>Полный сброс</b><small>Удалить аккаунт, проекты, файлы, кэш и настройки</small></span>
       </button>
-      <div class="account-version">Версия V5.4.5</div>
+      <div class="account-version">Версия V5.4.4</div>
     </div>
 
     <dialog id="editor">
@@ -185,7 +160,7 @@
   </div>
   <script>
 (function() {
-  const RESET_KEY = 'boonwave_hard_reset_5.4.5';
+  const RESET_KEY = 'boonwave_hard_reset_5.4.4';
   const current = localStorage.getItem(RESET_KEY);
   if (current !== 'done' && 'serviceWorker' in navigator) {
     Promise.all([
@@ -194,12 +169,12 @@
     ]).then(() => {
       localStorage.setItem(RESET_KEY, 'done');
       const u = new URL(location.href);
-      u.searchParams.set('v', '5.4.5');
+      u.searchParams.set('v', '5.4.4');
       location.replace(u.toString());
     }).catch(() => localStorage.setItem(RESET_KEY, 'done'));
   }
 })();
 </script>
-<script src="app.js?v=5.5.0"></script>
+<script src="app.js?v=5.4.4"></script>
 </body>
 </html>
