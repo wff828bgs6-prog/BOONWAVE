@@ -24,7 +24,7 @@ function initializeOnboarding(){
     document.querySelector("#loginForm")?.classList.toggle("hidden",!login);
     document.querySelector("#registerForm")?.classList.toggle("hidden",login);
   }));
-  document.querySelector("#skipAuth")?.addEventListener("click",()=>{document.querySelector("#authScreen")?.classList.add("hidden");openGuide()});
+  document.querySelector("#skipAuth")?.addEventListener("click",showWorkspace);
   document.querySelector("#loginForm")?.addEventListener("submit",e=>{
     e.preventDefault();const fd=new FormData(e.currentTarget);
     localStorage.setItem(AUTH_KEY,JSON.stringify({email:fd.get("email"),mode:"login",date:Date.now()}));showWorkspace();
@@ -121,6 +121,7 @@ function render(){
   attachNodeEvents(el,n);ws.appendChild(el)
  });
  $("#emptyState").classList.toggle("hidden",nodes().length>0);
+ const cue=$("#addCue"); if(cue) cue.style.display = nodes().length>0 ? "none" : "flex";
  applyTransform();renderToday();renderInbox()
 }
 function attachNodeEvents(el,n){
