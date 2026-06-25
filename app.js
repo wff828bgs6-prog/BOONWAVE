@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.15";
+const VERSION = "6.0.17";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -100,6 +100,8 @@ const state = {
   taskDraft: null,
   stageEditDraft: null,
   quickCoverNodeId: null,
+  quickCoverOriginalAssetId: null,
+  quickCoverPendingAssetId: null,
   phonebookEditId: null,
   phonebookRelationsContactId: null,
   detailScrollTop: 0,
@@ -210,6 +212,7 @@ function normalizeData(data) {
       const fallbackStageId = normalizedNode.stages[0]?.id || "";
       normalizedNode.tasks = Array.isArray(normalizedNode.tasks) ? normalizedNode.tasks.map(task => {
         const normalizedTask = { priority: "medium", note: "", contactIds: [], scheduleMode: "date", intervalStart: "", intervalEnd: "", dateTime: "", reminder: "15", notify: false, stageId: task.stageId || fallbackStageId, ...task };
+        normalizedTask.note = String(normalizedTask.note || "").slice(0, 400);
         if ((!normalizedTask.contactIds || !normalizedTask.contactIds.length) && Array.isArray(task.contacts)) {
           normalizedTask.contactIds = task.contacts.map(contact => {
             const existing = normalizedNode.phonebook.find(item => item.phone === contact.phone && item.name === contact.name);
@@ -458,9 +461,12 @@ function bindWorkspaceOnce() {
   $("#processCoverScale").addEventListener("input", updateProcessCoverPreview);
   $("#processCoverReset").addEventListener("click", resetProcessCoverPosition);
   $("#processCoverApply").addEventListener("click", applyProcessCoverPosition);
+  $("#processCoverClose").addEventListener("click", cancelProcessCoverPosition);
+  $("#processCoverDialog").addEventListener("cancel", event => { event.preventDefault(); cancelProcessCoverPosition(); });
   bindProcessCoverPositioning();
   bindProcessActionLock();
   $("#taskEditorForm").addEventListener("submit", saveTaskEditor);
+  $("#taskNote").addEventListener("input", updateTaskNoteCounter);
   $("#taskEditorClose").addEventListener("click", closeTaskEditor);
   $("#taskEditorCancel").addEventListener("click", closeTaskEditor);
   $("#taskScheduleMode").addEventListener("change", updateTaskScheduleFields);
@@ -1066,7 +1072,7 @@ function stageTaskHtml(node, task) {
   const timeText = task.scheduleMode === "interval" ? `${formatTaskDateTime(task.intervalStart)} — ${formatTaskDateTime(task.intervalEnd)}` : formatTaskDateTime(task.dateTime);
   return `<article class="stage-task-card ${expanded ? "expanded selected" : ""}" data-stage-task-id="${esc(task.id)}">
     <div class="stage-task-head"><label class="stage-task-check"><input type="checkbox" data-task-toggle="${esc(task.id)}" ${task.done ? "checked" : ""}><span></span></label><div class="stage-task-title"><b>${esc(task.title)}</b><small>${esc(priorityLabel(task.priority))}${task.dateTime ? ` · ${esc(formatTaskDateTime(task.dateTime))}` : ""}</small></div><div class="stage-task-actions"><button data-task-action="view" title="Открыть">${icon("open")}</button><button class="priority-orb priority-${esc(task.priority || "medium")}" data-task-action="priority" title="Изменить приоритет" aria-label="Приоритет: ${esc(priorityLabel(task.priority))}"><span></span></button></div></div>
-    ${expanded ? `<div class="stage-task-expanded">${task.note ? `<div class="task-note"><small>ЗАМЕТКА</small><p>${esc(task.note)}</p></div>` : ""}<div class="task-contact-view"><small>НАЗНАЧЕННЫЕ КОНТАКТЫ</small>${contacts.length ? contacts.map(contact => `<div><span>${esc(contact.role || "Контакт")}</span><b>${esc(contact.name || "Без имени")}</b><span class="task-contact-phone">${contact.phone ? `<a href="tel:${esc(contact.phone)}">${esc(contact.phone)}</a>` : ""}${messengerBadges(contact)}</span></div>`).join("") : `<p>Контакты не назначены</p>`}</div><div class="task-time-view"><small>ВЫПОЛНЕНИЕ</small><b>${esc(timeText)}</b><span>${task.notify ? `🔔 Напомнить за ${esc(task.reminder || "15")} мин.` : "Уведомление выключено"}</span></div><div class="task-expanded-actions"><button type="button" data-task-action="edit" aria-label="Редактировать задачу">${icon("edit")}</button></div></div>` : ""}
+    ${expanded ? `<div class="stage-task-expanded">${task.note ? `<div class="task-note"><small>ЗАМЕТКА</small><p>${esc(String(task.note).slice(0,400))}</p></div>` : ""}<div class="task-contact-view"><small>НАЗНАЧЕННЫЕ КОНТАКТЫ</small>${contacts.length ? contacts.map(contact => `<article class="task-contact-card"><div class="task-contact-copy"><span class="task-contact-role">${esc(contact.role || "Контакт")}</span><b>${esc(contact.name || "Без имени")}</b>${contact.phone ? `<a class="task-contact-number" href="tel:${esc(contact.phone)}">${esc(contact.phone)}</a>` : ""}</div><div class="task-contact-messengers">${messengerBadges(contact)}</div></article>`).join("") : `<p>Контакты не назначены</p>`}</div><div class="task-time-view"><small>ВЫПОЛНЕНИЕ</small><b>${esc(timeText)}</b><span>${task.notify ? `🔔 Напомнить за ${esc(task.reminder || "15")} мин.` : "Уведомление выключено"}</span></div><div class="task-expanded-actions"><button type="button" data-task-action="edit" aria-label="Редактировать задачу">${icon("edit")}</button></div></div>` : ""}
   </article>`;
 }
 
@@ -1213,7 +1219,7 @@ function openTaskEditor(node, task) {
   const base=task?clone(task):{id:uid(),stageId:state.selectedProcessStageId,title:"Новая задача",priority:"medium",note:"",contactIds:[],scheduleMode:"date",intervalStart:"",intervalEnd:"",dateTime:"",reminder:"15",notify:false,done:false};
   state.taskDraft=base;
   $("#taskEditorTitle").textContent=task?"Редактировать задачу":"Новая задача";
-  $("#taskTitle").value=base.title||""; $("#taskNote").value=base.note||""; $("#taskPriority").value=base.priority||"medium"; $("#taskScheduleMode").value=base.scheduleMode||"date"; $("#taskIntervalStart").value=base.intervalStart||""; $("#taskIntervalEnd").value=base.intervalEnd||""; $("#taskDateTime").value=base.dateTime||""; $("#taskReminder").value=base.reminder||"15"; $("#taskNotify").checked=Boolean(base.notify);
+  $("#taskTitle").value=base.title||""; $("#taskNote").value=String(base.note||"").slice(0,400); updateTaskNoteCounter(); $("#taskPriority").value=base.priority||"medium"; $("#taskScheduleMode").value=base.scheduleMode||"date"; $("#taskIntervalStart").value=base.intervalStart||""; $("#taskIntervalEnd").value=base.intervalEnd||""; $("#taskDateTime").value=base.dateTime||""; $("#taskReminder").value=base.reminder||"15"; $("#taskNotify").checked=Boolean(base.notify);
   renderTaskContactPicker(node, base.contactIds||[]); updateTaskScheduleFields(); const dialog=$("#taskEditorDialog"); if(!dialog.open)dialog.showModal();
 }
 function closeTaskEditor(){if($("#taskEditorDialog").open)$("#taskEditorDialog").close();state.taskDraft=null;}
@@ -1223,7 +1229,8 @@ function renderTaskContactPicker(node, selectedIds){
 }
 function readTaskContactIds(){return $$('#taskContactPicker input:checked').map(input=>input.value);}
 function updateTaskScheduleFields(){const interval=$("#taskScheduleMode").value==="interval";$("#taskIntervalFields").classList.toggle("hidden",!interval);$("#taskDateField").classList.toggle("hidden",interval);}
-function saveTaskEditor(event){event.preventDefault();const node=nodeById(state.activeNodeId);if(!node||node.type!=="process"||!state.taskDraft)return;const d=state.taskDraft;d.title=$("#taskTitle").value.trim()||"Новая задача";d.note=$("#taskNote").value.trim();d.priority=$("#taskPriority").value;d.contactIds=readTaskContactIds();d.scheduleMode=$("#taskScheduleMode").value;d.intervalStart=$("#taskIntervalStart").value;d.intervalEnd=$("#taskIntervalEnd").value;d.dateTime=$("#taskDateTime").value;d.reminder=$("#taskReminder").value;d.notify=$("#taskNotify").checked;d.stageId=d.stageId||state.selectedProcessStageId;node.tasks||=[];const idx=node.tasks.findIndex(t=>t.id===d.id);if(idx>=0)node.tasks[idx]=d;else node.tasks.push(d);state.expandedProcessTaskId=d.id;updateProcessProgress(node);saveData();closeTaskEditor();renderDetailBody(node);render();toast("Задача сохранена");}
+function updateTaskNoteCounter(){const input=$("#taskNote"),counter=$("#taskNoteCounter");if(!input||!counter)return;if(input.value.length>400)input.value=input.value.slice(0,400);counter.textContent=`${input.value.length} / 400`;}
+function saveTaskEditor(event){event.preventDefault();const node=nodeById(state.activeNodeId);if(!node||node.type!=="process"||!state.taskDraft)return;const d=state.taskDraft;d.title=$("#taskTitle").value.trim()||"Новая задача";d.note=$("#taskNote").value.slice(0,400).trim();d.priority=$("#taskPriority").value;d.contactIds=readTaskContactIds();d.scheduleMode=$("#taskScheduleMode").value;d.intervalStart=$("#taskIntervalStart").value;d.intervalEnd=$("#taskIntervalEnd").value;d.dateTime=$("#taskDateTime").value;d.reminder=$("#taskReminder").value;d.notify=$("#taskNotify").checked;d.stageId=d.stageId||state.selectedProcessStageId;node.tasks||=[];const idx=node.tasks.findIndex(t=>t.id===d.id);if(idx>=0)node.tasks[idx]=d;else node.tasks.push(d);state.expandedProcessTaskId=d.id;updateProcessProgress(node);saveData();closeTaskEditor();renderDetailBody(node);render();toast("Задача сохранена");}
 
 function openStageEditor(node, stageId){const stage=(node.stages||[]).find(item=>item.id===stageId);if(!stage)return;state.stageEditDraft={nodeId:node.id,stageId};state.stageReturnScrollTop=$("#detailBody")?.scrollTop||0;$("#stageEditTitle").value=stage.title||"";$("#stageEditDate").value=stage.deadline||"";const d=$("#stageEditorDialog");if(!d.open)d.showModal();}
 function restoreProcessDetailAfterStageEditor(nodeId){const node=nodeById(nodeId||state.activeNodeId);if(!node||node.type!=="process")return;setTimeout(()=>{const detail=$("#detailDialog");if(!detail.open){openDetail(node);}else{renderDetailBody(node);}requestAnimationFrame(()=>{const body=$("#detailBody");if(body)body.scrollTop=state.stageReturnScrollTop||0;});},30);}
@@ -1389,11 +1396,38 @@ function removeProcessCoverFromDraft() {
   if (!state.editDraft || state.editDraft.type !== "process") return;
   state.editDraft.coverAssetId = ""; state.editDraft.coverPosition = { x: 0, y: 0, scale: 1 }; state.editDraft.coverPositions = normalizedProcessCoverPositions({}); renderEditorBody();
 }
-function openCoverQuickMenu(node){state.quickCoverNodeId=node.id;state.quickCoverReturnScrollTop=$("#detailBody")?.scrollTop||0;const btn=$("#coverQuickPosition");btn.disabled=!node.coverAssetId;const d=$("#coverQuickMenu");if(!d.open)d.showModal();}
-function closeCoverQuickMenu(){const nodeId=state.quickCoverNodeId||state.activeNodeId;if($("#coverQuickMenu").open)$("#coverQuickMenu").close();const node=nodeById(nodeId);setTimeout(()=>{const detail=$("#detailDialog");if(node&&node.type==="process"){if(!detail.open)openDetail(node);else renderDetailBody(node);requestAnimationFrame(()=>{const body=$("#detailBody");if(body)body.scrollTop=state.quickCoverReturnScrollTop||0;});}},20);}
+function openCoverQuickMenu(node){
+  state.quickCoverNodeId=node.id;
+  state.quickCoverOriginalAssetId=node.coverAssetId||null;
+  state.quickCoverPendingAssetId=null;
+  state.quickCoverReturnScrollTop=$("#detailBody")?.scrollTop||0;
+  const btn=$("#coverQuickPosition"); btn.disabled=!node.coverAssetId;
+  const d=$("#coverQuickMenu");
+  d.classList.remove("is-leaving");
+  if(!d.open)d.showModal();
+}
+function closeCoverQuickMenu({restore=true}={}){
+  const d=$("#coverQuickMenu");
+  if(d.open){d.classList.add("is-leaving");setTimeout(()=>{if(d.open)d.close();d.classList.remove("is-leaving");},140);}
+  if(!restore)return;
+  const node=nodeById(state.quickCoverNodeId||state.activeNodeId);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    const detail=$("#detailDialog");
+    if(node&&node.type==="process"){if(!detail.open)openDetail(node);else renderDetailBody(node);requestAnimationFrame(()=>{const body=$("#detailBody");if(body)body.scrollTop=state.quickCoverReturnScrollTop||0;});}
+  }));
+}
 function prepareQuickCoverDraft(){const node=nodeById(state.quickCoverNodeId);if(!node)return null;state.editDraft=clone(node);return node;}
-function startQuickNewCover(){const node=prepareQuickCoverDraft();if(!node)return;closeCoverQuickMenu();$("#processCoverInput").click();}
-function startQuickPositionCover(){const node=prepareQuickCoverDraft();if(!node?.coverAssetId)return;closeCoverQuickMenu();openProcessCoverPositionDialog(node.coverAssetId);}
+function startQuickNewCover(){
+  const node=prepareQuickCoverDraft();if(!node)return;
+  closeCoverQuickMenu({restore:false});
+  // Safari requires the file picker to be opened synchronously inside the user gesture.
+  $("#processCoverInput").click();
+}
+function startQuickPositionCover(){
+  const node=prepareQuickCoverDraft();if(!node?.coverAssetId)return;
+  closeCoverQuickMenu({restore:false});
+  requestAnimationFrame(()=>requestAnimationFrame(()=>openProcessCoverPositionDialog(node.coverAssetId)));
+}
 async function handleProcessCoverFile(event) {
   const file = event.target.files?.[0]; event.target.value = "";
   if (!file || !state.editDraft || state.editDraft.type !== "process") return;
@@ -1402,12 +1436,13 @@ async function handleProcessCoverFile(event) {
   const metadata = { id, name: file.name, type: file.type || "image/jpeg", size: file.size, createdAt: Date.now() };
   await putAsset({ ...metadata, blob: file });
   state.editDraft.assets ||= [];
-  if (previousId) {
+  if (previousId && !state.quickCoverNodeId) {
     state.editDraft.assets = state.editDraft.assets.filter(asset => asset.id !== previousId);
     releaseObjectUrl(previousId);
     await deleteAssetRecord(previousId).catch(() => {});
   }
   state.editDraft.assets.push(metadata);
+  if (state.quickCoverNodeId) state.quickCoverPendingAssetId = id;
   state.editDraft.coverAssetId = id;
   state.editDraft.coverPosition = { x: 0, y: 0, scale: 1 };
   state.editDraft.coverPositions = normalizedProcessCoverPositions({});
@@ -1420,7 +1455,7 @@ async function openProcessCoverPositionDialog(assetId) {
   state.coverPositionMode = "2";
   $("#processCoverPreview").src = url;
   setProcessCoverMode("2");
-  const dialog = $("#processCoverDialog"); if (!dialog.open) dialog.showModal();
+  const dialog = $("#processCoverDialog"); if (!dialog.open) { dialog.showModal(); requestAnimationFrame(()=>dialog.classList.add("is-visible")); }
 }
 function currentProcessCoverPosition() {
   if (!state.coverPositionDraft) return null;
@@ -1447,15 +1482,38 @@ function resetProcessCoverPosition() {
   state.coverPositionDraft[state.coverPositionMode] = { x: 0, y: 0, scale: 1 };
   $("#processCoverScale").value = 1; updateProcessCoverPreview();
 }
-function applyProcessCoverPosition() {
+function finishCoverDialogClose(){
+  const dialog=$("#processCoverDialog");
+  dialog.classList.remove("is-visible");
+  setTimeout(()=>{if(dialog.open)dialog.close();},150);
+}
+async function cancelProcessCoverPosition(){
+  finishCoverDialogClose();
+  if(state.quickCoverNodeId && state.quickCoverPendingAssetId && state.quickCoverPendingAssetId!==state.quickCoverOriginalAssetId){
+    releaseObjectUrl(state.quickCoverPendingAssetId);
+    await deleteAssetRecord(state.quickCoverPendingAssetId).catch(()=>{});
+  }
+  const node=nodeById(state.quickCoverNodeId||state.activeNodeId);
+  state.coverPositionDraft=null;state.editDraft=null;state.quickCoverPendingAssetId=null;state.quickCoverOriginalAssetId=null;state.quickCoverNodeId=null;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(node?.type==="process"){renderDetailBody(node);const body=$("#detailBody");if(body)body.scrollTop=state.quickCoverReturnScrollTop||0;}}));
+}
+async function applyProcessCoverPosition() {
   if (!state.editDraft || !state.coverPositionDraft) return;
   state.editDraft.coverPositions = clone(state.coverPositionDraft);
   state.editDraft.coverPosition = { ...state.coverPositionDraft["2"] };
-  $("#processCoverDialog").close();
+  finishCoverDialogClose();
   if (state.quickCoverNodeId) {
     const node=nodeById(state.quickCoverNodeId);
-    if(node){node.coverAssetId=state.editDraft.coverAssetId;node.coverPosition=clone(state.editDraft.coverPosition);node.coverPositions=clone(state.editDraft.coverPositions);node.assets=clone(state.editDraft.assets||node.assets||[]);saveData();renderDetailBody(node);render();toast("Обложка сохранена");}
-    state.quickCoverNodeId=null;state.editDraft=null;
+    if(node){
+      const oldId=state.quickCoverOriginalAssetId;
+      node.coverAssetId=state.editDraft.coverAssetId;
+      node.coverPosition=clone(state.editDraft.coverPosition);
+      node.coverPositions=clone(state.editDraft.coverPositions);
+      node.assets=clone(state.editDraft.assets||node.assets||[]).filter((asset,index,array)=>array.findIndex(item=>item.id===asset.id)===index);
+      if(oldId && oldId!==node.coverAssetId){node.assets=node.assets.filter(asset=>asset.id!==oldId);releaseObjectUrl(oldId);await deleteAssetRecord(oldId).catch(()=>{});}
+      saveData();renderDetailBody(node);render();requestAnimationFrame(()=>{const body=$("#detailBody");if(body)body.scrollTop=state.quickCoverReturnScrollTop||0;});toast("Обложка и миниатюры сохранены");
+    }
+    state.quickCoverNodeId=null;state.quickCoverOriginalAssetId=null;state.quickCoverPendingAssetId=null;state.editDraft=null;state.coverPositionDraft=null;
   } else renderEditorBody();
 }
 function bindProcessCoverPositioning() {
