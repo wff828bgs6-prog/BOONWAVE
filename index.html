@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="BOONWAVE">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=6.0.4">
+  <link rel="stylesheet" href="styles.css?v=6.0.5">
   <title>BOONWAVE</title>
 </head>
 <body>
@@ -112,7 +112,7 @@
     <button class="menu-row" data-menu-action="fit"><span data-icon="focus"></span><div><b>Вписать всё</b><small>Вернуть все карточки в обзор</small></div></button>
     <button class="menu-row" data-menu-action="logout"><span data-icon="logout"></span><div><b>Выйти</b><small>Проекты останутся на устройстве</small></div></button>
     <button class="menu-row danger" data-menu-action="reset"><span data-icon="trash"></span><div><b>Полный сброс</b><small>Удалить локальные данные и вложения</small></div></button>
-    <footer>BOONWAVE 6.0.2 · LIGHT THEME</footer>
+    <footer>BOONWAVE 6.0.5 · LIGHT THEME</footer>
   </section>
 
   <section id="sidePanel" class="side-panel hidden">
@@ -142,6 +142,22 @@
     <footer><button id="assetPrev" aria-label="Предыдущий">‹</button><button id="assetShare">Поделиться</button><button id="assetDownload">Скачать</button><button id="assetDelete" class="danger-text">Удалить</button><button id="assetNext" aria-label="Следующий">›</button></footer>
   </dialog>
 
+
+  <dialog id="taskEditorDialog" class="app-dialog task-editor-dialog">
+    <form id="taskEditorForm" class="dialog-shell">
+      <header class="dialog-header"><div><small>ЗАДАЧА ЭТАПА</small><h2 id="taskEditorTitle">Новая задача</h2></div><button type="button" id="taskEditorClose" aria-label="Закрыть">×</button></header>
+      <div class="dialog-body">
+        <div class="field"><label>Название</label><input id="taskTitle" required></div>
+        <div class="field"><label>Заметка</label><textarea id="taskNote"></textarea></div>
+        <div class="field"><label>Приоритет</label><select id="taskPriority"><option value="high">Высокий</option><option value="medium">Средний</option><option value="low">Низкий</option></select></div>
+        <div class="editor-group"><div class="detail-section-head"><h3>Временные контакты</h3><button type="button" id="taskAddContact">＋</button></div><div id="taskContacts" class="task-contact-editor"></div></div>
+        <div class="editor-group"><h3>Время выполнения</h3><div class="field"><label>Режим</label><select id="taskScheduleMode"><option value="interval">Интервал выполнения</option><option value="date">Конкретная дата и время</option></select></div><div id="taskIntervalFields" class="field-grid"><div class="field"><label>Начало</label><input id="taskIntervalStart" type="datetime-local"></div><div class="field"><label>Окончание</label><input id="taskIntervalEnd" type="datetime-local"></div></div><div id="taskDateField" class="field"><label>Дата и время</label><input id="taskDateTime" type="datetime-local"></div><div class="task-reminder-row"><div class="field"><label>За сколько напомнить</label><select id="taskReminder"><option value="0">В момент начала</option><option value="15">За 15 минут</option><option value="60">За 1 час</option><option value="1440">За 1 день</option></select></div><label class="task-bell-toggle" title="Уведомление"><input id="taskNotify" type="checkbox"><span>🔔</span></label></div></div>
+        <details class="task-additional-editor"><summary>Дополнительно</summary><div class="field"><label>Номер машины</label><input id="taskCarNumber"></div><div class="field"><label>Адрес</label><input id="taskAddress"></div><div class="field"><label>Комментарий</label><textarea id="taskExtraComment"></textarea></div></details>
+      </div>
+      <footer class="dialog-footer"><span></span><button type="button" class="ghost" id="taskEditorCancel">Отмена</button><button type="submit" class="primary">Сохранить</button></footer>
+    </form>
+  </dialog>
+
   <dialog id="processCoverDialog" class="cover-position-dialog">
     <form method="dialog" class="cover-position-shell">
       <header><div><small>ОБЛОЖКА РАБОЧЕГО ПРОЦЕССА</small><h2>Позиционирование</h2></div><button value="cancel" aria-label="Закрыть">×</button></header>
@@ -159,6 +175,6 @@
   <input id="importInput" type="file" accept="application/json,.json" hidden>
   <div id="toast" class="toast hidden"></div>
 
-  <script src="app.js?v=6.0.4"></script>
+  <script src="app.js?v=6.0.5"></script>
 </body>
 </html>

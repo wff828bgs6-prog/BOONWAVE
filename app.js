@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.4";
+const VERSION = "6.0.5";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -94,6 +94,9 @@ const state = {
   processActionsUnlocked: false,
   coverPositionDraft: null,
   coverPositionMode: "2",
+  selectedProcessStageId: null,
+  expandedProcessTaskId: null,
+  taskDraft: null,
   isReloadingForWorker: false
 };
 
@@ -190,7 +193,18 @@ function loadData(userId, useDemo = false) {
 function normalizeData(data) {
   const base = blankData();
   const normalized = { ...base, ...data };
-  normalized.nodes = Array.isArray(data.nodes) ? data.nodes.map(node => ({ level: 2, assets: [], archived: false, status: "active", ...node })) : [];
+  normalized.nodes = Array.isArray(data.nodes) ? data.nodes.map(node => {
+    const normalizedNode = { level: 2, assets: [], archived: false, status: "active", ...node };
+    if (normalizedNode.type === "process") {
+      normalizedNode.stages = Array.isArray(normalizedNode.stages) ? normalizedNode.stages : [];
+      const fallbackStageId = normalizedNode.stages[0]?.id || "";
+      normalizedNode.tasks = Array.isArray(normalizedNode.tasks) ? normalizedNode.tasks.map(task => ({
+        priority: "medium", note: "", contacts: [], scheduleMode: "date", intervalStart: "", intervalEnd: "", dateTime: "", reminder: "15", notify: false,
+        carNumber: "", address: "", extraComment: "", stageId: task.stageId || fallbackStageId, ...task
+      })) : [];
+    }
+    return normalizedNode;
+  }) : [];
   normalized.links = Array.isArray(data.links) ? data.links : [];
   normalized.settings = { ...base.settings, ...(data.settings || {}) };
   return normalized;
@@ -427,6 +441,12 @@ function bindWorkspaceOnce() {
   $("#processCoverApply").addEventListener("click", applyProcessCoverPosition);
   bindProcessCoverPositioning();
   bindProcessActionLock();
+  $("#taskEditorForm").addEventListener("submit", saveTaskEditor);
+  $("#taskEditorClose").addEventListener("click", closeTaskEditor);
+  $("#taskEditorCancel").addEventListener("click", closeTaskEditor);
+  $("#taskAddContact").addEventListener("click", addTaskContactRow);
+  $("#taskContacts").addEventListener("click", handleTaskContactRemove);
+  $("#taskScheduleMode").addEventListener("change", updateTaskScheduleFields);
   $("#importInput").addEventListener("change", importDataFile);
   $("#assetClose").addEventListener("click", () => $("#assetViewer").close());
   $("#assetPrev").addEventListener("click", () => moveAssetViewer(-1));
@@ -942,14 +962,35 @@ function processCoverMediaHtml(node) {
 function processDetailHtml(node) {
   const project = nodeById(node.projectId);
   const total = (node.expenses || []).reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  const stages = node.stages || [];
+  if (!stages.some(stage => stage.id === state.selectedProcessStageId)) state.selectedProcessStageId = stages[0]?.id || null;
   return `<div class="detail-hero process-detail-hero">${processCoverMediaHtml(node)}<div class="detail-hero-content"><p>${esc(project ? `Проект: ${project.title}` : "Связанный рабочий модуль")}</p></div></div>
-    <div class="detail-grid process-summary-row"><div class="detail-stat"><small>ПРОГРЕСС</small><b>${node.progress || 0}%</b></div><div class="detail-stat"><small>ЗАТРАТЫ</small><b>${money(total)}</b></div><div class="detail-stat"><small>ЭТАПЫ</small><b>${(node.stages || []).length}</b></div><div class="detail-stat"><small>ЗАДАЧИ</small><b>${(node.tasks || []).filter(task => !task.done).length}</b></div></div>
-    <div class="detail-section"><div class="detail-section-head"><h3>Этапы</h3><button data-detail-action="editNode">Изменить</button></div><div class="stage-list">${(node.stages || []).length ? node.stages.map(stage => `<div class="stage-item"><div><b>${esc(stage.title)}</b><small>${esc(stage.deadline || "Без срока")}</small></div><div class="stage-progress"><span style="width:${clamp(stage.progress || 0,0,100)}%"></span></div></div>`).join("") : `<div class="note-block">Этапы ещё не добавлены.</div>`}</div></div>
-    <div class="detail-section"><div class="detail-section-head"><h3>Задачи</h3><button data-detail-action="editNode">＋ Добавить</button></div><div class="task-list">${taskListHtml(node)}</div></div>
+    <div class="detail-grid process-summary-row"><div class="detail-stat"><small>ПРОГРЕСС</small><b>${node.progress || 0}%</b></div><div class="detail-stat"><small>ЗАТРАТЫ</small><b>${money(total)}</b></div><div class="detail-stat"><small>ЭТАПЫ</small><b>${stages.length}</b></div><div class="detail-stat"><small>ЗАДАЧИ</small><b>${(node.tasks || []).filter(task => !task.done).length}</b></div></div>
+    <div class="detail-section"><div class="detail-section-head"><h3>Этапы</h3><button data-detail-action="editNode">Изменить</button></div><div class="stage-list process-stage-selector">${stages.length ? stages.map(stage => stageSelectorHtml(stage)).join("") : `<div class="note-block">Этапы ещё не добавлены.</div>`}</div></div>
+    ${selectedStageTasksHtml(node)}
     <div class="detail-section"><div class="detail-section-head"><h3>Связанные люди</h3><button data-detail-action="editNode">Изменить</button></div><div class="people-list">${peopleListHtml(node)}</div></div>
     <div class="detail-section"><div class="detail-section-head"><h3>Затраты</h3><button data-detail-action="editNode">Таблица</button></div><div class="inline-add"><input id="detailExpenseTitle" placeholder="Описание"><input id="detailExpenseAmount" inputmode="decimal" placeholder="Сумма"><button data-detail-action="quickExpense">+</button></div><div class="expense-list" style="margin-top:9px">${expenseListHtml(node)}</div></div>`;
 }
-
+function stageSelectorHtml(stage) {
+  const selected = stage.id === state.selectedProcessStageId;
+  return `<button class="stage-item selectable-stage ${selected ? "selected" : ""}" data-stage-select="${esc(stage.id)}"><div><b>${esc(stage.title)}</b><small>${esc(stage.deadline || "Без срока")}</small></div><div class="stage-progress"><span style="width:${clamp(stage.progress || 0,0,100)}%"></span></div></button>`;
+}
+function selectedStageTasksHtml(node) {
+  const stage = (node.stages || []).find(item => item.id === state.selectedProcessStageId);
+  if (!stage) return "";
+  const firstStageId=(node.stages||[])[0]?.id; const tasks = (node.tasks || []).filter(task => task.stageId === stage.id || (!task.stageId && stage.id===firstStageId));
+  return `<div class="detail-section stage-tasks-panel"><div class="detail-section-head"><div><small>ЗАДАЧИ КОНКРЕТНОГО ЭТАПА</small><h3>${esc(stage.title)}</h3></div><button class="stage-task-add" data-task-action="add" aria-label="Создать задачу">＋</button></div><div class="stage-task-list">${tasks.length ? tasks.map(task => stageTaskHtml(task)).join("") : `<div class="note-block">В этом этапе пока нет задач.</div>`}</div></div>`;
+}
+function priorityLabel(priority) { return priority === "high" ? "Высокий" : priority === "low" ? "Низкий" : "Средний"; }
+function stageTaskHtml(task) {
+  const expanded = task.id === state.expandedProcessTaskId;
+  const contacts = Array.isArray(task.contacts) ? task.contacts : [];
+  return `<article class="stage-task-card ${expanded ? "expanded selected" : ""}" data-stage-task-id="${esc(task.id)}">
+    <div class="stage-task-head"><label class="stage-task-check"><input type="checkbox" data-task-toggle="${esc(task.id)}" ${task.done ? "checked" : ""}><span></span></label><div class="stage-task-title"><b>${esc(task.title)}</b><small>${esc(priorityLabel(task.priority))}${task.dateTime ? ` · ${esc(task.dateTime.replace("T"," "))}` : ""}</small></div><div class="stage-task-actions"><button data-task-action="view" title="Открыть">${icon("open")}</button><button class="priority-${esc(task.priority || "medium")}" data-task-action="priority" title="Приоритет">!</button><button data-task-action="menu" title="Действия">•••</button></div></div>
+    <div class="task-context-menu hidden"><button data-task-action="moveUp">↑ Вверх</button><button data-task-action="moveDown">↓ Вниз</button><button data-task-action="edit">Редактировать</button><button class="danger-text" data-task-action="delete">Удалить</button></div>
+    ${expanded ? `<div class="stage-task-expanded">${task.note ? `<div class="task-note"><small>ЗАМЕТКА</small><p>${esc(task.note)}</p></div>` : ""}<div class="task-contact-view"><small>ВРЕМЕННЫЕ КОНТАКТЫ</small>${contacts.length ? contacts.map(contact => `<div><span>${esc(contact.role || "Контакт")}</span><b>${esc(contact.name || "Без имени")}</b>${contact.phone ? `<a href="tel:${esc(contact.phone)}">${esc(contact.phone)}</a>` : ""}</div>`).join("") : `<p>Контакты не добавлены</p>`}</div><div class="task-time-view"><small>ВЫПОЛНЕНИЕ</small><b>${task.scheduleMode === "interval" ? `${esc(task.intervalStart || "—")} — ${esc(task.intervalEnd || "—")}` : esc(task.dateTime?.replace("T"," ") || "Дата не выбрана")}</b><span>${task.notify ? `🔔 Напомнить за ${esc(task.reminder || "15")} мин.` : "Уведомление выключено"}</span></div>${(task.carNumber || task.address || task.extraComment) ? `<details class="task-extra"><summary>Дополнительно</summary>${task.carNumber ? `<p><b>Машина:</b> ${esc(task.carNumber)}</p>` : ""}${task.address ? `<p><b>Адрес:</b> ${esc(task.address)}</p>` : ""}${task.extraComment ? `<p><b>Комментарий:</b> ${esc(task.extraComment)}</p>` : ""}</details>` : ""}</div>` : ""}
+  </article>`;
+}
 function personDetailHtml(node) {
   return `${heroHtml(node, node.speciality || "Специалист")}
     <div class="detail-grid"><div class="detail-stat"><small>ЗОНА ВНИМАНИЯ</small><b>${esc(node.zone || "—")}</b></div><div class="detail-stat"><small>АКТИВНЫЕ ЗАДАЧИ</small><b>${tasksForPerson(node.id).filter(task => !task.done).length}</b></div></div>
@@ -1018,29 +1059,47 @@ function tasksForPerson(personId) {
 function handleDetailClick(event) {
   const assetButton = event.target.closest("[data-asset-index]");
   if (assetButton) return openAssetViewer(nodeById(state.activeNodeId), Number(assetButton.dataset.assetIndex));
-  const task = event.target.closest("[data-task-toggle]");
-  if (task) {
-    const node = nodeById(state.activeNodeId); const record = (node.tasks || []).find(item => item.id === task.dataset.taskToggle);
-    if (record) { record.done = task.checked; updateProcessProgress(node); saveData(); renderDetailBody(node); render(); }
-    return;
-  }
-  const actionButton = event.target.closest("[data-detail-action]"); if (!actionButton) return;
   const node = nodeById(state.activeNodeId); if (!node) return;
+  const stageButton = event.target.closest("[data-stage-select]");
+  if (stageButton && node.type === "process") { state.selectedProcessStageId = stageButton.dataset.stageSelect; state.expandedProcessTaskId = null; renderDetailBody(node); return; }
+  const taskToggle = event.target.closest("[data-task-toggle]");
+  if (taskToggle) { const record=(node.tasks||[]).find(item=>item.id===taskToggle.dataset.taskToggle); if(record){record.done=taskToggle.checked;updateProcessProgress(node);saveData();renderDetailBody(node);render();} return; }
+  const taskAction = event.target.closest("[data-task-action]");
+  if (taskAction && node.type === "process") { handleStageTaskAction(node, taskAction); return; }
+  const actionButton = event.target.closest("[data-detail-action]"); if (!actionButton) return;
   const action = actionButton.dataset.detailAction;
   if (action === "addAssets") { state.assetTargetNodeId = node.id; $("#assetInput").click(); }
-  if (action === "openProcess") {
-    const existing = state.data.nodes.find(item => item.type === "process" && item.projectId === node.id && !item.archived);
-    if (existing) {
-      state.selectedId = existing.id; render(); focusNode(existing); openDetail(existing);
-    } else createProcessForProject(node);
-  }
+  if (action === "openProcess") { const existing=state.data.nodes.find(item=>item.type==="process"&&item.projectId===node.id&&!item.archived); if(existing){state.selectedId=existing.id;render();focusNode(existing);openDetail(existing);}else createProcessForProject(node); }
   if (action === "editNode") openEditor(node);
-  if (action === "quickExpense") {
-    const title = $("#detailExpenseTitle")?.value.trim(); const amount = Number(String($("#detailExpenseAmount")?.value || "").replace(",", "."));
-    if (!title || !amount) return toast("Введите описание и сумму");
-    node.expenses ||= []; node.expenses.push({ id: uid(), title, amount, date: todayISO() }); saveData(); renderDetailBody(node); render(); toast("Добавлено в затраты");
-  }
+  if (action === "quickExpense") { const title=$("#detailExpenseTitle")?.value.trim(); const amount=Number(String($("#detailExpenseAmount")?.value||"").replace(",",".")); if(!title||!amount)return toast("Введите описание и сумму"); node.expenses||=[];node.expenses.push({id:uid(),title,amount,date:todayISO()});saveData();renderDetailBody(node);render();toast("Добавлено в затраты"); }
 }
+function handleStageTaskAction(node, button) {
+  const action=button.dataset.taskAction; const card=button.closest("[data-stage-task-id]"); const taskId=card?.dataset.stageTaskId; const tasks=node.tasks||[]; const task=tasks.find(item=>item.id===taskId);
+  if(action==="add") return openTaskEditor(node, null);
+  if(!task) return;
+  if(action==="view"){state.expandedProcessTaskId=state.expandedProcessTaskId===task.id?null:task.id;renderDetailBody(node);return;}
+  if(action==="priority"){task.priority=task.priority==="low"?"medium":task.priority==="medium"?"high":"low";saveData();renderDetailBody(node);return;}
+  if(action==="menu"){card.querySelector(".task-context-menu")?.classList.toggle("hidden");return;}
+  if(action==="edit") return openTaskEditor(node,task);
+  if(action==="delete"){if(confirm(`Удалить задачу «${task.title}»?`)){node.tasks=tasks.filter(item=>item.id!==task.id);if(state.expandedProcessTaskId===task.id)state.expandedProcessTaskId=null;updateProcessProgress(node);saveData();renderDetailBody(node);render();}return;}
+  const sameStage=tasks.filter(item=>item.stageId===task.stageId); const localIndex=sameStage.findIndex(item=>item.id===task.id); const target=action==="moveUp"?sameStage[localIndex-1]:sameStage[localIndex+1]; if(!target)return;
+  const a=tasks.indexOf(task),b=tasks.indexOf(target); [tasks[a],tasks[b]]=[tasks[b],tasks[a]]; saveData();renderDetailBody(node);
+}
+function openTaskEditor(node, task) {
+  const base=task?clone(task):{id:uid(),stageId:state.selectedProcessStageId,title:"Новая задача",priority:"medium",note:"",contacts:[],scheduleMode:"date",intervalStart:"",intervalEnd:"",dateTime:"",reminder:"15",notify:false,carNumber:"",address:"",extraComment:"",done:false};
+  state.taskDraft=base;
+  $("#taskEditorTitle").textContent=task?"Редактировать задачу":"Новая задача";
+  $("#taskTitle").value=base.title||""; $("#taskNote").value=base.note||""; $("#taskPriority").value=base.priority||"medium"; $("#taskScheduleMode").value=base.scheduleMode||"date"; $("#taskIntervalStart").value=base.intervalStart||""; $("#taskIntervalEnd").value=base.intervalEnd||""; $("#taskDateTime").value=base.dateTime||""; $("#taskReminder").value=base.reminder||"15"; $("#taskNotify").checked=Boolean(base.notify); $("#taskCarNumber").value=base.carNumber||""; $("#taskAddress").value=base.address||""; $("#taskExtraComment").value=base.extraComment||"";
+  renderTaskContactRows(base.contacts||[]); updateTaskScheduleFields(); const dialog=$("#taskEditorDialog"); if(!dialog.open)dialog.showModal();
+}
+function closeTaskEditor(){if($("#taskEditorDialog").open)$("#taskEditorDialog").close();state.taskDraft=null;}
+function renderTaskContactRows(contacts){$("#taskContacts").innerHTML=(contacts.length?contacts:[{role:"",name:"",phone:""}]).map((c,i)=>`<div class="task-contact-row" data-contact-index="${i}"><input data-contact-role placeholder="Роль" value="${esc(c.role||"")}"><input data-contact-name placeholder="Имя" value="${esc(c.name||"")}"><input data-contact-phone type="tel" placeholder="Номер телефона" value="${esc(c.phone||"")}"><button type="button" data-remove-contact="${i}">×</button></div>`).join("");}
+function readTaskContacts(){return $$(".task-contact-row",$("#taskContacts")).map(row=>({role:$("[data-contact-role]",row).value.trim(),name:$("[data-contact-name]",row).value.trim(),phone:$("[data-contact-phone]",row).value.trim()})).filter(c=>c.role||c.name||c.phone);}
+function addTaskContactRow(){const contacts=readTaskContacts();contacts.push({role:"",name:"",phone:""});renderTaskContactRows(contacts);}
+function handleTaskContactRemove(event){const b=event.target.closest("[data-remove-contact]");if(!b)return;const contacts=readTaskContacts();contacts.splice(Number(b.dataset.removeContact),1);renderTaskContactRows(contacts);}
+function updateTaskScheduleFields(){const interval=$("#taskScheduleMode").value==="interval";$("#taskIntervalFields").classList.toggle("hidden",!interval);$("#taskDateField").classList.toggle("hidden",interval);}
+function saveTaskEditor(event){event.preventDefault();const node=nodeById(state.activeNodeId);if(!node||node.type!=="process"||!state.taskDraft)return;const d=state.taskDraft;d.title=$("#taskTitle").value.trim()||"Новая задача";d.note=$("#taskNote").value.trim();d.priority=$("#taskPriority").value;d.contacts=readTaskContacts();d.scheduleMode=$("#taskScheduleMode").value;d.intervalStart=$("#taskIntervalStart").value;d.intervalEnd=$("#taskIntervalEnd").value;d.dateTime=$("#taskDateTime").value;d.reminder=$("#taskReminder").value;d.notify=$("#taskNotify").checked;d.carNumber=$("#taskCarNumber").value.trim();d.address=$("#taskAddress").value.trim();d.extraComment=$("#taskExtraComment").value.trim();d.stageId=d.stageId||state.selectedProcessStageId;node.tasks||=[];const idx=node.tasks.findIndex(t=>t.id===d.id);if(idx>=0)node.tasks[idx]=d;else node.tasks.push(d);state.expandedProcessTaskId=d.id;updateProcessProgress(node);saveData();closeTaskEditor();renderDetailBody(node);render();toast("Задача сохранена");}
+
 function updateProcessProgress(node) {
   if (node.type !== "process") return;
   const tasks = node.tasks || [];
