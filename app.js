@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.19";
+const VERSION = "6.0.21";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -1019,10 +1019,13 @@ function processCoverPosition(node, mode = "2") {
   return normalizedProcessCoverPositions(node)[String(mode)] || { x: 0, y: 0, scale: 1 };
 }
 function processCoverStyle(position) {
-  const x = clamp(50 + Number(position?.x || 0), 0, 100);
-  const y = clamp(50 + Number(position?.y || 0), 0, 100);
   const scale = Math.max(1, Number(position?.scale || 1));
-  return `object-position:${x}% ${y}%;transform:scale(${scale})`;
+  const x = clamp(Number(position?.x || 0), -50, 50);
+  const y = clamp(Number(position?.y || 0), -50, 50);
+  const maxShift = scale > 1 ? ((scale - 1) / (2 * scale)) * 100 : 0;
+  const tx = (x / 50) * maxShift;
+  const ty = (y / 50) * maxShift;
+  return `object-fit:contain;object-position:50% 50%;transform:translate3d(${tx}%,${ty}%,0) scale(${scale})`;
 }
 function processCoverMediaHtml(node) {
   if (!node.coverAssetId) return "";
@@ -1482,9 +1485,11 @@ function setProcessCoverMode(mode) {
 function updateProcessCoverPreview() {
   const position = currentProcessCoverPosition(); if (!position) return;
   position.scale = Math.max(1, Number($("#processCoverScale").value || 1));
+  if (position.scale <= 1.001) { position.x = 0; position.y = 0; }
+  position.x = clamp(Number(position.x || 0), -50, 50);
+  position.y = clamp(Number(position.y || 0), -50, 50);
   const preview = $("#processCoverPreview");
-  preview.style.objectPosition = `${clamp(50 + Number(position.x || 0), 0, 100)}% ${clamp(50 + Number(position.y || 0), 0, 100)}%`;
-  preview.style.transform = `scale(${position.scale})`;
+  preview.style.cssText = processCoverStyle(position);
 }
 function resetProcessCoverPosition() {
   if (!state.coverPositionDraft) return;
@@ -1527,20 +1532,29 @@ async function applyProcessCoverPosition() {
 }
 function bindProcessCoverPositioning() {
   const frame = $("#processCoverFrame"); let drag = null;
-  $$("[data-cover-mode]", $("#processCoverDialog")).forEach(button => button.addEventListener("click", () => setProcessCoverMode(button.dataset.coverMode)));
+  $$('[data-cover-mode]', $("#processCoverDialog")).forEach(button => button.addEventListener("click", () => setProcessCoverMode(button.dataset.coverMode)));
   frame.addEventListener("pointerdown", event => {
     const position = currentProcessCoverPosition(); if (!position) return;
-    drag = { x:event.clientX, y:event.clientY, ox:position.x || 0, oy:position.y || 0 };
+    event.preventDefault();
+    drag = { id:event.pointerId, x:event.clientX, y:event.clientY, ox:Number(position.x || 0), oy:Number(position.y || 0) };
     frame.setPointerCapture?.(event.pointerId);
-  });
+  }, { passive:false });
   frame.addEventListener("pointermove", event => {
-    const position = currentProcessCoverPosition(); if (!drag || !position) return;
-    const rect=frame.getBoundingClientRect();
-    position.x=clamp(drag.ox+(event.clientX-drag.x)/rect.width*100,-50,50);
-    position.y=clamp(drag.oy+(event.clientY-drag.y)/rect.height*100,-50,50);
+    const position = currentProcessCoverPosition();
+    if (!drag || drag.id !== event.pointerId || !position) return;
+    event.preventDefault();
+    if (Number(position.scale || 1) <= 1.001) return;
+    const rect = frame.getBoundingClientRect();
+    const dx = event.clientX - drag.x;
+    const dy = event.clientY - drag.y;
+    position.x = clamp(drag.ox + (dx / Math.max(1, rect.width * .5)) * 50, -50, 50);
+    position.y = clamp(drag.oy + (dy / Math.max(1, rect.height * .5)) * 50, -50, 50);
     updateProcessCoverPreview();
-  });
-  const end=()=>{drag=null}; frame.addEventListener("pointerup",end); frame.addEventListener("pointercancel",end);
+  }, { passive:false });
+  const end = event => { if (drag && (!event || drag.id === event.pointerId)) drag = null; };
+  frame.addEventListener("pointerup", end);
+  frame.addEventListener("pointercancel", end);
+  frame.addEventListener("lostpointercapture", end);
 }
 function positionProcessLockThumb(unlocked) {
   const control = $("#processActionLock");

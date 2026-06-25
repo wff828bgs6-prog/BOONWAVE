@@ -1,10 +1,10 @@
-const VERSION = "6.0.19";
+const VERSION = "6.0.21";
 const CACHE = `boonwave-clean-${VERSION}`;
 const CORE = [
   "./",
   "./index.html",
-  "./styles.css?v=6.0.19",
-  "./app.js?v=6.0.19",
+  "./styles.css?v=6.0.21",
+  "./app.js?v=6.0.21",
   "./manifest.webmanifest",
   "./boonwave-approved-splash.png",
   "./boonwave-mark-full.png",
