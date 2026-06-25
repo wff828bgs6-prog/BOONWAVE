@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="BOONWAVE">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=6.0.8">
+  <link rel="stylesheet" href="styles.css?v=6.0.9">
   <title>BOONWAVE</title>
 </head>
 <body>
@@ -112,7 +112,7 @@
     <button class="menu-row" data-menu-action="fit"><span data-icon="focus"></span><div><b>Вписать всё</b><small>Вернуть все карточки в обзор</small></div></button>
     <button class="menu-row" data-menu-action="logout"><span data-icon="logout"></span><div><b>Выйти</b><small>Проекты останутся на устройстве</small></div></button>
     <button class="menu-row danger" data-menu-action="reset"><span data-icon="trash"></span><div><b>Полный сброс</b><small>Удалить локальные данные и вложения</small></div></button>
-    <footer>BOONWAVE 6.0.8 · LIGHT THEME</footer>
+    <footer>BOONWAVE 6.0.9 · LIGHT THEME</footer>
   </section>
 
   <section id="sidePanel" class="side-panel hidden">
@@ -161,7 +161,7 @@
 
   <dialog id="stageEditorDialog" class="mini-editor-dialog"><form id="stageEditorForm"><header><h3>Редактировать этап</h3><button type="button" id="stageEditorClose">×</button></header><div class="field"><label>Название</label><input id="stageEditTitle" required></div><div class="field"><label>Календарь</label><input id="stageEditDate" type="date"></div><div class="stage-editor-actions"><button type="button" class="danger-text stage-delete-button" id="stageDeleteButton">Удалить этап</button><button class="primary" type="submit">Сохранить</button></div></form></dialog>
   <dialog id="stageDeleteDialog" class="mini-editor-dialog confirm-dialog"><form><header><h3>Удалить этап?</h3><button type="button" id="stageDeleteClose">×</button></header><p>При удалении этапа будут удалены все связанные с ним задачи. Вы уверены?</p><div class="confirm-actions"><button type="button" class="ghost" id="stageDeleteNo">Нет</button><button type="button" class="primary" id="stageDeleteYes">Да</button></div></form></dialog>
-  <dialog id="budgetEditorDialog" class="mini-editor-dialog"><form id="budgetEditorForm"><header><h3>Планируемый бюджет</h3><button type="button" id="budgetEditorClose">×</button></header><div class="field"><label>Сумма</label><input id="budgetEditValue" inputmode="decimal" pattern="[0-9 ]*" placeholder="Введите сумму"></div><button class="primary" type="submit">Сохранить</button></form></dialog>
+  <dialog id="budgetEditorDialog" class="mini-editor-dialog"><form id="budgetEditorForm"><header><h3>Планируемый бюджет</h3><button type="button" id="budgetEditorClose">×</button></header><div class="field"><label>Сумма</label><input id="budgetEditValue" inputmode="numeric" pattern="[0-9 ]*" maxlength="10" autocomplete="off" aria-label="Планируемый бюджет" placeholder="До 99 000 000"></div><button class="primary" type="submit">Сохранить</button></form></dialog>
   <dialog id="coverQuickMenu" class="mini-editor-dialog cover-quick-menu"><form><header><h3>Обложка</h3><button type="button" id="coverQuickClose">×</button></header><button type="button" class="ghost" id="coverQuickNew">Новая обложка</button><button type="button" class="ghost" id="coverQuickPosition">Настроить существующую</button></form></dialog>
   <dialog id="phonebookDialog" class="app-dialog phonebook-dialog"><div class="dialog-shell"><header class="dialog-header"><div><small>РАБОЧИЙ ПРОЦЕСС</small><h2>Телефонная книга</h2></div><button type="button" id="phonebookClose">×</button></header><div class="dialog-body"><button type="button" class="primary phonebook-add" id="phonebookAdd">＋ Добавить контакт</button><div id="phonebookBody" class="phonebook-list"></div><div id="phonebookEditorWrap" class="phonebook-editor hidden"><form id="phonebookEditorForm"><div class="field-grid"><div class="field"><label>Роль</label><input id="phonebookRole"></div><div class="field"><label>Имя</label><input id="phonebookName" required></div></div><div class="field"><label>Номер телефона</label><input id="phonebookPhone" type="tel"></div><div class="field"><label>Номер машины</label><input id="phonebookCar"></div><div class="field"><label>Адрес</label><input id="phonebookAddress"></div><div class="field"><label>Комментарий</label><textarea id="phonebookComment"></textarea></div><div class="phonebook-editor-actions"><button type="button" class="ghost" id="phonebookEditorCancel">Отмена</button><button type="submit" class="primary">Сохранить</button></div></form></div></div></div></dialog>
 
@@ -182,6 +182,6 @@
   <input id="importInput" type="file" accept="application/json,.json" hidden>
   <div id="toast" class="toast hidden"></div>
 
-  <script src="app.js?v=6.0.8"></script>
+  <script src="app.js?v=6.0.9"></script>
 </body>
 </html>

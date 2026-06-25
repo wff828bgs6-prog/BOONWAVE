@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.8";
+const VERSION = "6.0.9";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -101,6 +101,7 @@ const state = {
   quickCoverNodeId: null,
   phonebookEditId: null,
   detailScrollTop: 0,
+  lastBudgetTap: 0,
   isReloadingForWorker: false
 };
 
@@ -470,7 +471,17 @@ function bindWorkspaceOnce() {
   $("#coverQuickClose").addEventListener("click", closeCoverQuickMenu);
   $("#coverQuickNew").addEventListener("click", startQuickNewCover);
   $("#coverQuickPosition").addEventListener("click", startQuickPositionCover);
-  $("#detailBody").addEventListener("dblclick", event => { const target=event.target.closest("[data-budget-edit]"); const node=nodeById(state.activeNodeId); if(target && node?.type==="process"){event.preventDefault();openBudgetEditor(node);} });
+  $("#detailBody").addEventListener("dblclick", event => {
+    const target = event.target.closest("[data-budget-edit]");
+    const node = nodeById(state.activeNodeId);
+    if (target && node?.type === "process") {
+      event.preventDefault();
+      event.stopPropagation();
+      state.lastBudgetTap = 0;
+      openBudgetEditor(node);
+    }
+  });
+  $("#budgetEditValue").addEventListener("input", formatBudgetEditorInput);
   $("#phonebookClose").addEventListener("click", closePhonebook);
   $("#phonebookAdd").addEventListener("click", () => renderPhonebookEditor(null));
   $("#phonebookBody").addEventListener("click", handlePhonebookClick);
@@ -996,7 +1007,7 @@ function processDetailHtml(node) {
   if (!stages.some(stage => stage.id === state.selectedProcessStageId)) state.selectedProcessStageId = stages[0]?.id || null;
   return `<div class="detail-hero process-detail-hero">${processCoverMediaHtml(node)}<button class="process-cover-menu-button" data-detail-action="coverMenu" aria-label="Управление обложкой">•••</button><div class="detail-hero-content"><p>${esc(project ? `Проект: ${project.title}` : "Связанный рабочий модуль")}</p></div></div>
     <div class="process-metrics-bar">
-      <button class="process-metric budget-metric" data-budget-edit="1" title="Двойное нажатие для редактирования"><small>БЮДЖЕТ</small><b>${money(node.budget)}</b></button>
+      <button type="button" class="process-metric budget-metric" data-budget-edit="1" aria-label="Планируемый бюджет. Двойное нажатие для редактирования" title="Двойное нажатие для редактирования"><small>БЮДЖЕТ</small><b>${money(node.budget)}</b></button>
       <div class="process-metric"><small>РАСХОДЫ</small><b>${money(total)}</b></div>
       <div class="process-metric count-metric"><small>ЭТАПЫ</small><b>${stages.length}</b></div>
       <div class="process-metric count-metric"><small>ЗАДАЧИ</small><b>${openTasks}</b></div>
@@ -1097,7 +1108,18 @@ function handleDetailClick(event) {
   if (assetButton) return openAssetViewer(nodeById(state.activeNodeId), Number(assetButton.dataset.assetIndex));
   const node = nodeById(state.activeNodeId); if (!node) return;
   const budgetButton = event.target.closest("[data-budget-edit]");
-  if (budgetButton && node.type === "process") { const now=performance.now(); if (state.lastBudgetTap && now-state.lastBudgetTap<620) { state.lastBudgetTap=0; openBudgetEditor(node); } else state.lastBudgetTap=now; return; }
+  if (budgetButton && node.type === "process") {
+    event.preventDefault();
+    event.stopPropagation();
+    const now = performance.now();
+    if (state.lastBudgetTap && now - state.lastBudgetTap < 620) {
+      state.lastBudgetTap = 0;
+      openBudgetEditor(node);
+    } else {
+      state.lastBudgetTap = now;
+    }
+    return;
+  }
   const stageButton = event.target.closest("[data-stage-select]");
   if (stageButton && node.type === "process") {
     const stageId = stageButton.dataset.stageSelect; const now = performance.now();
@@ -1165,9 +1187,40 @@ function openStageDeleteConfirm(){const d=$("#stageDeleteDialog");if(!d.open)d.s
 function closeStageDeleteConfirm(){if($("#stageDeleteDialog").open)$("#stageDeleteDialog").close();}
 function cancelStageDelete(){closeStageDeleteConfirm();closeStageEditor();const node=nodeById(state.activeNodeId);if(node)renderDetailBody(node);}
 function confirmStageDelete(){const draft=state.stageEditDraft,node=nodeById(draft?.nodeId);if(!node)return;node.stages=(node.stages||[]).filter(stage=>stage.id!==draft.stageId);node.tasks=(node.tasks||[]).filter(task=>task.stageId!==draft.stageId);if(state.selectedProcessStageId===draft.stageId)state.selectedProcessStageId=node.stages[0]?.id||null;state.expandedProcessTaskId=null;updateProcessProgress(node);saveData();closeStageDeleteConfirm();closeStageEditor();renderDetailBody(node);render();toast("Этап и связанные задачи удалены");}
-function openBudgetEditor(node){$("#budgetEditValue").value=node.budget||"";const d=$("#budgetEditorDialog");if(!d.open)d.showModal();}
-function closeBudgetEditor(){if($("#budgetEditorDialog").open)$("#budgetEditorDialog").close();}
-function saveBudgetEditor(event){event.preventDefault();const node=nodeById(state.activeNodeId);if(!node)return;node.budget=Number(String($("#budgetEditValue").value||0).replace(",","."));saveData();closeBudgetEditor();renderDetailBody(node);render();toast("Бюджет сохранён");}
+function budgetDigits(value) {
+  return String(value ?? "").replace(/\D/g, "").slice(0, 8);
+}
+function formatBudgetNumber(value) {
+  return String(clamp(Number(value || 0), 0, 99000000)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+function formatBudgetEditorInput() {
+  const input = $("#budgetEditValue");
+  const digits = budgetDigits(input.value);
+  input.value = digits ? formatBudgetNumber(digits) : "";
+}
+function openBudgetEditor(node) {
+  const input = $("#budgetEditValue");
+  input.value = node.budget ? formatBudgetNumber(node.budget) : "";
+  const dialog = $("#budgetEditorDialog");
+  if (!dialog.open) dialog.showModal();
+  requestAnimationFrame(() => { input.focus({ preventScroll: true }); input.select(); });
+}
+function closeBudgetEditor() {
+  if ($("#budgetEditorDialog").open) $("#budgetEditorDialog").close();
+}
+function saveBudgetEditor(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  const node = nodeById(state.activeNodeId);
+  if (!node || node.type !== "process") return;
+  const digits = budgetDigits($("#budgetEditValue").value);
+  node.budget = clamp(Number(digits || 0), 0, 99000000);
+  saveData();
+  closeBudgetEditor();
+  renderDetailBody(node);
+  render();
+  toast("Бюджет сохранён");
+}
 function openPhonebook(node){renderPhonebookList(node);const d=$("#phonebookDialog");if(!d.open)d.showModal();}
 function closePhonebook(){if($("#phonebookDialog").open)$("#phonebookDialog").close();state.phonebookEditId=null;}
 function renderPhonebookList(node){state.phonebookEditId=null;const contacts=node?.phonebook||[];$("#phonebookBody").innerHTML=contacts.length?contacts.map(c=>`<article class="phonebook-card" data-phonebook-id="${esc(c.id)}"><div><b>${esc(c.name||"Без имени")}</b><small>${esc(c.role||"Контакт")}</small>${c.phone?`<a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>`:""}</div><button data-phonebook-action="edit">Редактировать</button><button class="danger-text" data-phonebook-action="delete">Удалить</button></article>`).join(""):`<div class="note-block">Телефонная книга пока пуста.</div>`;$("#phonebookEditorWrap").classList.add("hidden");}
