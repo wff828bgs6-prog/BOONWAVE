@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.1";
+const VERSION = "6.0.2";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -91,6 +91,8 @@ const state = {
   assetViewerIndex: 0,
   objectUrls: new Map(),
   editDraft: null,
+  processActionsUnlocked: false,
+  coverPositionDraft: null,
   isReloadingForWorker: false
 };
 
@@ -418,6 +420,12 @@ function bindWorkspaceOnce() {
   $$('[data-editor-close]').forEach(button => button.addEventListener("click", closeEditor));
   $("#archiveNodeButton").addEventListener("click", archiveActiveNode);
   $("#assetInput").addEventListener("change", handleAssetFiles);
+  $("#processCoverInput").addEventListener("change", handleProcessCoverFile);
+  $("#processCoverScale").addEventListener("input", updateProcessCoverPreview);
+  $("#processCoverReset").addEventListener("click", resetProcessCoverPosition);
+  $("#processCoverApply").addEventListener("click", applyProcessCoverPosition);
+  bindProcessCoverPositioning();
+  bindProcessActionLock();
   $("#importInput").addEventListener("change", importDataFile);
   $("#assetClose").addEventListener("click", () => $("#assetViewer").close());
   $("#assetPrev").addEventListener("click", () => moveAssetViewer(-1));
@@ -863,9 +871,11 @@ function createBranchFor(node) {
 /* Details */
 function openDetail(node) {
   state.activeNodeId = node.id;
+  state.processActionsUnlocked = node.type !== "process";
   $("#detailType").textContent = TYPE_LABELS[node.type].toUpperCase();
   $("#detailTitle").textContent = node.title || TYPE_LABELS[node.type];
   $("#detailBranchButton").textContent = node.type === "project" ? "Рабочий процесс" : "Создать ветвь";
+  updateProcessActionLock(node);
   renderDetailBody(node);
   const dialog = $("#detailDialog"); if (!dialog.open) dialog.showModal();
 }
@@ -899,16 +909,22 @@ function projectDetailHtml(node) {
       <div class="note-block">${process ? `${(process.stages || []).length} этапов · ${(process.tasks || []).filter(task => !task.done).length} открытых задач · ${(process.peopleIds || []).length} человек` : "Этапы, задачи, связанные люди и затраты вынесены в отдельную карточку."}</div>
     </div>`;
 }
+function processCoverMediaHtml(node) {
+  if (!node.coverAssetId) return "";
+  const position = node.coverPosition || { x: 0, y: 0, scale: 1 };
+  return `<img class="process-cover-media" data-process-cover="${esc(node.coverAssetId)}" style="transform:translate(${Number(position.x || 0)}%,${Number(position.y || 0)}%) scale(${Number(position.scale || 1)})" alt="">`;
+}
 function processDetailHtml(node) {
   const project = nodeById(node.projectId);
   const total = (node.expenses || []).reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  return `${heroHtml(node, project ? `Проект: ${project.title}` : "Связанный рабочий модуль")}
-    <div class="detail-grid"><div class="detail-stat"><small>ПРОГРЕСС</small><b>${node.progress || 0}%</b></div><div class="detail-stat"><small>ЗАТРАТЫ</small><b>${money(total)}</b></div><div class="detail-stat"><small>ЭТАПЫ</small><b>${(node.stages || []).length}</b></div><div class="detail-stat"><small>ЗАДАЧИ</small><b>${(node.tasks || []).filter(task => !task.done).length}</b></div></div>
+  return `<div class="detail-hero process-detail-hero">${processCoverMediaHtml(node)}<div class="detail-hero-content"><p>${esc(project ? `Проект: ${project.title}` : "Связанный рабочий модуль")}</p></div></div>
+    <div class="detail-grid process-summary-row"><div class="detail-stat"><small>ПРОГРЕСС</small><b>${node.progress || 0}%</b></div><div class="detail-stat"><small>ЗАТРАТЫ</small><b>${money(total)}</b></div><div class="detail-stat"><small>ЭТАПЫ</small><b>${(node.stages || []).length}</b></div><div class="detail-stat"><small>ЗАДАЧИ</small><b>${(node.tasks || []).filter(task => !task.done).length}</b></div></div>
     <div class="detail-section"><div class="detail-section-head"><h3>Этапы</h3><button data-detail-action="editNode">Изменить</button></div><div class="stage-list">${(node.stages || []).length ? node.stages.map(stage => `<div class="stage-item"><div><b>${esc(stage.title)}</b><small>${esc(stage.deadline || "Без срока")}</small></div><div class="stage-progress"><span style="width:${clamp(stage.progress || 0,0,100)}%"></span></div></div>`).join("") : `<div class="note-block">Этапы ещё не добавлены.</div>`}</div></div>
     <div class="detail-section"><div class="detail-section-head"><h3>Задачи</h3><button data-detail-action="editNode">＋ Добавить</button></div><div class="task-list">${taskListHtml(node)}</div></div>
     <div class="detail-section"><div class="detail-section-head"><h3>Связанные люди</h3><button data-detail-action="editNode">Изменить</button></div><div class="people-list">${peopleListHtml(node)}</div></div>
     <div class="detail-section"><div class="detail-section-head"><h3>Затраты</h3><button data-detail-action="editNode">Таблица</button></div><div class="inline-add"><input id="detailExpenseTitle" placeholder="Описание"><input id="detailExpenseAmount" inputmode="decimal" placeholder="Сумма"><button data-detail-action="quickExpense">+</button></div><div class="expense-list" style="margin-top:9px">${expenseListHtml(node)}</div></div>`;
 }
+
 function personDetailHtml(node) {
   return `${heroHtml(node, node.speciality || "Специалист")}
     <div class="detail-grid"><div class="detail-stat"><small>ЗОНА ВНИМАНИЯ</small><b>${esc(node.zone || "—")}</b></div><div class="detail-stat"><small>АКТИВНЫЕ ЗАДАЧИ</small><b>${tasksForPerson(node.id).filter(task => !task.done).length}</b></div></div>
@@ -939,6 +955,8 @@ function assetTilesHtml(node) {
   return assets.map((asset, index) => `<button class="asset-tile" data-asset-index="${index}" data-asset-id="${asset.id}"><span class="asset-kind">${esc(assetKind(asset))}</span><div class="asset-placeholder">${icon(asset.type?.startsWith("image/") ? "image" : "files")}<small>${esc(asset.name)}</small></div><span class="asset-tile-overlay">${esc(asset.name)}</span></button>`).join("");
 }
 async function hydrateDetailAssets(node) {
+  const processCover = $('[data-process-cover]', $("#detailBody"));
+  if (processCover) { const url = await assetUrl(processCover.dataset.processCover).catch(() => null); if (url && processCover.isConnected) processCover.src = url; }
   const detailCover = $('[data-detail-cover]', $("#detailBody"));
   if (detailCover) {
     const url = await assetUrl(detailCover.dataset.detailCover).catch(() => null);
@@ -1016,7 +1034,13 @@ function openEditor(node) {
 }
 function closeEditor() { if ($("#editorDialog").open) $("#editorDialog").close(); state.editDraft = null; }
 function commonFields(draft) {
-  return `<div class="field"><label>Название</label><input name="title" value="${esc(draft.title)}" required></div><div class="field"><label>Заметка</label><textarea name="note">${esc(draft.note || "")}</textarea></div>`;
+  const processCover = draft.type === "process" ? processCoverEditorHtml(draft) : "";
+  return `<div class="field"><label>Название</label><input name="title" value="${esc(draft.title)}" required></div>${processCover}<div class="field"><label>Заметка</label><textarea name="note">${esc(draft.note || "")}</textarea></div>`;
+}
+function processCoverEditorHtml(draft) {
+  const hasCover = Boolean(draft.coverAssetId);
+  const position = draft.coverPosition || { x: 0, y: 0, scale: 1 };
+  return `<div class="field process-cover-field"><label>Обложка</label><div class="process-cover-editor">${hasCover ? `<div class="process-cover-thumb"><img data-editor-process-cover="${esc(draft.coverAssetId)}" style="transform:translate(${Number(position.x || 0)}%,${Number(position.y || 0)}%) scale(${Number(position.scale || 1)})" alt=""></div>` : `<div class="process-cover-empty">Обложка не добавлена</div>`}<div class="process-cover-buttons"><button type="button" class="ghost" data-editor-action="addProcessCover">${hasCover ? "Изменить обложку" : "Добавить обложку"}</button>${hasCover ? `<button type="button" class="danger-text process-cover-remove" data-editor-action="removeProcessCover">Удалить обложку</button>` : ""}</div></div></div>`;
 }
 function statusOptions(value) {
   return Object.entries(STATUS_LABELS).map(([key, label]) => `<option value="${key}" ${value === key ? "selected" : ""}>${label}</option>`).join("");
@@ -1046,6 +1070,7 @@ function renderEditorBody() {
   if (d.type === "process") html += processEditorHtml(d);
   $("#editorBody").innerHTML = html;
   bindEditorDynamicActions();
+  hydrateProcessCoverEditor();
 }
 function processEditorHtml(d) {
   const people = state.data.nodes.filter(node => node.type === "person" && node.space === d.space && !node.archived);
@@ -1060,6 +1085,8 @@ function bindEditorDynamicActions() {
   $("#editorBody").onclick = event => {
     const action = event.target.closest("[data-editor-action]")?.dataset.editorAction;
     if (action === "addAssets") { state.assetTargetNodeId = state.activeNodeId; $("#assetInput").click(); }
+    if (action === "addProcessCover") $("#processCoverInput").click();
+    if (action === "removeProcessCover") removeProcessCoverFromDraft();
     if (action === "addStage") { state.editDraft.stages ||= []; state.editDraft.stages.push({ id: uid(), title: "Новый этап", progress: 0, deadline: "" }); renderEditorBody(); }
     if (action === "addTask") { state.editDraft.tasks ||= []; state.editDraft.tasks.push({ id: uid(), title: "Новая задача", due: "", done: false, personId: "" }); renderEditorBody(); }
     if (action === "addExpense") { state.editDraft.expenses ||= []; state.editDraft.expenses.push({ id: uid(), title: "Новая затрата", amount: "", date: todayISO() }); renderEditorBody(); }
@@ -1071,6 +1098,52 @@ function bindEditorDynamicActions() {
     if (expenseId) { state.editDraft.expenses = state.editDraft.expenses.filter(item => item.id !== expenseId); renderEditorBody(); }
   };
 }
+async function hydrateProcessCoverEditor() {
+  const img = $('[data-editor-process-cover]', $("#editorBody")); if (!img) return;
+  const url = await assetUrl(img.dataset.editorProcessCover).catch(() => null); if (url && img.isConnected) img.src = url;
+}
+function removeProcessCoverFromDraft() {
+  if (!state.editDraft || state.editDraft.type !== "process") return;
+  state.editDraft.coverAssetId = ""; state.editDraft.coverPosition = { x: 0, y: 0, scale: 1 }; renderEditorBody();
+}
+async function handleProcessCoverFile(event) {
+  const file = event.target.files?.[0]; event.target.value = "";
+  if (!file || !state.editDraft || state.editDraft.type !== "process") return;
+  const id = uid(); const metadata = { id, name: file.name, type: file.type || "image/jpeg", size: file.size, createdAt: Date.now() };
+  await putAsset({ ...metadata, blob: file }); state.editDraft.assets ||= []; state.editDraft.assets.push(metadata); state.editDraft.coverAssetId = id; state.editDraft.coverPosition = { x: 0, y: 0, scale: 1 }; openProcessCoverPositionDialog(id);
+}
+async function openProcessCoverPositionDialog(assetId) {
+  const url = await assetUrl(assetId).catch(() => null); if (!url) return;
+  state.coverPositionDraft = { ...(state.editDraft?.coverPosition || { x: 0, y: 0, scale: 1 }) };
+  $("#processCoverPreview").src = url; $("#processCoverScale").value = state.coverPositionDraft.scale || 1; updateProcessCoverPreview();
+  const dialog = $("#processCoverDialog"); if (!dialog.open) dialog.showModal();
+}
+function updateProcessCoverPreview() {
+  if (!state.coverPositionDraft) return; state.coverPositionDraft.scale = Number($("#processCoverScale").value || 1);
+  $("#processCoverPreview").style.transform = `translate(${state.coverPositionDraft.x || 0}%,${state.coverPositionDraft.y || 0}%) scale(${state.coverPositionDraft.scale})`;
+}
+function resetProcessCoverPosition() { state.coverPositionDraft = { x: 0, y: 0, scale: 1 }; $("#processCoverScale").value = 1; updateProcessCoverPreview(); }
+function applyProcessCoverPosition() { if (!state.editDraft || !state.coverPositionDraft) return; state.editDraft.coverPosition = { ...state.coverPositionDraft }; $("#processCoverDialog").close(); renderEditorBody(); }
+function bindProcessCoverPositioning() {
+  const frame = $("#processCoverFrame"); let drag = null;
+  frame.addEventListener("pointerdown", event => { if (!state.coverPositionDraft) return; drag = { x:event.clientX, y:event.clientY, ox:state.coverPositionDraft.x || 0, oy:state.coverPositionDraft.y || 0 }; frame.setPointerCapture?.(event.pointerId); });
+  frame.addEventListener("pointermove", event => { if (!drag || !state.coverPositionDraft) return; const rect=frame.getBoundingClientRect(); state.coverPositionDraft.x=clamp(drag.ox+(event.clientX-drag.x)/rect.width*100,-50,50); state.coverPositionDraft.y=clamp(drag.oy+(event.clientY-drag.y)/rect.height*100,-50,50); updateProcessCoverPreview(); });
+  const end=()=>{drag=null}; frame.addEventListener("pointerup",end); frame.addEventListener("pointercancel",end);
+}
+function updateProcessActionLock(node) {
+  const isProcess = node?.type === "process"; $("#detailFooter").classList.toggle("process-detail-footer", isProcess); $("#processActionLock").classList.toggle("hidden", !isProcess);
+  $("#detailBranchButton").disabled = isProcess && !state.processActionsUnlocked; $("#detailEditButton").disabled = isProcess && !state.processActionsUnlocked; $("#processActionLock").classList.toggle("unlocked", isProcess && state.processActionsUnlocked);
+  const thumb=$(".process-lock-thumb", $("#processActionLock")); if (thumb && !state.processActionsUnlocked) thumb.style.transform="translateX(0)";
+}
+function bindProcessActionLock() {
+  const control=$("#processActionLock"), track=$(".process-lock-track",control), thumb=$(".process-lock-thumb",control); let drag=null;
+  const setPos=r=>{thumb.style.transform=`translateX(${clamp(r,0,1)*22}px)`};
+  control.addEventListener("pointerdown",e=>{if(state.processActionsUnlocked)return; const rect=track.getBoundingClientRect(); drag={left:rect.left,width:Math.max(1,rect.width-20)}; control.setPointerCapture?.(e.pointerId); setPos((e.clientX-drag.left)/drag.width)});
+  control.addEventListener("pointermove",e=>{if(drag)setPos((e.clientX-drag.left)/drag.width)});
+  control.addEventListener("pointerup",e=>{if(!drag)return; const ratio=(e.clientX-drag.left)/drag.width; drag=null; if(ratio>=.78){state.processActionsUnlocked=true;navigator.vibrate?.(16);updateProcessActionLock(nodeById(state.activeNodeId))}else setPos(0)});
+  control.addEventListener("pointercancel",()=>{drag=null;setPos(0)});
+}
+
 function syncDraftDynamicFields() {
   const d = state.editDraft; if (!d || d.type !== "process") return;
   d.stages = $$('[data-stage-id]', $("#editorBody")).map(row => {

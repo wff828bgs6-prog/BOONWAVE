@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="BOONWAVE">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=6.0.1">
+  <link rel="stylesheet" href="styles.css?v=6.0.2">
   <title>BOONWAVE</title>
 </head>
 <body>
@@ -112,7 +112,7 @@
     <button class="menu-row" data-menu-action="fit"><span data-icon="focus"></span><div><b>Вписать всё</b><small>Вернуть все карточки в обзор</small></div></button>
     <button class="menu-row" data-menu-action="logout"><span data-icon="logout"></span><div><b>Выйти</b><small>Проекты останутся на устройстве</small></div></button>
     <button class="menu-row danger" data-menu-action="reset"><span data-icon="trash"></span><div><b>Полный сброс</b><small>Удалить локальные данные и вложения</small></div></button>
-    <footer>BOONWAVE 6.0.1 · LIGHT THEME</footer>
+    <footer>BOONWAVE 6.0.2 · LIGHT THEME</footer>
   </section>
 
   <section id="sidePanel" class="side-panel hidden">
@@ -124,7 +124,7 @@
     <form method="dialog" class="dialog-shell">
       <header class="dialog-header"><div><small id="detailType">ПРОЕКТ</small><h2 id="detailTitle">Название</h2></div><button value="cancel" aria-label="Закрыть">×</button></header>
       <div id="detailBody" class="dialog-body"></div>
-      <footer class="dialog-footer"><button type="button" class="ghost" id="detailBranchButton">Создать ветвь</button><button type="button" class="primary" id="detailEditButton">Редактировать</button></footer>
+      <footer class="dialog-footer" id="detailFooter"><button type="button" class="ghost" id="detailBranchButton">Создать ветвь</button><button type="button" class="primary" id="detailEditButton">Редактировать</button><div id="processActionLock" class="process-action-lock hidden" aria-label="Разблокировать действия"><span class="process-lock-icon">🔒</span><div class="process-lock-track"><i class="process-lock-thumb"></i></div></div></footer>
     </form>
   </dialog>
 
@@ -142,10 +142,18 @@
     <footer><button id="assetPrev" aria-label="Предыдущий">‹</button><button id="assetShare">Поделиться</button><button id="assetDownload">Скачать</button><button id="assetDelete" class="danger-text">Удалить</button><button id="assetNext" aria-label="Следующий">›</button></footer>
   </dialog>
 
+  <dialog id="processCoverDialog" class="cover-position-dialog">
+    <form method="dialog" class="cover-position-shell">
+      <header><div><small>ОБЛОЖКА РАБОЧЕГО ПРОЦЕССА</small><h2>Позиционирование</h2></div><button value="cancel" aria-label="Закрыть">×</button></header>
+      <div id="processCoverFrame" class="cover-position-frame"><img id="processCoverPreview" alt=""></div>
+      <div class="cover-position-controls"><label>Масштаб<input id="processCoverScale" type="range" min="1" max="2.5" step="0.01" value="1"></label><button type="button" class="ghost" id="processCoverReset">Сбросить</button><button type="button" class="primary" id="processCoverApply">Применить</button></div>
+    </form>
+  </dialog>
+  <input id="processCoverInput" type="file" accept="image/*" hidden>
   <input id="assetInput" type="file" multiple accept="image/*,.pdf,.svg,.ai,.eps,.cdr,.dxf,.dwg,.stl,.obj,.3mf,.step,.stp" hidden>
   <input id="importInput" type="file" accept="application/json,.json" hidden>
   <div id="toast" class="toast hidden"></div>
 
-  <script src="app.js?v=6.0.1"></script>
+  <script src="app.js?v=6.0.2"></script>
 </body>
 </html>
