@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.14";
+const VERSION = "6.0.15";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -101,6 +101,7 @@ const state = {
   stageEditDraft: null,
   quickCoverNodeId: null,
   phonebookEditId: null,
+  phonebookRelationsContactId: null,
   detailScrollTop: 0,
   lastBudgetTap: 0,
   lastPhonebookTap: 0,
@@ -502,7 +503,7 @@ function bindWorkspaceOnce() {
   $("#phonebookEditorForm").addEventListener("submit", savePhonebookContact);
   $("#phonebookEditorCancel").addEventListener("click", closePhonebookEditor);
   $("#phonebookEditorClose").addEventListener("click", closePhonebookEditor);
-  $("#phonebookWebsiteEdit").addEventListener("click", () => { const input=$("#phonebookWebsite"); input.focus(); input.select?.(); });
+  $("#phonebookRelationsClose").addEventListener("click", closePhonebookRelations);
   $("#phonebookMessengers").addEventListener("click", handleMessengerPickerClick);
   $("#messengerActionClose").addEventListener("click", closeMessengerAction);
   $("#messengerActionWrite").addEventListener("click", () => runMessengerAction("write"));
@@ -1266,12 +1267,31 @@ function saveBudgetEditor(event) {
   render();
   toast("Бюджет сохранён");
 }
+function phonebookActionIcon(action){
+  if(action==="edit")return icon("edit");
+  if(action==="delete")return icon("trash");
+  return icon("branch");
+}
+function contactTaskRelations(node,contactId){
+  const stages=node?.stages||[];
+  return (node?.tasks||[]).filter(task=>(task.contactIds||[]).includes(contactId)).map(task=>({task,stage:stages.find(stage=>stage.id===task.stageId)||null}));
+}
 function openPhonebook(node){renderPhonebookList(node);const d=$("#phonebookDialog");if(!d.open)d.showModal();}
 function closePhonebook(){closePhonebookEditor();if($("#phonebookDialog").open)$("#phonebookDialog").close();state.phonebookEditId=null;}
 function closePhonebookEditor(){const d=$("#phonebookEditorDialog");if(d?.open)d.close();state.phonebookEditId=null;}
-function renderPhonebookList(node){state.phonebookEditId=null;const contacts=node?.phonebook||[];$("#phonebookBody").innerHTML=contacts.length?contacts.map(c=>`<article class="phonebook-card" data-phonebook-id="${esc(c.id)}"><div class="phonebook-card-main"><b>${esc(c.name||"Без имени")}</b><small>${esc(c.role||"Контакт")}</small>${c.phone?`<a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>`:""}${messengerBadges(c)}${c.website?`<a class="phonebook-site" href="${esc(c.website)}" target="_blank" rel="noopener">${esc(c.website)}</a>`:""}</div><div class="phonebook-card-actions"><button data-phonebook-action="edit">Редактировать</button><button class="danger-text" data-phonebook-action="delete">Удалить</button></div></article>`).join(""):`<div class="note-block">Телефонная книга пока пуста.</div>`;}
+function renderPhonebookList(node){state.phonebookEditId=null;const contacts=node?.phonebook||[];$("#phonebookBody").innerHTML=contacts.length?contacts.map(c=>`<article class="phonebook-card" data-phonebook-id="${esc(c.id)}"><div class="phonebook-card-main"><b>${esc(c.name||"Без имени")}</b><small>${esc(c.role||"Контакт")}</small>${c.phone?`<a href="tel:${esc(c.phone)}">${esc(c.phone)}</a>`:""}${messengerBadges(c)}${c.website?`<a class="phonebook-site" href="${esc(c.website)}" target="_blank" rel="noopener">${esc(c.website)}</a>`:""}</div><div class="phonebook-card-actions"><button type="button" data-phonebook-action="edit" aria-label="Редактировать контакт" title="Редактировать">${phonebookActionIcon("edit")}</button><button type="button" data-phonebook-action="relations" aria-label="Показать связи с этапами и задачами" title="Связи">${phonebookActionIcon("relations")}</button><button type="button" class="danger-text" data-phonebook-action="delete" aria-label="Удалить контакт" title="Удалить">${phonebookActionIcon("delete")}</button></div></article>`).join(""):`<div class="note-block">Телефонная книга пока пуста.</div>`;}
 function renderPhonebookEditor(contact){state.phonebookEditId=contact?.id||null;$("#phonebookEditorTitle").textContent=contact?"Редактировать контакт":"Новый контакт";$("#phonebookName").value=contact?.name||"";$("#phonebookRole").value=contact?.role||"";$("#phonebookPhone").value=contact?.phone||"";$("#phonebookWebsite").value=contact?.website||"";$("#phonebookCar").value=contact?.carNumber||"";$("#phonebookAddress").value=contact?.address||"";$("#phonebookComment").value=contact?.comment||"";const selected=Array.isArray(contact?.messengers)?contact.messengers:[];$$('[data-messenger-toggle]',$("#phonebookMessengers")).forEach(button=>{const active=selected.includes(button.dataset.messengerToggle);button.classList.toggle("selected",active);button.setAttribute("aria-pressed",String(active));});const d=$("#phonebookEditorDialog");if(!d.open)d.showModal();setTimeout(()=>$("#phonebookName")?.focus(),80);}
-function handlePhonebookClick(event){const card=event.target.closest('[data-phonebook-id]'),button=event.target.closest('[data-phonebook-action]');if(!card||!button)return;const node=nodeById(state.activeNodeId),contact=(node.phonebook||[]).find(c=>c.id===card.dataset.phonebookId);if(button.dataset.phonebookAction==='edit')renderPhonebookEditor(contact);if(button.dataset.phonebookAction==='delete'&&confirm(`Удалить контакт «${contact?.name||'Без имени'}»?`)){node.phonebook=(node.phonebook||[]).filter(c=>c.id!==contact.id);(node.tasks||[]).forEach(t=>t.contactIds=(t.contactIds||[]).filter(id=>id!==contact.id));saveData();renderPhonebookList(node);renderDetailBody(node);}}
+function handlePhonebookClick(event){const card=event.target.closest('[data-phonebook-id]'),button=event.target.closest('[data-phonebook-action]');if(!card||!button)return;const node=nodeById(state.activeNodeId),contact=(node?.phonebook||[]).find(c=>c.id===card.dataset.phonebookId);if(!contact)return;const action=button.dataset.phonebookAction;if(action==='edit')renderPhonebookEditor(contact);if(action==='relations')openPhonebookRelations(node,contact);if(action==='delete'&&confirm(`Удалить контакт «${contact.name||'Без имени'}»?`)){node.phonebook=(node.phonebook||[]).filter(c=>c.id!==contact.id);(node.tasks||[]).forEach(t=>t.contactIds=(t.contactIds||[]).filter(id=>id!==contact.id));saveData();renderPhonebookList(node);renderDetailBody(node);}}
+
+function openPhonebookRelations(node,contact){
+  state.phonebookRelationsContactId=contact.id;
+  $("#phonebookRelationsTitle").textContent=contact.name||"Без имени";
+  const relations=contactTaskRelations(node,contact.id);
+  $("#phonebookRelationsBody").innerHTML=relations.length?relations.map(({task,stage})=>`<article class="phonebook-relation-item"><small>${stage?"ЭТАП":"БЕЗ ЭТАПА"}</small><b>${esc(stage?.title||"Не назначен")}</b><span>${esc(task.title||"Задача без названия")}</span></article>`).join(""):`<div class="phonebook-relations-empty">Контакт пока не связан с этапами и задачами.</div>`;
+  const d=$("#phonebookRelationsDialog");if(!d.open)d.showModal();
+}
+function closePhonebookRelations(){const d=$("#phonebookRelationsDialog");if(d?.open)d.close();state.phonebookRelationsContactId=null;}
+
 function savePhonebookContact(event){event.preventDefault();const node=nodeById(state.activeNodeId);if(!node)return;node.phonebook||=[];let c=node.phonebook.find(x=>x.id===state.phonebookEditId);if(!c){c={id:uid()};node.phonebook.push(c)}const messengers=$$('[data-messenger-toggle].selected',$("#phonebookMessengers")).map(button=>button.dataset.messengerToggle);Object.assign(c,{name:$("#phonebookName").value.trim(),role:$("#phonebookRole").value.trim(),phone:$("#phonebookPhone").value.trim(),messengers,carNumber:$("#phonebookCar").value.trim(),address:$("#phonebookAddress").value.trim(),website:$("#phonebookWebsite").value.trim(),comment:$("#phonebookComment").value.trim()});saveData();closePhonebookEditor();renderPhonebookList(node);renderDetailBody(node);toast("Контакт сохранён");}
 function handleMessengerPickerClick(event){const button=event.target.closest("[data-messenger-toggle]");if(!button)return;const active=!button.classList.contains("selected");button.classList.toggle("selected",active);button.setAttribute("aria-pressed",String(active));}
 function openMessengerAction(contact,type){if(!contact?.phone)return toast("У контакта не указан номер телефона");state.messengerAction={contactId:contact.id,type,phone:contact.phone};$("#messengerActionLabel").textContent=messengerLabel(type).toUpperCase();$("#messengerActionTitle").textContent=contact.name||"Связаться";const d=$("#messengerActionDialog");if(!d.open)d.showModal();}

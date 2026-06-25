@@ -465,3 +465,27 @@ html[data-theme="light"] .process-cover-menu-button{background:#ffffffcc;color:#
   .communication-row{grid-template-columns:1fr}
   .phonebook-editor-dialog .messenger-picker{justify-content:flex-start;width:max-content;max-width:100%}
 }
+
+/* v6.0.15 — phonebook controls and contact relations */
+.phonebook-editor-dialog .link-editor-control{display:block;width:100%}
+.phonebook-editor-dialog .link-editor-control input{width:100%;height:44px;padding:0 12px;border:1px solid var(--line);border-radius:13px;background:var(--surface);font-size:12px}
+.phonebook-card{grid-template-columns:minmax(0,1fr) auto!important;gap:10px!important;align-items:center!important}
+.phonebook-card-actions{display:flex!important;align-items:center!important;align-self:center!important;gap:6px!important}
+.phonebook-card-actions button{width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;padding:0!important;border-radius:10px!important;display:grid!important;place-items:center!important;background:var(--surface3)!important;border:1px solid var(--line)!important;color:var(--muted)!important}
+.phonebook-card-actions button svg{width:17px;height:17px;stroke-width:1.65}
+.phonebook-card-actions button:active{transform:scale(.94)}
+.phonebook-card-actions button[data-phonebook-action="relations"]{color:#aeb8cf!important}
+.phonebook-card-actions button.danger-text{color:#d88b98!important}
+.phonebook-card .messenger-badges{gap:6px!important}
+.phonebook-card .messenger-badge{width:30px!important;height:30px!important;border-radius:8px!important;padding:4px!important;background:transparent!important;box-shadow:none!important}
+.phonebook-card .messenger-badge svg{width:20px!important;height:20px!important;stroke-width:1.45!important}
+.phonebook-card .messenger-badge.selected{opacity:.82!important;color:#e8ebf3!important;border-color:rgba(232,235,243,.68)!important;background:rgba(27,33,48,.42)!important;box-shadow:none!important}
+.phonebook-card .messenger-badge.muted{opacity:.22!important;border-color:rgba(197,203,216,.35)!important}
+.phonebook-relations-dialog form{display:grid;gap:12px}
+.phonebook-relations-body{display:grid;gap:8px;max-height:56vh;overflow:auto}
+.phonebook-relation-item{display:grid;gap:4px;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--surface2)}
+.phonebook-relation-item small{color:var(--muted);font-size:8px;letter-spacing:.12em}
+.phonebook-relation-item b{font-size:13px}
+.phonebook-relation-item span{color:var(--muted);font-size:11px;line-height:1.35}
+.phonebook-relations-empty{padding:18px 12px;border:1px dashed var(--line);border-radius:14px;color:var(--muted);font-size:11px;text-align:center}
+@media(max-width:520px){.phonebook-card{padding:11px!important;min-height:0!important}.phonebook-card-actions{gap:5px!important}.phonebook-card-actions button{width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important}.phonebook-card-actions button svg{width:16px;height:16px}}
