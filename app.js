@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.7";
+const VERSION = "6.0.8";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -98,6 +98,7 @@ const state = {
   expandedProcessTaskId: null,
   taskDraft: null,
   stageEditDraft: null,
+  quickCoverNodeId: null,
   phonebookEditId: null,
   detailScrollTop: 0,
   isReloadingForWorker: false
@@ -460,8 +461,16 @@ function bindWorkspaceOnce() {
   $("#taskScheduleMode").addEventListener("change", updateTaskScheduleFields);
   $("#stageEditorForm").addEventListener("submit", saveStageEditor);
   $("#stageEditorClose").addEventListener("click", closeStageEditor);
+  $("#stageDeleteButton").addEventListener("click", openStageDeleteConfirm);
+  $("#stageDeleteClose").addEventListener("click", closeStageDeleteConfirm);
+  $("#stageDeleteNo").addEventListener("click", cancelStageDelete);
+  $("#stageDeleteYes").addEventListener("click", confirmStageDelete);
   $("#budgetEditorForm").addEventListener("submit", saveBudgetEditor);
   $("#budgetEditorClose").addEventListener("click", closeBudgetEditor);
+  $("#coverQuickClose").addEventListener("click", closeCoverQuickMenu);
+  $("#coverQuickNew").addEventListener("click", startQuickNewCover);
+  $("#coverQuickPosition").addEventListener("click", startQuickPositionCover);
+  $("#detailBody").addEventListener("dblclick", event => { const target=event.target.closest("[data-budget-edit]"); const node=nodeById(state.activeNodeId); if(target && node?.type==="process"){event.preventDefault();openBudgetEditor(node);} });
   $("#phonebookClose").addEventListener("click", closePhonebook);
   $("#phonebookAdd").addEventListener("click", () => renderPhonebookEditor(null));
   $("#phonebookBody").addEventListener("click", handlePhonebookClick);
@@ -985,14 +994,15 @@ function processDetailHtml(node) {
   const stages = node.stages || [];
   const openTasks = (node.tasks || []).filter(task => !task.done).length;
   if (!stages.some(stage => stage.id === state.selectedProcessStageId)) state.selectedProcessStageId = stages[0]?.id || null;
-  return `<div class="detail-hero process-detail-hero">${processCoverMediaHtml(node)}<div class="detail-hero-content"><p>${esc(project ? `Проект: ${project.title}` : "Связанный рабочий модуль")}</p></div></div>
+  return `<div class="detail-hero process-detail-hero">${processCoverMediaHtml(node)}<button class="process-cover-menu-button" data-detail-action="coverMenu" aria-label="Управление обложкой">•••</button><div class="detail-hero-content"><p>${esc(project ? `Проект: ${project.title}` : "Связанный рабочий модуль")}</p></div></div>
     <div class="process-metrics-bar">
       <button class="process-metric budget-metric" data-budget-edit="1" title="Двойное нажатие для редактирования"><small>БЮДЖЕТ</small><b>${money(node.budget)}</b></button>
       <div class="process-metric"><small>РАСХОДЫ</small><b>${money(total)}</b></div>
-      <div class="process-metric progress-metric"><small>ПРОГРЕСС</small><b>${node.progress || 0}%</b><i><span style="width:${clamp(node.progress||0,0,100)}%"></span></i></div>
-      <div class="process-metric stacked-count"><div><small>ЭТАПЫ</small><b>${stages.length}</b></div><div><small>ЗАДАЧИ</small><b>${openTasks}</b></div></div>
+      <div class="process-metric count-metric"><small>ЭТАПЫ</small><b>${stages.length}</b></div>
+      <div class="process-metric count-metric"><small>ЗАДАЧИ</small><b>${openTasks}</b></div>
       <button class="process-phonebook-button" data-detail-action="phonebook" aria-label="Телефонная книга">${icon("people")}<small>${(node.phonebook||[]).length}</small></button>
     </div>
+    <div class="process-progress-row"><div><small>ПРОГРЕСС</small><b>${node.progress || 0}%</b></div><i><span style="width:${clamp(node.progress||0,0,100)}%"></span></i></div>
     <div class="detail-section"><div class="detail-section-head"><h3>Этапы</h3><button class="delicate-plus" data-detail-action="addStage" aria-label="Создать новый этап">＋</button></div><div class="stage-list process-stage-selector">${stages.length ? stages.map(stage => stageSelectorHtml(stage)).join("") : `<div class="note-block">Этапы ещё не добавлены.</div>`}</div></div>
     ${selectedStageTasksHtml(node)}
     <div class="detail-section"><div class="detail-section-head"><h3>Затраты</h3><button data-detail-action="editNode">Таблица</button></div><div class="inline-add"><input id="detailExpenseTitle" placeholder="Описание"><input id="detailExpenseAmount" inputmode="decimal" placeholder="Сумма"><button data-detail-action="quickExpense">+</button></div><div class="expense-list" style="margin-top:9px">${expenseListHtml(node)}</div></div>`;
@@ -1105,6 +1115,7 @@ function handleDetailClick(event) {
   if (action === "editNode") openEditor(node);
   if (action === "editBudget") openBudgetEditor(node);
   if (action === "phonebook") openPhonebook(node);
+  if (action === "coverMenu" && node.type === "process") openCoverQuickMenu(node);
   if (action === "addStage" && node.type === "process") {
     node.stages ||= [];
     const stage = { id: uid(), title: `Новый этап ${node.stages.length + 1}`, deadline: "", progress: 0 };
@@ -1150,6 +1161,10 @@ function saveTaskEditor(event){event.preventDefault();const node=nodeById(state.
 function openStageEditor(node, stageId){const stage=(node.stages||[]).find(item=>item.id===stageId);if(!stage)return;state.stageEditDraft={nodeId:node.id,stageId};$("#stageEditTitle").value=stage.title||"";$("#stageEditDate").value=stage.deadline||"";const d=$("#stageEditorDialog");if(!d.open)d.showModal();}
 function closeStageEditor(){if($("#stageEditorDialog").open)$("#stageEditorDialog").close();state.stageEditDraft=null;}
 function saveStageEditor(event){event.preventDefault();const draft=state.stageEditDraft,node=nodeById(draft?.nodeId),stage=(node?.stages||[]).find(item=>item.id===draft?.stageId);if(!stage)return;stage.title=$("#stageEditTitle").value.trim()||"Новый этап";stage.deadline=$("#stageEditDate").value;saveData();closeStageEditor();renderDetailBody(node);render();toast("Этап сохранён");}
+function openStageDeleteConfirm(){const d=$("#stageDeleteDialog");if(!d.open)d.showModal();}
+function closeStageDeleteConfirm(){if($("#stageDeleteDialog").open)$("#stageDeleteDialog").close();}
+function cancelStageDelete(){closeStageDeleteConfirm();closeStageEditor();const node=nodeById(state.activeNodeId);if(node)renderDetailBody(node);}
+function confirmStageDelete(){const draft=state.stageEditDraft,node=nodeById(draft?.nodeId);if(!node)return;node.stages=(node.stages||[]).filter(stage=>stage.id!==draft.stageId);node.tasks=(node.tasks||[]).filter(task=>task.stageId!==draft.stageId);if(state.selectedProcessStageId===draft.stageId)state.selectedProcessStageId=node.stages[0]?.id||null;state.expandedProcessTaskId=null;updateProcessProgress(node);saveData();closeStageDeleteConfirm();closeStageEditor();renderDetailBody(node);render();toast("Этап и связанные задачи удалены");}
 function openBudgetEditor(node){$("#budgetEditValue").value=node.budget||"";const d=$("#budgetEditorDialog");if(!d.open)d.showModal();}
 function closeBudgetEditor(){if($("#budgetEditorDialog").open)$("#budgetEditorDialog").close();}
 function saveBudgetEditor(event){event.preventDefault();const node=nodeById(state.activeNodeId);if(!node)return;node.budget=Number(String($("#budgetEditValue").value||0).replace(",","."));saveData();closeBudgetEditor();renderDetailBody(node);render();toast("Бюджет сохранён");}
@@ -1251,6 +1266,11 @@ function removeProcessCoverFromDraft() {
   if (!state.editDraft || state.editDraft.type !== "process") return;
   state.editDraft.coverAssetId = ""; state.editDraft.coverPosition = { x: 0, y: 0, scale: 1 }; state.editDraft.coverPositions = normalizedProcessCoverPositions({}); renderEditorBody();
 }
+function openCoverQuickMenu(node){state.quickCoverNodeId=node.id;const btn=$("#coverQuickPosition");btn.disabled=!node.coverAssetId;const d=$("#coverQuickMenu");if(!d.open)d.showModal();}
+function closeCoverQuickMenu(){if($("#coverQuickMenu").open)$("#coverQuickMenu").close();}
+function prepareQuickCoverDraft(){const node=nodeById(state.quickCoverNodeId);if(!node)return null;state.editDraft=clone(node);return node;}
+function startQuickNewCover(){const node=prepareQuickCoverDraft();if(!node)return;closeCoverQuickMenu();$("#processCoverInput").click();}
+function startQuickPositionCover(){const node=prepareQuickCoverDraft();if(!node?.coverAssetId)return;closeCoverQuickMenu();openProcessCoverPositionDialog(node.coverAssetId);}
 async function handleProcessCoverFile(event) {
   const file = event.target.files?.[0]; event.target.value = "";
   if (!file || !state.editDraft || state.editDraft.type !== "process") return;
@@ -1268,7 +1288,8 @@ async function handleProcessCoverFile(event) {
   state.editDraft.coverAssetId = id;
   state.editDraft.coverPosition = { x: 0, y: 0, scale: 1 };
   state.editDraft.coverPositions = normalizedProcessCoverPositions({});
-  renderEditorBody();
+  if (state.quickCoverNodeId) openProcessCoverPositionDialog(id);
+  else { renderEditorBody(); openProcessCoverPositionDialog(id); }
 }
 async function openProcessCoverPositionDialog(assetId) {
   const url = await assetUrl(assetId).catch(() => null); if (!url) return;
@@ -1307,7 +1328,12 @@ function applyProcessCoverPosition() {
   if (!state.editDraft || !state.coverPositionDraft) return;
   state.editDraft.coverPositions = clone(state.coverPositionDraft);
   state.editDraft.coverPosition = { ...state.coverPositionDraft["2"] };
-  $("#processCoverDialog").close(); renderEditorBody();
+  $("#processCoverDialog").close();
+  if (state.quickCoverNodeId) {
+    const node=nodeById(state.quickCoverNodeId);
+    if(node){node.coverAssetId=state.editDraft.coverAssetId;node.coverPosition=clone(state.editDraft.coverPosition);node.coverPositions=clone(state.editDraft.coverPositions);node.assets=clone(state.editDraft.assets||node.assets||[]);saveData();renderDetailBody(node);render();toast("Обложка сохранена");}
+    state.quickCoverNodeId=null;state.editDraft=null;
+  } else renderEditorBody();
 }
 function bindProcessCoverPositioning() {
   const frame = $("#processCoverFrame"); let drag = null;

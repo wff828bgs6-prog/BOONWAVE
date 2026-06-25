@@ -209,3 +209,17 @@ html[data-theme="light"] .cover-size-switch{background:#edf1f6;border-color:#d5d
   .process-detail-footer #detailBranchButton,.process-detail-footer #detailEditButton{font-size:10px;padding:0 6px}
   .process-action-lock{width:128px}
 }
+
+/* v6.0.8 focused process refinements */
+.process-metrics-bar{grid-template-columns:1.18fr 1.18fr .82fr .82fr 42px!important;gap:5px!important;margin-bottom:8px!important}
+.process-metric,.process-phonebook-button{min-height:68px!important}
+.count-metric{text-align:center}.count-metric b{font-size:14px!important}
+.process-progress-row{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:14px;padding:11px 14px;margin:0 0 16px;border:1px solid var(--line);border-radius:17px;background:var(--surface2)}
+.process-progress-row div{display:flex;align-items:baseline;gap:8px}.process-progress-row small{color:var(--muted);font-size:8px}.process-progress-row b{font-size:13px}.process-progress-row i{display:block;height:5px;border-radius:99px;background:var(--line-soft);overflow:hidden}.process-progress-row i span{display:block;height:100%;background:linear-gradient(90deg,var(--purple),var(--cyan))}
+.process-detail-hero{position:relative}.process-cover-menu-button{position:absolute;z-index:5;left:12px;top:12px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#0b0e16b8;border:1px solid #7584a055;color:#fff;font-size:14px;letter-spacing:1px;backdrop-filter:blur(12px)}
+.cover-quick-menu form{display:grid;gap:9px}.cover-quick-menu header{margin-bottom:3px}.cover-quick-menu .ghost{width:100%;min-height:42px;text-align:left}
+.stage-editor-actions{display:grid;grid-template-columns:1fr 1.35fr;gap:8px;align-items:center}.stage-delete-button{min-height:44px;border:1px solid #61313a;border-radius:15px;background:#2b171d}
+#stageEditorDialog .field input{width:100%}#stageEditDate{display:block;min-width:0;appearance:none;-webkit-appearance:none}
+.confirm-dialog p{margin:0 0 16px;color:var(--muted);font-size:12px;line-height:1.5}.confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.confirm-actions .ghost,.confirm-actions .primary{width:100%}
+@media(max-width:390px){.process-metrics-bar{grid-template-columns:1.15fr 1.15fr .78fr .78fr 38px!important;gap:3px!important}.process-metric,.process-phonebook-button{padding:6px 4px!important}.process-progress-row{padding:10px 11px;gap:10px}.process-cover-menu-button{left:10px;top:10px;width:32px;height:32px}}
+html[data-theme="light"] .process-cover-menu-button{background:#ffffffcc;color:#303744;border-color:#c9d2df}
