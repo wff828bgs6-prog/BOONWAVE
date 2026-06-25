@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.17";
+const VERSION = "6.0.19";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -461,6 +461,7 @@ function bindWorkspaceOnce() {
   $("#processCoverScale").addEventListener("input", updateProcessCoverPreview);
   $("#processCoverReset").addEventListener("click", resetProcessCoverPosition);
   $("#processCoverApply").addEventListener("click", applyProcessCoverPosition);
+  $("#detailClose").addEventListener("click", () => { if ($("#detailDialog").open) $("#detailDialog").close(); });
   $("#processCoverClose").addEventListener("click", cancelProcessCoverPosition);
   $("#processCoverDialog").addEventListener("cancel", event => { event.preventDefault(); cancelProcessCoverPosition(); });
   bindProcessCoverPositioning();
@@ -492,11 +493,13 @@ function bindWorkspaceOnce() {
       openBudgetEditor(node);
     }
   });
+  $("#detailBody").addEventListener("click", handleMessengerBadgeTap);
   $("#detailBody").addEventListener("dblclick", event => { const badge=event.target.closest("[data-messenger-contact][data-messenger-type]"); if(!badge)return; event.preventDefault(); event.stopPropagation(); if(badge.dataset.messengerActive!=="1")return; const node=nodeById(state.activeNodeId); const contact=(node?.phonebook||[]).find(item=>item.id===badge.dataset.messengerContact); if(contact)openMessengerAction(contact,badge.dataset.messengerType); });
   $("#budgetEditValue").addEventListener("input", formatBudgetEditorInput);
   $("#phonebookClose").addEventListener("click", closePhonebook);
   $("#phonebookAdd").addEventListener("click", () => renderPhonebookEditor(null));
   $("#phonebookBody").addEventListener("click", handlePhonebookClick);
+  $("#phonebookBody").addEventListener("click", handleMessengerBadgeTap);
   $("#phonebookBody").addEventListener("dblclick", event => {
     const badge = event.target.closest("[data-messenger-contact][data-messenger-type]");
     if (!badge || badge.dataset.messengerActive !== "1") return;
@@ -1301,6 +1304,7 @@ function closePhonebookRelations(){const d=$("#phonebookRelationsDialog");if(d?.
 
 function savePhonebookContact(event){event.preventDefault();const node=nodeById(state.activeNodeId);if(!node)return;node.phonebook||=[];let c=node.phonebook.find(x=>x.id===state.phonebookEditId);if(!c){c={id:uid()};node.phonebook.push(c)}const messengers=$$('[data-messenger-toggle].selected',$("#phonebookMessengers")).map(button=>button.dataset.messengerToggle);Object.assign(c,{name:$("#phonebookName").value.trim(),role:$("#phonebookRole").value.trim(),phone:$("#phonebookPhone").value.trim(),messengers,carNumber:$("#phonebookCar").value.trim(),address:$("#phonebookAddress").value.trim(),website:$("#phonebookWebsite").value.trim(),comment:$("#phonebookComment").value.trim()});saveData();closePhonebookEditor();renderPhonebookList(node);renderDetailBody(node);toast("Контакт сохранён");}
 function handleMessengerPickerClick(event){const button=event.target.closest("[data-messenger-toggle]");if(!button)return;const active=!button.classList.contains("selected");button.classList.toggle("selected",active);button.setAttribute("aria-pressed",String(active));}
+function handleMessengerBadgeTap(event){const badge=event.target.closest('[data-messenger-contact][data-messenger-type]');if(!badge||badge.dataset.messengerActive!=="1")return;badge.classList.remove('tap-active');void badge.offsetWidth;badge.classList.add('tap-active');clearTimeout(badge._tapActiveTimer);badge._tapActiveTimer=setTimeout(()=>badge.classList.remove('tap-active'),180);}
 function openMessengerAction(contact,type){if(!contact?.phone)return toast("У контакта не указан номер телефона");state.messengerAction={contactId:contact.id,type,phone:contact.phone};$("#messengerActionLabel").textContent=messengerLabel(type).toUpperCase();$("#messengerActionTitle").textContent=contact.name||"Связаться";const d=$("#messengerActionDialog");if(!d.open)d.showModal();}
 function closeMessengerAction(){if($("#messengerActionDialog").open)$("#messengerActionDialog").close();state.messengerAction=null;}
 function runMessengerAction(kind){const action=state.messengerAction;if(!action)return;const digits=String(action.phone||"").replace(/\D/g,"");if(kind==="call"){location.href=`tel:${action.phone}`;closeMessengerAction();return;}let url="";if(action.type==="telegram")url=`https://t.me/+${digits}`;else if(action.type==="whatsapp")url=`https://wa.me/${digits}`;else url=`https://max.ru/u/${digits}`;window.open(url,"_blank","noopener");closeMessengerAction();}
@@ -1419,8 +1423,8 @@ function closeCoverQuickMenu({restore=true}={}){
 function prepareQuickCoverDraft(){const node=nodeById(state.quickCoverNodeId);if(!node)return null;state.editDraft=clone(node);return node;}
 function startQuickNewCover(){
   const node=prepareQuickCoverDraft();if(!node)return;
-  closeCoverQuickMenu({restore:false});
-  // Safari requires the file picker to be opened synchronously inside the user gesture.
+  // Keep this modal open while iOS shows Media Library / Camera / Files.
+  // Closing it before input.click() makes Safari reveal the workspace behind the process.
   $("#processCoverInput").click();
 }
 function startQuickPositionCover(){
@@ -1431,6 +1435,11 @@ function startQuickPositionCover(){
 async function handleProcessCoverFile(event) {
   const file = event.target.files?.[0]; event.target.value = "";
   if (!file || !state.editDraft || state.editDraft.type !== "process") return;
+  if (state.quickCoverNodeId) {
+    const quickDialog = $("#coverQuickMenu");
+    quickDialog.classList.remove("is-leaving");
+    if (quickDialog.open) quickDialog.close();
+  }
   const previousId = state.editDraft.coverAssetId;
   const id = uid();
   const metadata = { id, name: file.name, type: file.type || "image/jpeg", size: file.size, createdAt: Date.now() };
