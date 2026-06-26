@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.26";
+const VERSION = "6.0.27";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -494,6 +494,11 @@ function bindWorkspaceOnce() {
   $("#budgetEditorForm").addEventListener("submit", saveBudgetEditor);
   $("#budgetEditorClose").addEventListener("click", closeBudgetEditor);
   $("#coverQuickClose").addEventListener("click", closeCoverQuickMenu);
+  $("#coverQuickTitleToggle").addEventListener("click", toggleQuickProcessTitle);
+  $("#coverQuickTitleInput").addEventListener("input", updateQuickProcessTitleState);
+  $("#coverQuickTitleInput").addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); saveQuickProcessTitle(); } });
+  $("#coverQuickTitleCancel").addEventListener("click", cancelQuickProcessTitle);
+  $("#coverQuickTitleSave").addEventListener("click", saveQuickProcessTitle);
   $("#coverQuickNew").addEventListener("click", startQuickNewCover);
   $("#coverQuickPosition").addEventListener("click", startQuickPositionCover);
   $("#detailBody").addEventListener("dblclick", event => {
@@ -1479,9 +1484,53 @@ function openCoverQuickMenu(node){
   state.quickCoverPendingAssetId=null;
   state.quickCoverReturnScrollTop=$("#detailBody")?.scrollTop||0;
   const btn=$("#coverQuickPosition"); btn.disabled=!node.coverAssetId;
+  const input=$("#coverQuickTitleInput");
+  input.value=String(node.title||"").slice(0,26);
+  $("#coverQuickTitlePanel").classList.add("hidden");
+  $("#coverQuickTitleToggle").setAttribute("aria-expanded","false");
+  updateQuickProcessTitleState();
   const d=$("#coverQuickMenu");
   d.classList.remove("is-leaving");
   if(!d.open)d.showModal();
+}
+function normalizeQuickProcessTitle(value){return String(value||"").replace(/\s+/g," ").trim().slice(0,26);}
+function updateQuickProcessTitleState(){
+  const input=$("#coverQuickTitleInput"),counter=$("#coverQuickTitleCounter"),save=$("#coverQuickTitleSave");
+  if(!input||!counter||!save)return;
+  if(input.value.length>26)input.value=input.value.slice(0,26);
+  counter.textContent=`${input.value.length} / 26`;
+  const valid=normalizeQuickProcessTitle(input.value).length>0;
+  save.disabled=!valid;
+}
+function toggleQuickProcessTitle(){
+  const panel=$("#coverQuickTitlePanel"),toggle=$("#coverQuickTitleToggle");
+  const opening=panel.classList.contains("hidden");
+  panel.classList.toggle("hidden",!opening);
+  toggle.setAttribute("aria-expanded",String(opening));
+  if(opening)requestAnimationFrame(()=>{const input=$("#coverQuickTitleInput");input.focus();input.setSelectionRange(input.value.length,input.value.length);});
+}
+function cancelQuickProcessTitle(){
+  const node=nodeById(state.quickCoverNodeId||state.activeNodeId);
+  if(node)$("#coverQuickTitleInput").value=String(node.title||"").slice(0,26);
+  updateQuickProcessTitleState();
+  $("#coverQuickTitlePanel").classList.add("hidden");
+  $("#coverQuickTitleToggle").setAttribute("aria-expanded","false");
+}
+function saveQuickProcessTitle(){
+  const node=nodeById(state.quickCoverNodeId||state.activeNodeId),input=$("#coverQuickTitleInput");
+  if(!node||node.type!=="process"||!input)return;
+  const title=normalizeQuickProcessTitle(input.value);
+  if(!title)return;
+  node.title=title;
+  input.value=title;
+  saveData();
+  $("#detailTitle").textContent=title;
+  renderDetailBody(node);
+  render();
+  updateQuickProcessTitleState();
+  $("#coverQuickTitlePanel").classList.add("hidden");
+  $("#coverQuickTitleToggle").setAttribute("aria-expanded","false");
+  toast("Название рабочего процесса сохранено");
 }
 function closeCoverQuickMenu({restore=true}={}){
   const d=$("#coverQuickMenu");

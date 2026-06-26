@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="BOONWAVE">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=6.0.26">
+  <link rel="stylesheet" href="styles.css?v=6.0.27">
   <title>BOONWAVE</title>
 </head>
 <body>
@@ -112,7 +112,7 @@
     <button class="menu-row" data-menu-action="fit"><span data-icon="focus"></span><div><b>Вписать всё</b><small>Вернуть все карточки в обзор</small></div></button>
     <button class="menu-row" data-menu-action="logout"><span data-icon="logout"></span><div><b>Выйти</b><small>Проекты останутся на устройстве</small></div></button>
     <button class="menu-row danger" data-menu-action="reset"><span data-icon="trash"></span><div><b>Полный сброс</b><small>Удалить локальные данные и вложения</small></div></button>
-    <footer>BOONWAVE 6.0.26 · LIGHT THEME</footer>
+    <footer>BOONWAVE 6.0.27 · LIGHT THEME</footer>
   </section>
 
   <section id="sidePanel" class="side-panel hidden">
@@ -163,7 +163,7 @@
   <dialog id="stageEditorDialog" class="mini-editor-dialog"><form id="stageEditorForm"><header><h3>Редактировать этап</h3><button type="button" id="stageEditorClose">×</button></header><div class="field"><label>Название</label><input id="stageEditTitle" required></div><div class="field"><label>Календарь</label><input id="stageEditDate" type="date"></div><div class="stage-editor-actions"><button type="button" class="danger-text stage-delete-button" id="stageDeleteButton">Удалить этап</button><button class="primary" type="submit">Сохранить</button></div></form></dialog>
   <dialog id="stageDeleteDialog" class="mini-editor-dialog confirm-dialog"><form><header><h3>Удалить этап?</h3><button type="button" id="stageDeleteClose">×</button></header><p>При удалении этапа будут удалены все связанные с ним задачи. Вы уверены?</p><div class="confirm-actions"><button type="button" class="ghost" id="stageDeleteNo">Нет</button><button type="button" class="primary" id="stageDeleteYes">Да</button></div></form></dialog>
   <dialog id="budgetEditorDialog" class="mini-editor-dialog"><form id="budgetEditorForm"><header><h3>Планируемый бюджет</h3><button type="button" id="budgetEditorClose">×</button></header><div class="field"><label>Сумма</label><input id="budgetEditValue" inputmode="numeric" pattern="[0-9 ]*" maxlength="10" autocomplete="off" aria-label="Планируемый бюджет" placeholder="До 99 000 000"></div><button class="primary" type="submit">Сохранить</button></form></dialog>
-  <dialog id="coverQuickMenu" class="mini-editor-dialog cover-quick-menu"><form><header><h3>Настроить обложку / миниатюры</h3><button type="button" id="coverQuickClose">×</button></header><button type="button" class="ghost" id="coverQuickNew">Новая обложка</button><button type="button" class="ghost" id="coverQuickPosition">Настроить существующую</button></form></dialog>
+  <dialog id="coverQuickMenu" class="mini-editor-dialog cover-quick-menu"><form><header><h3>Настроить рабочий процесс</h3><button type="button" id="coverQuickClose" aria-label="Закрыть">×</button></header><section class="quick-process-section"><button type="button" class="ghost quick-process-row" id="coverQuickTitleToggle" aria-expanded="false"><span class="quick-process-row-icon" aria-hidden="true">✎</span><span>Изменить название</span><span class="quick-process-chevron" aria-hidden="true">⌄</span></button><div id="coverQuickTitlePanel" class="quick-process-title-panel hidden"><label for="coverQuickTitleInput">Название рабочего процесса</label><div class="quick-process-title-input-wrap"><input id="coverQuickTitleInput" maxlength="26" autocomplete="off" enterkeyhint="done" aria-describedby="coverQuickTitleHint coverQuickTitleCounter"><span id="coverQuickTitleCounter">0 / 26</span></div><small id="coverQuickTitleHint">Максимум 26 символов, включая пробелы</small><div class="quick-process-title-actions"><button type="button" class="ghost" id="coverQuickTitleCancel">Отмена</button><button type="button" class="primary" id="coverQuickTitleSave">Сохранить</button></div></div></section><button type="button" class="ghost quick-process-row" id="coverQuickNew"><span class="quick-process-row-icon" aria-hidden="true">▧</span><span>Загрузить новую обложку</span></button><button type="button" class="ghost quick-process-row" id="coverQuickPosition"><span class="quick-process-row-icon" aria-hidden="true">⌗</span><span>Настроить обложку</span></button></form></dialog>
   <dialog id="taskArchiveConfirmDialog" class="mini-editor-dialog task-archive-confirm-dialog"><form><header><div><small>АРХИВАЦИЯ ЗАДАЧИ</small><h3>Отправить в общий архив?</h3></div><button type="button" id="taskArchiveConfirmClose" aria-label="Закрыть">×</button></header><p id="taskArchiveConfirmText">Вы точно хотите отправить задачу в общий архив?</p><div class="confirm-actions"><button type="button" class="ghost" id="taskArchiveConfirmNo">Нет</button><button type="button" class="primary" id="taskArchiveConfirmYes">Да</button></div></form></dialog>
   <dialog id="taskArchiveDialog" class="app-dialog task-archive-dialog"><div class="dialog-shell"><header class="dialog-header"><div><small>РАБОЧИЙ ПРОЦЕСС</small><h2>Общий архив</h2></div><button type="button" id="taskArchiveClose" aria-label="Закрыть">×</button></header><div class="dialog-body task-archive-body"><div id="taskArchiveBody"></div></div></div></dialog>
 
@@ -192,6 +192,6 @@
   <input id="importInput" type="file" accept="application/json,.json" hidden>
   <div id="toast" class="toast hidden"></div>
 
-  <script src="app.js?v=6.0.26"></script>
+  <script src="app.js?v=6.0.27"></script>
 </body>
 </html>
