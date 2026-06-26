@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="BOONWAVE">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=6.0.27">
+  <link rel="stylesheet" href="styles.css?v=6.0.28">
   <title>BOONWAVE</title>
 </head>
 <body>
@@ -55,7 +55,7 @@
   <div id="app" class="app-hidden" aria-hidden="true">
     <header class="app-header">
       <button id="brandHome" class="brand-button" aria-label="Обзор пространств">
-        <img src="boonwave-mark.png" alt="BOONWAVE">
+        <img src="boonwave-mark-full.png" alt="BOONWAVE">
       </button>
       <div class="space-switch" role="tablist" aria-label="Пространство">
         <button data-space="personal">Личное</button>
@@ -86,11 +86,18 @@
       <button id="fitButton" class="canvas-utility" aria-label="Вписать все карточки"></button>
     </main>
 
-    <button id="createButton" class="create-button" aria-label="Создать"><span></span></button>
+    <div class="desktop-zoom-controls" aria-label="Управление рабочим столом">
+      <button id="todayQuickButton" class="desktop-round-action today-action" type="button" aria-label="Сегодня">S</button>
+      <label class="desktop-zoom-slider" aria-label="Масштаб рабочего стола">
+        <span class="zoom-minus" aria-hidden="true">−</span>
+        <input id="desktopZoomRange" type="range" min="0.28" max="1.8" step="0.01" value="0.85" aria-label="Масштаб рабочего стола">
+        <span class="zoom-plus" aria-hidden="true">+</span>
+      </label>
+      <button id="createButton" class="desktop-round-action create-button" aria-label="Создать"><span></span></button>
+    </div>
 
     <nav class="bottom-nav" aria-label="Навигация">
       <button class="active" data-panel="tree"><span class="nav-icon" data-icon="tree"></span><small>Древо</small></button>
-      <button data-panel="today"><span class="nav-icon" data-icon="today"></span><small>Сегодня</small></button>
       <button data-panel="results"><span class="nav-icon" data-icon="results"></span><small>Результаты</small></button>
       <button data-panel="archive"><span class="nav-icon" data-icon="archive"></span><small>Архив</small></button>
     </nav>
@@ -112,7 +119,7 @@
     <button class="menu-row" data-menu-action="fit"><span data-icon="focus"></span><div><b>Вписать всё</b><small>Вернуть все карточки в обзор</small></div></button>
     <button class="menu-row" data-menu-action="logout"><span data-icon="logout"></span><div><b>Выйти</b><small>Проекты останутся на устройстве</small></div></button>
     <button class="menu-row danger" data-menu-action="reset"><span data-icon="trash"></span><div><b>Полный сброс</b><small>Удалить локальные данные и вложения</small></div></button>
-    <footer>BOONWAVE 6.0.27 · LIGHT THEME</footer>
+    <footer>BOONWAVE 6.0.28 · LIGHT THEME</footer>
   </section>
 
   <section id="sidePanel" class="side-panel hidden">
@@ -192,6 +199,6 @@
   <input id="importInput" type="file" accept="application/json,.json" hidden>
   <div id="toast" class="toast hidden"></div>
 
-  <script src="app.js?v=6.0.27"></script>
+  <script src="app.js?v=6.0.28"></script>
 </body>
 </html>

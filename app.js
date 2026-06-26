@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.27";
+const VERSION = "6.0.28";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -446,7 +446,10 @@ function bindWorkspaceOnce() {
 
   $$('.space-switch button').forEach(button => button.addEventListener("click", () => switchSpace(button.dataset.space)));
   $("#createButton").addEventListener("click", toggleCreateMenu);
-  $("#fitButton").addEventListener("click", () => fitAll(true));
+  $("#todayQuickButton")?.addEventListener("click", () => openPanel("today"));
+  $("#desktopZoomRange")?.addEventListener("input", handleDesktopZoomInput, { passive: true });
+  $("#desktopZoomRange")?.addEventListener("change", handleDesktopZoomInput, { passive: true });
+  $("#fitButton").addEventListener("click", smartFocusCurrent);
   $("#brandHome").addEventListener("click", () => fitAll(true));
   $("#menuButton").addEventListener("click", () => showOverlay("accountMenu"));
   $("#scrim").addEventListener("click", closeOverlays);
@@ -703,7 +706,47 @@ function linkGeometry(a, b) {
 function applyCamera() {
   const world = $("#world");
   world.style.transform = `translate3d(${state.camera.tx}px,${state.camera.ty}px,0) scale(${state.camera.scale})`;
+  syncDesktopZoomSlider();
   drawDots();
+}
+function syncDesktopZoomSlider() {
+  const slider = $("#desktopZoomRange");
+  if (!slider) return;
+  slider.value = String(clamp(Number(state.camera.scale || .85), .28, 1.8));
+  const min = Number(slider.min || .28), max = Number(slider.max || 1.8);
+  const ratio = clamp((Number(slider.value) - min) / Math.max(.001, max - min), 0, 1);
+  slider.style.setProperty("--zoom-progress", `${ratio * 100}%`);
+}
+function handleDesktopZoomInput(event) {
+  const nextScale = clamp(Number(event.currentTarget.value || state.camera.scale), .28, 1.8);
+  const viewport = $("#canvasViewport");
+  const rect = viewport.getBoundingClientRect();
+  const anchorX = rect.width / 2;
+  const usableBottom = Math.max(0, rect.height - 170);
+  const anchorY = Math.max(80, usableBottom / 2);
+  const worldAnchorX = (anchorX - state.camera.tx) / Math.max(.001, state.camera.scale);
+  const worldAnchorY = (anchorY - state.camera.ty) / Math.max(.001, state.camera.scale);
+  state.camera.scale = nextScale;
+  state.camera.tx = anchorX - worldAnchorX * nextScale;
+  state.camera.ty = anchorY - worldAnchorY * nextScale;
+  applyCamera();
+}
+function smartFocusCurrent() {
+  const nodes = currentNodes();
+  if (!nodes.length) return centerCamera();
+  let node = nodeById(state.selectedId);
+  if (!node || node.archived || node.space !== state.space) {
+    const rect = $("#canvasViewport").getBoundingClientRect();
+    const center = screenToWorld(rect.width / 2, Math.max(80, (rect.height - 170) / 2));
+    node = nodes.reduce((best, item) => {
+      const dim = cardDims(item);
+      const dx = item.x + dim.w / 2 - center.x;
+      const dy = item.y + dim.h / 2 - center.y;
+      const score = dx * dx + dy * dy;
+      return !best || score < best.score ? { item, score } : best;
+    }, null)?.item || null;
+  }
+  if (node) focusNode(node); else fitAll(true);
 }
 function centerCamera() {
   const rect = $("#canvasViewport").getBoundingClientRect();
