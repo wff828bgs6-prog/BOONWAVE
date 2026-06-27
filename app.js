@@ -1,12 +1,12 @@
 "use strict";
 
-const VERSION = "6.0.34";
+const VERSION = "6.0.35";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
 const DATA_PREFIX = "boonwave_v6_data_";
 const DATA_BACKUP_PREFIX = "boonwave_v6_backup_";
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 const GUEST_ID = "visual-demo";
 const WORLD_W = 3600;
 const WORLD_H = 2600;
@@ -70,6 +70,8 @@ function icon(name, className = "") {
     phone: `<path d="M7 3h3l1.2 4-2 1.6a15 15 0 0 0 6.2 6.2l1.6-2L21 14v3c0 2-1 3-3 3C10.3 20 4 13.7 4 6c0-2 1-3 3-3Z"/>`,
     mail: `<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/>`,
     edit: `<path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/>`,
+    lock: `<rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8.5a4 4 0 0 1 8 0V11"/>`,
+    unlock: `<rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M16 11V8.6a4 4 0 0 0-7.5-2"/>`,
     sun: `<circle cx="12" cy="12" r="3.5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"/>`,
     moon: `<path d="M20.5 14.2A8 8 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/>`
   };
@@ -241,7 +243,7 @@ function normalizeData(data) {
   const base = blankData();
   const normalized = { ...base, ...data };
   normalized.nodes = Array.isArray(data.nodes) ? data.nodes.map(node => {
-    const normalizedNode = { level: 2, assets: [], archived: false, status: "active", ...node };
+    const normalizedNode = { level: 2, assets: [], archived: false, locked: false, status: "active", ...node };
     if (Number(normalizedNode.level) === 3) normalizedNode.level = 2;
     if (normalizedNode.type === "process") {
       normalizedNode.stages = Array.isArray(normalizedNode.stages) ? normalizedNode.stages : [];
@@ -646,7 +648,7 @@ function switchSpace(space) {
 function cardClass(node) {
   const level = node.level || 2;
   const statusClass = node.status === "paused" ? "status-paused" : node.status === "done" ? "status-done" : node.status === "cancelled" ? "status-cancelled" : "";
-  return `node-card ${level === 1 ? "compact" : "medium"} ${statusClass} ${state.selectedId === node.id ? "selected" : ""} ${state.activeNodeId === node.id ? "opened" : ""}`;
+  return `node-card ${level === 1 ? "compact" : "medium"} ${statusClass} ${node.locked ? "locked" : ""} ${state.selectedId === node.id ? "selected" : ""} ${state.activeNodeId === node.id ? "opened" : ""}`;
 }
 function nodeSubtitle(node) {
   if (node.type === "project") return node.client || node.address || "Новый проект";
@@ -689,6 +691,7 @@ function renderCards() {
         <div class="card-visual" ${cover}>
           <div class="card-visual-placeholder">${visualIcon(node)}</div>
           <span class="card-type-pill">${esc(TYPE_LABELS[node.type].toUpperCase())}</span>
+          ${node.locked ? `<span class="card-lock-badge" aria-label="Карточка зафиксирована">${icon("lock")}</span>` : ""}
           <span class="card-status-dot"></span>
         </div>
         <div class="card-content">
@@ -702,7 +705,7 @@ function renderCards() {
       <div class="card-actions">
         <button class="card-action" data-card-action="open" aria-label="Открыть">${icon("open")}</button>
         <button class="card-action primary-action" data-card-action="connect" aria-label="Создать связь">${icon("link")}</button>
-        <button class="card-action" data-card-action="focus" aria-label="Центрировать">${icon("focus")}</button>
+        <button class="card-action" data-card-action="toggleLock" aria-label="${node.locked ? "Снять фиксацию" : "Зафиксировать карточку"}" title="${node.locked ? "Снять фиксацию" : "Зафиксировать карточку"}">${icon(node.locked ? "lock" : "unlock")}</button>
       </div>`;
     attachCardGestures(article, node);
     layer.appendChild(article);
@@ -807,6 +810,9 @@ function handleLinkPointerDown(event) {
   event.preventDefault(); event.stopPropagation();
   const linkId = (handle || hit).dataset.linkId;
   if (!linkId) return;
+  const linkRecord = state.data.links.find(item => item.id === linkId);
+  const endpointA = nodeById(linkRecord?.a), endpointB = nodeById(linkRecord?.b);
+  if (endpointA?.locked && endpointB?.locked) return;
   state.selectedLinkId = linkId;
   state.selectedId = null;
   state.linkMenuId = null;
@@ -846,6 +852,8 @@ function finishLinkPointerDrag(event) {
     state.linkFlowGesture = null;
     const link = state.data.links.find(item => item.id === flow.linkId);
     if (!link) return;
+    const lockedA = nodeById(link.a)?.locked, lockedB = nodeById(link.b)?.locked;
+    if (lockedA && lockedB) return;
     if (!flow.moved) {
       const now = performance.now();
       if (state.lastLinkTap.id === link.id && now - state.lastLinkTap.time < 340) {
@@ -1222,13 +1230,14 @@ function attachCardGestures(element, node) {
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY, t: performance.now() });
     if (pointers.size === 2) {
       cancelLong();
+      if (node.locked) { gesture = { type: "locked" }; return; }
       const points = [...pointers.values()];
-      gesture = { type: "pinch", startDistance: distance(points[0], points[1]), baseLevel: node.level || 2, lastDistance: distance(points[0], points[1]), lastTime: performance.now(), visualScale: 1 };
+      gesture = { type: "pinch", startDistance: distance(points[0], points[1]), baseLevel: node.level || 2, lastDistance: distance(points[0], points[1]), lastTime: performance.now(), visualScale: 1, before: clone(state.data) };
       element.style.zIndex = "40";
       return;
     }
     longTriggered = false;
-    gesture = { type: "pending", startX: event.clientX, startY: event.clientY, nodeX: node.x, nodeY: node.y, started: performance.now(), moved: false };
+    gesture = { type: "pending", startX: event.clientX, startY: event.clientY, nodeX: node.x, nodeY: node.y, started: performance.now(), moved: false, before: clone(state.data) };
     element.classList.add("longpress");
     longTimer = setTimeout(() => {
       longTriggered = true; cancelLong(); navigator.vibrate?.(18); openEditor(node);
@@ -1256,7 +1265,8 @@ function attachCardGestures(element, node) {
     const dx = (event.clientX - gesture.startX) / state.camera.scale;
     const dy = (event.clientY - gesture.startY) / state.camera.scale;
     if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > 8) {
-      gesture.moved = true; gesture.type = "drag"; cancelLong(); element.classList.add("dragging");
+      gesture.moved = true; cancelLong();
+      if (!node.locked) { gesture.type = "drag"; element.classList.add("dragging"); }
     }
     if (gesture.type === "drag") {
       node.x = clamp(gesture.nodeX + dx, -1400, WORLD_W + 1400);
@@ -1280,7 +1290,7 @@ function attachCardGestures(element, node) {
     }
     element.classList.remove("dragging");
     if (gesture?.type === "drag") {
-      pushUndoSnapshot("Перемещение карточки", gesture.before);
+      pushUndoSnapshot("Перемещение карточки", gesture.before || clone(state.data));
       saveData(); renderLinks();
     } else if (gesture && !gesture.moved && !longTriggered) {
       if (state.linkCreateSourceId) {
@@ -1313,6 +1323,12 @@ function handleCardActionClick(event) {
   if (action === "focus") {
     state.selectedId = node.id; state.selectedLinkId = null; state.focusOverview = false;
     rememberWorkingNode(node); renderCards(); renderLinks(); focusNode(node);
+  }
+  if (action === "toggleLock") {
+    pushUndo(node.locked ? "Снятие фиксации" : "Фиксация карточки");
+    node.locked = !node.locked;
+    saveData(); renderCards(); renderLinks();
+    toast(node.locked ? "Карточка зафиксирована" : "Фиксация снята", "Отменить", undoLast);
   }
   if (action === "quickExpense") {
     const title = $("[data-expense-title]", card)?.value.trim();
@@ -1430,7 +1446,7 @@ function createNode(type, parent = null, openEditorNow = true, delayedEditor = f
     idea: { title: "Новая идея", status: "active", source: "", tags: "", assets: [] }
   };
   pushUndo("Создание карточки");
-  const node = { id: uid(), type, space: state.space, x: point.x, y: point.y, level: 2, note: "", archived: false, ...defaults[type] };
+  const node = { id: uid(), type, space: state.space, x: point.x, y: point.y, level: 2, note: "", archived: false, locked: false, ...defaults[type] };
   state.data.nodes.push(node);
   if (parent) state.data.links.push({ id: uid(), a: parent.id, b: node.id, kind: type, flow: "none", highlighted: false });
   state.selectedId = node.id; state.justCreatedId = node.id; saveData(); render(); focusNode(node);
@@ -1444,7 +1460,7 @@ function createStandaloneProcess() {
   const process = {
     id: uid(), type: "process", space: state.space, projectId: null,
     x: point.x, y: point.y, level: 2,
-    title: "Новый рабочий процесс", status: "active", progress: 0, stages: [], tasks: [], phonebook: [], peopleIds: [], expenses: [], assets: [], archived: false
+    title: "Новый рабочий процесс", status: "active", progress: 0, stages: [], tasks: [], phonebook: [], peopleIds: [], expenses: [], assets: [], archived: false, locked: false
   };
   pushUndo("Создание рабочего процесса");
   state.data.nodes.push(process);
@@ -1468,7 +1484,7 @@ function createProcessForProject(project) {
   const process = {
     id: uid(), type: "process", space: project.space, projectId: project.id,
     x: point.x, y: point.y, level: 2, title: `Рабочий процесс · ${project.title}`,
-    status: "active", progress: 0, stages: [], tasks: [], phonebook: [], peopleIds: [], expenses: [], assets: [], archived: false
+    status: "active", progress: 0, stages: [], tasks: [], phonebook: [], peopleIds: [], expenses: [], assets: [], archived: false, locked: false
   };
   pushUndo("Создание рабочего процесса");
   state.data.nodes.push(process); state.data.links.push({ id: uid(), a: project.id, b: process.id, kind: "process", flow: "none", highlighted: false });
@@ -2480,8 +2496,11 @@ function toast(message, actionLabel = "", action = null) {
   button.textContent = actionLabel;
   button.classList.toggle("hidden", !actionLabel || typeof action !== "function");
   element.classList.remove("hidden");
+  element.classList.remove("attention");
+  void element.offsetWidth;
+  if (actionLabel && typeof action === "function") element.classList.add("attention");
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => { element.classList.add("hidden"); toast.action = null; }, action ? 5200 : 2400);
+  toast.timer = setTimeout(() => { element.classList.add("hidden"); element.classList.remove("attention"); toast.action = null; }, action ? 5200 : 2400);
 }
 
 /* Service worker */
