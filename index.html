@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="BOONWAVE">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=6.0.29">
+  <link rel="stylesheet" href="styles.css?v=6.0.30">
   <title>BOONWAVE</title>
 </head>
 <body>
@@ -120,7 +120,7 @@
     <button class="menu-row" data-menu-action="fit"><span data-icon="focus"></span><div><b>Вписать всё</b><small>Вернуть все карточки в обзор</small></div></button>
     <button class="menu-row" data-menu-action="logout"><span data-icon="logout"></span><div><b>Выйти</b><small>Проекты останутся на устройстве</small></div></button>
     <button class="menu-row danger" data-menu-action="reset"><span data-icon="trash"></span><div><b>Полный сброс</b><small>Удалить локальные данные и вложения</small></div></button>
-    <footer>BOONWAVE 6.0.29 · LIGHT THEME</footer>
+    <footer>BOONWAVE 6.0.30 · LIGHT THEME</footer>
   </section>
 
   <section id="sidePanel" class="side-panel hidden">
@@ -132,7 +132,7 @@
     <form method="dialog" class="dialog-shell">
       <header class="dialog-header"><div><small id="detailType">ПРОЕКТ</small><h2 id="detailTitle">Название</h2></div><button type="button" id="detailClose" aria-label="Закрыть">×</button></header>
       <div id="detailBody" class="dialog-body"></div>
-      <footer class="dialog-footer" id="detailFooter"><button type="button" class="ghost" id="detailBranchButton">Создать ветвь</button><button type="button" class="footer-task-archive-button hidden" id="detailTaskArchiveButton" aria-label="Открыть общий архив задач" title="Общий архив задач"><span data-icon="archiveList"></span></button><button type="button" class="primary" id="detailEditButton">Редактировать</button><div id="processActionLock" class="process-action-lock hidden" aria-label="Разблокировать действия"><div class="process-lock-track"><i class="process-lock-thumb"></i></div></div></footer>
+      <footer class="dialog-footer" id="detailFooter"><button type="button" class="ghost" id="detailBranchButton">Создать ветвь</button><button type="button" class="footer-task-archive-button hidden" id="detailTaskArchiveButton" aria-label="Открыть общий архив задач" title="Общий архив задач"><span data-icon="archiveList"></span></button><button type="button" class="footer-node-archive-button hidden" id="detailNodeArchiveButton" aria-label="Отправить рабочий процесс в архив" title="Отправить рабочий процесс в архив"><span data-icon="archiveSend"></span></button><button type="button" class="primary" id="detailEditButton">Редактировать</button><div id="processActionLock" class="process-action-lock hidden" aria-label="Разблокировать действия"><div class="process-lock-track"><i class="process-lock-thumb"></i></div></div></footer>
     </form>
   </dialog>
 
@@ -200,6 +200,6 @@
   <input id="importInput" type="file" accept="application/json,.json" hidden>
   <div id="toast" class="toast hidden"></div>
 
-  <script src="app.js?v=6.0.29"></script>
+  <script src="app.js?v=6.0.30"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.29";
+const VERSION = "6.0.30";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -474,6 +474,12 @@ function bindWorkspaceOnce() {
   $("#detailTaskArchiveButton")?.addEventListener("click", () => {
     const node = nodeById(state.activeNodeId); if (node?.type === "process") openTaskArchive(node);
   });
+  $("#detailNodeArchiveButton")?.addEventListener("click", () => {
+    const node = nodeById(state.activeNodeId);
+    if (!node || node.type !== "process") return;
+    if (!confirm(`Отправить рабочий процесс «${node.title || "Без названия"}» в архив? Его данные и связи сохранятся.`)) return;
+    archiveActiveNode();
+  });
   $("#editorForm").addEventListener("submit", saveEditor);
   $$('[data-editor-close]').forEach(button => button.addEventListener("click", closeEditor));
   $("#archiveNodeButton").addEventListener("click", archiveActiveNode);
@@ -931,7 +937,7 @@ function drawDots() {
 
 /* Gestures */
 function onCanvasPointerDown(event) {
-  if (event.target.closest(".node-card,.canvas-utility,.gesture-hint")) return;
+  if (event.target.closest(".node-card,.canvas-utility,.gesture-hint,.link-hit,.link-end-handle,.link-toolbar")) return;
   event.preventDefault();
   event.currentTarget.setPointerCapture?.(event.pointerId);
   state.canvasPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -1850,9 +1856,10 @@ function positionProcessLockThumb(unlocked) {
 }
 function updateProcessActionLock(node) {
   const isProcess = node?.type === "process";
-  const footer=$("#detailFooter"), branch=$("#detailBranchButton"), edit=$("#detailEditButton"), lock=$("#processActionLock"), archive=$("#detailTaskArchiveButton");
+  const footer=$("#detailFooter"), branch=$("#detailBranchButton"), edit=$("#detailEditButton"), lock=$("#processActionLock"), archive=$("#detailTaskArchiveButton"), nodeArchive=$("#detailNodeArchiveButton");
   footer.classList.toggle("process-detail-footer", isProcess);
   archive?.classList.toggle("hidden", !isProcess);
+  nodeArchive?.classList.toggle("hidden", !isProcess);
   edit.classList.toggle("hidden", isProcess);
   lock.classList.add("hidden");
   branch.disabled=false;

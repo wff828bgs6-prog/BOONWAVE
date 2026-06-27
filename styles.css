@@ -849,3 +849,16 @@ html[data-theme="light"] .desktop-zoom-slider input[type=range]::-webkit-slider-
 .archive-node-actions .panel-chip svg{width:15px;height:15px}
 .archive-node-actions .panel-chip.danger{width:34px;padding:0;color:#f09aaa;background:rgba(65,30,40,.52);border-color:rgba(240,154,170,.24)}
 @media(max-width:520px){.link-hit{stroke-width:34}.link-end-handle{stroke-width:1.6}.archive-node-actions .panel-chip span{display:none}.archive-node-actions .panel-chip{width:34px;padding:0}}
+
+
+/* v6.0.30 — reliable link hit testing and process-card archive action */
+#cardLayer{pointer-events:none!important}
+#cardLayer .node-card{pointer-events:auto!important}
+#linkLayer{pointer-events:auto!important}
+.link-hit{stroke:rgba(0,0,0,.001)!important;stroke-width:38px!important;pointer-events:stroke!important;touch-action:none!important;cursor:pointer!important}
+.link-end-handle{pointer-events:all!important;touch-action:none!important}
+.process-detail-footer{grid-template-columns:minmax(0,1fr) 42px 42px!important;gap:8px!important}
+.footer-node-archive-button{width:42px;height:42px;min-width:42px;min-height:42px;padding:0;border-radius:13px;display:grid;place-items:center;background:var(--surface3);border:1px solid var(--line);color:#d7b5c0}
+.footer-node-archive-button span,.footer-node-archive-button svg{display:block;width:20px;height:20px;margin:auto}
+.footer-node-archive-button:active{transform:scale(.95)}
+@media(max-width:520px){.link-hit{stroke-width:44px!important}.process-detail-footer{grid-template-columns:minmax(0,1fr) 40px 40px!important;gap:7px!important}.footer-node-archive-button{width:40px;height:40px;min-width:40px;min-height:40px}.footer-node-archive-button span,.footer-node-archive-button svg{width:19px;height:19px}}
