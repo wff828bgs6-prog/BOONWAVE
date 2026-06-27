@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.28";
+const VERSION = "6.0.29";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -115,6 +115,9 @@ const state = {
   lastBudgetTap: 0,
   lastPhonebookTap: 0,
   stageReturnScrollTop: 0,
+  selectedLinkId: null,
+  linkDrag: null,
+  linkDropTargetId: null,
   isReloadingForWorker: false
 };
 
@@ -457,6 +460,11 @@ function bindWorkspaceOnce() {
   $("#createActions").addEventListener("click", handleCreateAction);
   $("#accountMenu").addEventListener("click", handleMenuAction);
   $("#cardLayer").addEventListener("click", handleCardActionClick);
+  $("#linkLayer").addEventListener("pointerdown", handleLinkPointerDown);
+  $("#deleteSelectedLink")?.addEventListener("click", deleteSelectedLink);
+  window.addEventListener("pointermove", handleLinkPointerMove, { passive: false });
+  window.addEventListener("pointerup", finishLinkPointerDrag, { passive: false });
+  window.addEventListener("pointercancel", finishLinkPointerDrag, { passive: false });
   $("#detailEditButton").addEventListener("click", () => {
     const node = nodeById(state.activeNodeId); if (node) openEditor(node);
   });
@@ -666,21 +674,137 @@ async function hydrateCardCovers() {
 }
 function renderLinks() {
   const svg = $("#linkLayer");
+  svg.classList.toggle("link-editing", Boolean(state.selectedLinkId));
   svg.innerHTML = `<defs><linearGradient id="linkGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a14eff"/><stop offset=".55" stop-color="#6177ff"/><stop offset="1" stop-color="#55dcec"/></linearGradient></defs>`;
   state.data.links.forEach(link => {
     const a = nodeById(link.a), b = nodeById(link.b);
     if (!a || !b || a.space !== state.space || b.space !== state.space || a.archived || b.archived) return;
     const geometry = linkGeometry(a, b);
+    let pathData = geometry.d;
+    let startPoint = geometry.start;
+    let endPoint = geometry.end;
+    if (state.linkDrag?.linkId === link.id && state.linkDrag.point) {
+      if (state.linkDrag.end === "a") startPoint = state.linkDrag.point;
+      else endPoint = state.linkDrag.point;
+      pathData = curveBetweenPoints(startPoint, endPoint);
+    }
+    const selected = state.selectedLinkId === link.id;
+    const hit = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    hit.setAttribute("d", pathData);
+    hit.setAttribute("class", "link-hit");
+    hit.dataset.linkId = link.id;
+    svg.appendChild(hit);
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", geometry.d);
-    path.setAttribute("class", `link-path ${(state.selectedId === a.id || state.selectedId === b.id) ? "active" : ""}`);
+    path.setAttribute("d", pathData);
+    path.setAttribute("class", `link-path ${(state.selectedId === a.id || state.selectedId === b.id) ? "active" : ""} ${selected ? "selected" : ""}`);
+    path.dataset.linkId = link.id;
     svg.appendChild(path);
-    [geometry.start, geometry.end].forEach(point => {
+    [startPoint, endPoint].forEach((point, index) => {
       const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      dot.setAttribute("cx", point.x); dot.setAttribute("cy", point.y); dot.setAttribute("r", "3"); dot.setAttribute("class", "link-dot");
+      dot.setAttribute("cx", point.x); dot.setAttribute("cy", point.y); dot.setAttribute("r", selected ? "5" : "3");
+      dot.setAttribute("class", `link-dot ${selected ? "selected" : ""}`);
       svg.appendChild(dot);
+      if (selected) {
+        const handle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        handle.setAttribute("cx", point.x); handle.setAttribute("cy", point.y); handle.setAttribute("r", "14");
+        handle.setAttribute("class", "link-end-handle");
+        handle.dataset.linkId = link.id;
+        handle.dataset.linkEnd = index === 0 ? "a" : "b";
+        svg.appendChild(handle);
+      }
     });
   });
+  updateLinkToolbar();
+  updateLinkDropHighlight();
+}
+function curveBetweenPoints(start, end) {
+  const dx = end.x - start.x, dy = end.y - start.y;
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    const curve = clamp(Math.abs(dx) * .42, 70, 230) * (dx >= 0 ? 1 : -1);
+    return `M ${start.x} ${start.y} C ${start.x + curve} ${start.y}, ${end.x - curve} ${end.y}, ${end.x} ${end.y}`;
+  }
+  const curve = clamp(Math.abs(dy) * .42, 60, 200) * (dy >= 0 ? 1 : -1);
+  return `M ${start.x} ${start.y} C ${start.x} ${start.y + curve}, ${end.x} ${end.y - curve}, ${end.x} ${end.y}`;
+}
+function handleLinkPointerDown(event) {
+  const handle = event.target.closest?.(".link-end-handle");
+  const hit = event.target.closest?.(".link-hit,.link-path");
+  if (!handle && !hit) return;
+  event.preventDefault(); event.stopPropagation();
+  const linkId = (handle || hit).dataset.linkId;
+  if (!linkId) return;
+  state.selectedLinkId = linkId;
+  state.selectedId = null;
+  if (handle) {
+    const link = state.data.links.find(item => item.id === linkId); if (!link) return;
+    const movingEnd = handle.dataset.linkEnd;
+    const fixedId = movingEnd === "a" ? link.b : link.a;
+    state.linkDrag = { linkId, end: movingEnd, pointerId: event.pointerId, fixedId, originalId: movingEnd === "a" ? link.a : link.b, point: screenToWorld(event.clientX, event.clientY) };
+    state.linkDropTargetId = null;
+  }
+  renderCards(); renderLinks();
+}
+function handleLinkPointerMove(event) {
+  const drag = state.linkDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+  event.preventDefault();
+  drag.point = screenToWorld(event.clientX, event.clientY);
+  const target = findLinkDropTarget(drag.point, drag.fixedId);
+  state.linkDropTargetId = target?.id || null;
+  renderLinks();
+}
+function finishLinkPointerDrag(event) {
+  const drag = state.linkDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+  event.preventDefault();
+  const link = state.data.links.find(item => item.id === drag.linkId);
+  const targetId = state.linkDropTargetId;
+  if (link && targetId && targetId !== drag.fixedId) {
+    const duplicate = state.data.links.some(item => item.id !== link.id && ((item.a === targetId && item.b === drag.fixedId) || (item.b === targetId && item.a === drag.fixedId)));
+    if (duplicate) toast("Такая связь уже существует");
+    else {
+      if (drag.end === "a") link.a = targetId; else link.b = targetId;
+      saveData(); toast("Связь переназначена");
+    }
+  } else if (link) toast("Связь оставлена без изменений");
+  state.linkDrag = null; state.linkDropTargetId = null;
+  renderCards(); renderLinks();
+}
+function findLinkDropTarget(point, fixedId) {
+  let best = null, bestDistance = Infinity;
+  currentNodes().forEach(node => {
+    if (node.id === fixedId) return;
+    const dim = cardDims(node);
+    const pad = 28;
+    if (point.x < node.x - pad || point.x > node.x + dim.w + pad || point.y < node.y - pad || point.y > node.y + dim.h + pad) return;
+    const cx = node.x + dim.w / 2, cy = node.y + dim.h / 2;
+    const distanceValue = Math.hypot(point.x - cx, point.y - cy);
+    if (distanceValue < bestDistance) { best = node; bestDistance = distanceValue; }
+  });
+  return best;
+}
+function updateLinkDropHighlight() {
+  $$(".node-card", $("#cardLayer")).forEach(card => card.classList.toggle("link-drop-target", card.dataset.id === state.linkDropTargetId));
+}
+function updateLinkToolbar() {
+  const toolbar = $("#linkToolbar"); if (!toolbar) return;
+  const link = state.data.links.find(item => item.id === state.selectedLinkId);
+  const a = nodeById(link?.a), b = nodeById(link?.b);
+  if (!link || !a || !b || a.archived || b.archived || state.linkDrag) { toolbar.classList.add("hidden"); return; }
+  const geometry = linkGeometry(a,b);
+  const mx = (geometry.start.x + geometry.end.x) / 2;
+  const my = (geometry.start.y + geometry.end.y) / 2;
+  toolbar.style.left = `${mx}px`;
+  toolbar.style.top = `${my}px`;
+  toolbar.classList.remove("hidden");
+  $("#deleteSelectedLink").innerHTML = icon("trash");
+}
+function deleteSelectedLink() {
+  const link = state.data.links.find(item => item.id === state.selectedLinkId); if (!link) return;
+  if (!confirm("Удалить выбранную связь?")) return;
+  state.data.links = state.data.links.filter(item => item.id !== link.id);
+  state.selectedLinkId = null; state.linkDrag = null; state.linkDropTargetId = null;
+  saveData(); renderLinks(); toast("Связь удалена");
 }
 function linkGeometry(a, b) {
   const ad = cardDims(a), bd = cardDims(b);
@@ -846,7 +970,7 @@ function onCanvasPointerEnd(event) {
       const now = performance.now();
       if (now - state.lastCanvasTap < 320) fitAll(true);
       state.lastCanvasTap = now;
-      state.selectedId = null; renderCards(); renderLinks();
+      state.selectedId = null; state.selectedLinkId = null; renderCards(); renderLinks();
     }
     state.canvasGesture = null;
   } else if (state.canvasPointers.size === 1) {
@@ -935,7 +1059,7 @@ function attachCardGestures(element, node) {
         state.lastCardTap = { id: null, time: 0 }; openDetail(node);
       } else {
         state.lastCardTap = { id: node.id, time: now };
-        state.selectedId = node.id; renderCards(); renderLinks();
+        state.selectedId = node.id; state.selectedLinkId = null; renderCards(); renderLinks();
       }
     }
     gesture = null;
@@ -1804,7 +1928,9 @@ function saveEditor(event) {
 }
 function archiveActiveNode() {
   const node = nodeById(state.activeNodeId); if (!node) return;
-  node.archived = true; state.selectedId = null; saveData(); closeEditor(); render(); toast("Перемещено в архив");
+  node.archived = true;
+  if (state.selectedLinkId) { const selectedLink = state.data.links.find(link => link.id === state.selectedLinkId); if (selectedLink && (selectedLink.a === node.id || selectedLink.b === node.id)) state.selectedLinkId = null; }
+  state.selectedId = null; saveData(); closeEditor(); render(); toast("Перемещено в архив");
 }
 
 /* Assets */
@@ -1909,11 +2035,25 @@ function resultsPanelHtml() {
 function archivePanelHtml() {
   const entries = state.data.nodes.filter(node => node.space === state.space && node.archived);
   if (!entries.length) return `<div class="panel-empty">Архив пуст.</div>`;
-  return entries.map(node => `<div class="panel-card"><div class="panel-card-head"><b>${esc(node.title)}</b><button class="panel-chip" data-restore-node="${node.id}">Восстановить</button></div><p>${esc(TYPE_LABELS[node.type])}</p></div>`).join("");
+  return entries.map(node => `<div class="panel-card archive-node-card"><div class="panel-card-head"><div><b>${esc(node.title)}</b><p>${esc(TYPE_LABELS[node.type])}</p></div><div class="archive-node-actions"><button class="panel-chip" data-restore-node="${node.id}">${icon("restore")}<span>Восстановить</span></button><button class="panel-chip danger" data-delete-node="${node.id}" aria-label="Удалить навсегда">${icon("trash")}</button></div></div></div>`).join("");
 }
 function handlePanelClick(event) {
-  const open = event.target.closest("[data-panel-open-node]"); if (open) { const node = nodeById(open.dataset.panelOpenNode); closeOverlays(); if (node) { state.selectedId = node.id; render(); focusNode(node); setTimeout(() => openDetail(node), 350); } }
+  const open = event.target.closest("[data-panel-open-node]"); if (open) { const node = nodeById(open.dataset.panelOpenNode); closeOverlays(); if (node) { state.selectedId = node.id; state.selectedLinkId = null; render(); focusNode(node); setTimeout(() => openDetail(node), 350); } }
   const restore = event.target.closest("[data-restore-node]"); if (restore) { const node = nodeById(restore.dataset.restoreNode); if (node) { node.archived = false; saveData(); $("#panelBody").innerHTML = archivePanelHtml(); render(); toast("Карточка восстановлена"); } }
+  const remove = event.target.closest("[data-delete-node]"); if (remove) { const node = nodeById(remove.dataset.deleteNode); if (node && confirm(`Удалить карточку «${node.title || "Без названия"}» навсегда? Все её связи будут удалены.`)) { permanentlyDeleteNode(node); $("#panelBody").innerHTML = archivePanelHtml(); render(); toast("Карточка удалена навсегда"); } }
+}
+function permanentlyDeleteNode(node) {
+  if (!node) return;
+  const ids = new Set([node.id]);
+  if (node.type === "project") state.data.nodes.filter(item => item.type === "process" && item.projectId === node.id).forEach(item => ids.add(item.id));
+  const removed = state.data.nodes.filter(item => ids.has(item.id));
+  state.data.nodes = state.data.nodes.filter(item => !ids.has(item.id));
+  state.data.links = state.data.links.filter(link => !ids.has(link.a) && !ids.has(link.b));
+  removed.forEach(item => (item.assets || []).forEach(asset => { releaseObjectUrl(asset.id); deleteAssetRecord(asset.id).catch(() => {}); }));
+  if (state.selectedId && ids.has(state.selectedId)) state.selectedId = null;
+  if (state.activeNodeId && ids.has(state.activeNodeId)) state.activeNodeId = null;
+  state.selectedLinkId = null;
+  saveData();
 }
 
 /* Overlay and menu */
