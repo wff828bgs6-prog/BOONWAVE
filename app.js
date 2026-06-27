@@ -1,10 +1,12 @@
 "use strict";
 
-const VERSION = "6.0.32";
+const VERSION = "6.0.34";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
 const DATA_PREFIX = "boonwave_v6_data_";
+const DATA_BACKUP_PREFIX = "boonwave_v6_backup_";
+const SCHEMA_VERSION = 3;
 const GUEST_ID = "visual-demo";
 const WORLD_W = 3600;
 const WORLD_H = 2600;
@@ -121,8 +123,14 @@ const state = {
   linkDropTargetId: null,
   linkFlowGesture: null,
   linkFlow: null,
+  linkMenuId: null,
+  linkDirectionModeId: null,
+  lastLinkTap: { id: null, time: 0 },
+  undoStack: [],
   justCreatedId: null,
-  isReloadingForWorker: false
+  isReloadingForWorker: false,
+  focusOverview: false,
+  cameraInertiaFrame: 0
 };
 
 function blankData() {
@@ -131,7 +139,7 @@ function blankData() {
     spaces: { personal: { name: "Личное" }, work: { name: "Проекты" } },
     nodes: [],
     links: [],
-    settings: { hintDismissed: false },
+    settings: { hintDismissed: false, cameras: {}, lastWorkingNode: {} },
     updatedAt: Date.now()
   };
 }
@@ -196,22 +204,36 @@ function demoData() {
       { id: uid(), a: processId, b: personId, kind: "person" },
       { id: uid(), a: projectId, b: ideaId, kind: "idea" }
     ],
-    settings: { hintDismissed: false },
+    settings: { hintDismissed: false, cameras: {}, lastWorkingNode: {} },
     updatedAt: Date.now()
   };
 }
 
 function storageKey() { return `${DATA_PREFIX}${state.userId}`; }
+function backupKey() { return `${DATA_BACKUP_PREFIX}${state.userId}`; }
 function saveData() {
   if (!state.data || !state.userId) return;
   state.data.version = VERSION;
+  state.data.schemaVersion = SCHEMA_VERSION;
   state.data.updatedAt = Date.now();
-  localStorage.setItem(storageKey(), JSON.stringify(state.data));
+  const next = JSON.stringify(state.data);
+  const current = localStorage.getItem(storageKey());
+  if (current && current !== next) localStorage.setItem(backupKey(), current);
+  localStorage.setItem(storageKey(), next);
 }
 function loadData(userId, useDemo = false) {
   const raw = localStorage.getItem(`${DATA_PREFIX}${userId}`);
   if (raw) {
     try { return normalizeData(JSON.parse(raw)); } catch (error) { console.warn("Invalid saved data", error); }
+  }
+  const backup = localStorage.getItem(`${DATA_BACKUP_PREFIX}${userId}`);
+  if (backup) {
+    try {
+      const restored = normalizeData(JSON.parse(backup));
+      localStorage.setItem(`${DATA_PREFIX}${userId}`, JSON.stringify(restored));
+      setTimeout(() => toast("Данные восстановлены из локальной резервной копии"), 500);
+      return restored;
+    } catch (error) { console.warn("Invalid backup data", error); }
   }
   return useDemo ? demoData() : blankData();
 }
@@ -242,8 +264,10 @@ function normalizeData(data) {
     }
     return normalizedNode;
   }) : [];
-  normalized.links = Array.isArray(data.links) ? data.links : [];
-  normalized.settings = { ...base.settings, ...(data.settings || {}) };
+  normalized.links = Array.isArray(data.links) ? data.links.map(link => ({ flow: "none", highlighted: false, ...link })) : [];
+  normalized.settings = { ...base.settings, cameras: {}, lastWorkingNode: {}, ...(data.settings || {}) };
+  normalized.schemaVersion = SCHEMA_VERSION;
+  normalized.nodes.forEach(node => { if (node.archived && !node.archivedAt) node.archivedAt = new Date(node.updatedAt || normalized.updatedAt || Date.now()).toISOString(); });
   return normalized;
 }
 function currentNodes(includeArchived = false) {
@@ -469,7 +493,10 @@ function bindWorkspaceOnce() {
   $("#accountMenu").addEventListener("click", handleMenuAction);
   $("#cardLayer").addEventListener("click", handleCardActionClick);
   $("#linkLayer").addEventListener("pointerdown", handleLinkPointerDown);
+  $("#linkHighlightButton")?.addEventListener("click", toggleSelectedLinkHighlight);
+  $("#linkDirectionButton")?.addEventListener("click", enableSelectedLinkDirection);
   $("#deleteSelectedLink")?.addEventListener("click", deleteSelectedLink);
+  $("#toastAction")?.addEventListener("click", runToastAction);
   window.addEventListener("pointermove", handleLinkPointerMove, { passive: false });
   window.addEventListener("pointerup", finishLinkPointerDrag, { passive: false });
   window.addEventListener("pointercancel", finishLinkPointerDrag, { passive: false });
@@ -605,13 +632,21 @@ function renderEmptyState() {
 }
 function switchSpace(space) {
   if (space === state.space) return;
-  state.space = space; state.selectedId = null;
-  render(); requestAnimationFrame(() => currentNodes().length ? fitAll(false) : centerCamera());
+  state.data.settings ||= {};
+  state.data.settings.cameras ||= {};
+  state.data.settings.cameras[state.space] = clone(state.camera);
+  state.space = space; state.selectedId = null; state.selectedLinkId = null; state.linkMenuId = null;
+  const savedCamera = state.data.settings.cameras[space];
+  render(); requestAnimationFrame(() => {
+    if (savedCamera) { state.camera = clone(savedCamera); applyCamera(); }
+    else if (currentNodes().length) fitAll(false); else centerCamera();
+  });
+  saveData();
 }
 function cardClass(node) {
   const level = node.level || 2;
   const statusClass = node.status === "paused" ? "status-paused" : node.status === "done" ? "status-done" : node.status === "cancelled" ? "status-cancelled" : "";
-  return `node-card ${level === 1 ? "compact" : "medium"} ${statusClass} ${state.selectedId === node.id ? "selected" : ""}`;
+  return `node-card ${level === 1 ? "compact" : "medium"} ${statusClass} ${state.selectedId === node.id ? "selected" : ""} ${state.activeNodeId === node.id ? "opened" : ""}`;
 }
 function nodeSubtitle(node) {
   if (node.type === "project") return node.client || node.address || "Новый проект";
@@ -640,6 +675,7 @@ function renderCards() {
     const article = document.createElement("article");
     article.className = cardClass(node);
     if (state.justCreatedId === node.id) article.classList.add("newly-created");
+    else if (state.justCreatedId) article.classList.add("creation-dimmed");
     if (state.linkCreateSourceId === node.id) article.classList.add("link-create-source");
     else if (state.linkCreateSourceId) article.classList.add("link-create-candidate");
     article.dataset.id = node.id;
@@ -666,7 +702,7 @@ function renderCards() {
       <div class="card-actions">
         <button class="card-action" data-card-action="open" aria-label="Открыть">${icon("open")}</button>
         <button class="card-action primary-action" data-card-action="connect" aria-label="Создать связь">${icon("link")}</button>
-        <button class="card-action" data-card-action="expand" aria-label="Изменить размер">${icon("expand")}</button>
+        <button class="card-action" data-card-action="focus" aria-label="Центрировать">${icon("focus")}</button>
       </div>`;
     attachCardGestures(article, node);
     layer.appendChild(article);
@@ -692,7 +728,10 @@ async function hydrateCardCovers() {
 function renderLinks() {
   const svg = $("#linkLayer");
   svg.classList.toggle("link-editing", Boolean(state.selectedLinkId));
-  svg.innerHTML = `<defs><linearGradient id="linkGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a14eff"/><stop offset=".55" stop-color="#6177ff"/><stop offset="1" stop-color="#55dcec"/></linearGradient></defs>`;
+  svg.innerHTML = `<defs>
+    <linearGradient id="linkGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a14eff"/><stop offset=".55" stop-color="#6177ff"/><stop offset="1" stop-color="#55dcec"/></linearGradient>
+    <linearGradient id="linkPulseGradient" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9c55ff" stop-opacity="0"/><stop offset=".42" stop-color="#8a68ff" stop-opacity=".5"/><stop offset=".66" stop-color="#6fa7ff" stop-opacity="1"/><stop offset="1" stop-color="#62e2ef" stop-opacity="0"/></linearGradient>
+  </defs>`;
   state.data.links.forEach(link => {
     const a = nodeById(link.a), b = nodeById(link.b);
     if (!a || !b || a.space !== state.space || b.space !== state.space || a.archived || b.archived) return;
@@ -706,17 +745,34 @@ function renderLinks() {
       pathData = curveBetweenPoints(startPoint, endPoint);
     }
     const selected = state.selectedLinkId === link.id;
-    const flowDirection = state.linkFlow?.linkId === link.id ? state.linkFlow.direction : null;
+    const related = state.selectedId === a.id || state.selectedId === b.id;
     const hit = document.createElementNS("http://www.w3.org/2000/svg", "path");
     hit.setAttribute("d", pathData);
     hit.setAttribute("class", "link-hit");
     hit.dataset.linkId = link.id;
     svg.appendChild(hit);
+
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", pathData);
-    path.setAttribute("class", `link-path ${(state.selectedId === a.id || state.selectedId === b.id) ? "active" : ""} ${selected ? "selected" : ""} ${flowDirection ? `flow-${flowDirection}` : ""}`);
+    path.setAttribute("pathLength", "1000");
+    const muted = state.selectedLinkId ? !selected : (state.selectedId ? !related : false);
+    path.setAttribute("class", `link-path ${related ? "active" : ""} ${selected ? "selected" : ""} ${muted ? "muted" : ""} ${link.highlighted ? "highlighted" : ""}`);
     path.dataset.linkId = link.id;
     svg.appendChild(path);
+
+    if (link.flow && link.flow !== "none") {
+      const addPulse = reverse => {
+        const pulse = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        pulse.setAttribute("d", pathData);
+        pulse.setAttribute("pathLength", "1000");
+        pulse.setAttribute("class", `link-flow-overlay ${reverse ? "reverse" : "forward"}`);
+        svg.appendChild(pulse);
+      };
+      if (link.flow === "forward") addPulse(false);
+      if (link.flow === "reverse") addPulse(true);
+      if (link.flow === "bidirectional") { addPulse(false); addPulse(true); }
+    }
+
     [startPoint, endPoint].forEach((point, index) => {
       const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       dot.setAttribute("cx", point.x); dot.setAttribute("cy", point.y); dot.setAttribute("r", selected ? "5" : "3");
@@ -753,15 +809,17 @@ function handleLinkPointerDown(event) {
   if (!linkId) return;
   state.selectedLinkId = linkId;
   state.selectedId = null;
+  state.linkMenuId = null;
   if (handle) {
     const link = state.data.links.find(item => item.id === linkId); if (!link) return;
     const movingEnd = handle.dataset.linkEnd;
     const fixedId = movingEnd === "a" ? link.b : link.a;
-    state.linkDrag = { linkId, end: movingEnd, pointerId: event.pointerId, fixedId, originalId: movingEnd === "a" ? link.a : link.b, point: screenToWorld(event.clientX, event.clientY) };
+    state.linkDrag = { linkId, end: movingEnd, pointerId: event.pointerId, fixedId, originalId: movingEnd === "a" ? link.a : link.b, point: screenToWorld(event.clientX, event.clientY), before: clone(state.data) };
     state.linkDropTargetId = null;
     state.linkFlowGesture = null;
   } else {
-    state.linkFlowGesture = { linkId, pointerId: event.pointerId, start: screenToWorld(event.clientX, event.clientY), last: screenToWorld(event.clientX, event.clientY), moved: false };
+    const directionMode = state.linkDirectionModeId === linkId;
+    state.linkFlowGesture = { linkId, pointerId: event.pointerId, start: screenToWorld(event.clientX, event.clientY), last: screenToWorld(event.clientX, event.clientY), points: [], moved: false, directionMode };
   }
   renderCards(); renderLinks();
 }
@@ -779,26 +837,48 @@ function handleLinkPointerMove(event) {
   if (!flow || flow.pointerId !== event.pointerId) return;
   const point = screenToWorld(event.clientX, event.clientY);
   flow.last = point;
-  if (Math.hypot(point.x - flow.start.x, point.y - flow.start.y) > 38 / Math.max(.28, state.camera.scale)) flow.moved = true;
+  flow.points.push(point);
+  if (Math.hypot(point.x - flow.start.x, point.y - flow.start.y) > 30 / Math.max(.28, state.camera.scale)) flow.moved = true;
 }
 function finishLinkPointerDrag(event) {
   const flow = state.linkFlowGesture;
   if (flow && flow.pointerId === event.pointerId && !state.linkDrag) {
     state.linkFlowGesture = null;
     const link = state.data.links.find(item => item.id === flow.linkId);
-    const a = nodeById(link?.a), b = nodeById(link?.b);
-    if (flow.moved && link && a && b) {
-      const geometry = linkGeometry(a, b);
-      const startToA = Math.hypot(flow.start.x - geometry.start.x, flow.start.y - geometry.start.y);
-      const startToB = Math.hypot(flow.start.x - geometry.end.x, flow.start.y - geometry.end.y);
-      const endToA = Math.hypot(flow.last.x - geometry.start.x, flow.last.y - geometry.start.y);
-      const endToB = Math.hypot(flow.last.x - geometry.end.x, flow.last.y - geometry.end.y);
-      const direction = startToA + endToB <= startToB + endToA ? "forward" : "reverse";
-      state.linkFlow = { linkId: link.id, direction };
+    if (!link) return;
+    if (!flow.moved) {
+      const now = performance.now();
+      if (state.lastLinkTap.id === link.id && now - state.lastLinkTap.time < 340) {
+        state.lastLinkTap = { id: null, time: 0 };
+        state.linkMenuId = link.id;
+      } else {
+        state.lastLinkTap = { id: link.id, time: now };
+      }
       renderLinks();
-      clearTimeout(state.linkFlowTimer);
-      state.linkFlowTimer = setTimeout(() => { state.linkFlow = null; renderLinks(); }, 2400);
-      navigator.vibrate?.(8);
+      return;
+    }
+    if (flow.directionMode) {
+      const a = nodeById(link.a), b = nodeById(link.b);
+      if (a && b) {
+        const geometry = linkGeometry(a, b);
+        const vx = geometry.end.x - geometry.start.x, vy = geometry.end.y - geometry.start.y;
+        const denom = Math.max(1, vx * vx + vy * vy);
+        const projections = [flow.start, ...flow.points, flow.last].map(p => ((p.x - geometry.start.x) * vx + (p.y - geometry.start.y) * vy) / denom);
+        let reversals = 0, lastSign = 0;
+        for (let i = 1; i < projections.length; i++) {
+          const delta = projections[i] - projections[i-1];
+          const sign = Math.abs(delta) < .008 ? 0 : Math.sign(delta);
+          if (sign && lastSign && sign !== lastSign) reversals++;
+          if (sign) lastSign = sign;
+        }
+        pushUndo("Направление связи");
+        if (reversals > 0) link.flow = "bidirectional";
+        else link.flow = projections.at(-1) >= projections[0] ? "forward" : "reverse";
+        state.linkDirectionModeId = null;
+        saveData(); renderLinks();
+        toast(link.flow === "bidirectional" ? "Двустороннее направление сохранено" : "Направление связи сохранено", "Отменить", undoLast);
+        navigator.vibrate?.(8);
+      }
     }
     return;
   }
@@ -811,8 +891,9 @@ function finishLinkPointerDrag(event) {
     const duplicate = state.data.links.some(item => item.id !== link.id && ((item.a === targetId && item.b === drag.fixedId) || (item.b === targetId && item.a === drag.fixedId)));
     if (duplicate) toast("Такая связь уже существует");
     else {
+      pushUndoSnapshot("Переназначение связи", drag.before);
       if (drag.end === "a") link.a = targetId; else link.b = targetId;
-      saveData(); toast("Связь переназначена");
+      saveData(); toast("Связь переназначена", "Отменить", undoLast);
     }
   } else if (link) toast("Связь оставлена без изменений");
   state.linkDrag = null; state.linkDropTargetId = null;
@@ -836,7 +917,7 @@ function updateLinkDropHighlight() {
 }
 function updateLinkToolbar() {
   const toolbar = $("#linkToolbar"); if (!toolbar) return;
-  const link = state.data.links.find(item => item.id === state.selectedLinkId);
+  const link = state.data.links.find(item => item.id === state.linkMenuId);
   const a = nodeById(link?.a), b = nodeById(link?.b);
   if (!link || !a || !b || a.archived || b.archived || state.linkDrag) { toolbar.classList.add("hidden"); return; }
   const geometry = linkGeometry(a,b);
@@ -845,14 +926,35 @@ function updateLinkToolbar() {
   toolbar.style.left = `${mx}px`;
   toolbar.style.top = `${my}px`;
   toolbar.classList.remove("hidden");
-  $("#deleteSelectedLink").innerHTML = icon("trash");
+  $("#linkHighlightButton").classList.toggle("active", Boolean(link.highlighted));
+  $("#linkHighlightButton").innerHTML = `${icon("link")}<span>${link.highlighted ? "Снять выделение" : "Выделить связь"}</span>`;
+  $("#linkDirectionButton").innerHTML = `${icon("branch")}<span>Задать направление</span>`;
+  $("#deleteSelectedLink").innerHTML = `${icon("trash")}<span>Удалить связь</span>`;
+}
+function toggleSelectedLinkHighlight() {
+  const link = state.data.links.find(item => item.id === state.linkMenuId); if (!link) return;
+  pushUndo("Выделение связи");
+  link.highlighted = !link.highlighted;
+  state.linkMenuId = null;
+  saveData(); renderLinks();
+  toast(link.highlighted ? "Связь выделена" : "Выделение снято", "Отменить", undoLast);
+}
+function enableSelectedLinkDirection() {
+  const link = state.data.links.find(item => item.id === state.linkMenuId); if (!link) return;
+  state.linkDirectionModeId = link.id;
+  state.selectedLinkId = link.id;
+  state.linkMenuId = null;
+  renderLinks();
+  toast("Проведите по линии. Движение туда-обратно задаст двусторонний поток");
 }
 function deleteSelectedLink() {
-  const link = state.data.links.find(item => item.id === state.selectedLinkId); if (!link) return;
+  const id = state.linkMenuId || state.selectedLinkId;
+  const link = state.data.links.find(item => item.id === id); if (!link) return;
   if (!confirm("Удалить выбранную связь?")) return;
+  pushUndo("Удаление связи");
   state.data.links = state.data.links.filter(item => item.id !== link.id);
-  state.selectedLinkId = null; state.linkDrag = null; state.linkDropTargetId = null;
-  saveData(); renderLinks(); toast("Связь удалена");
+  state.selectedLinkId = null; state.linkMenuId = null; state.linkDirectionModeId = null; state.linkDrag = null; state.linkDropTargetId = null;
+  saveData(); renderLinks(); toast("Связь удалена", "Отменить", undoLast);
 }
 function linkGeometry(a, b) {
   const ad = cardDims(a), bd = cardDims(b);
@@ -903,10 +1005,30 @@ function handleDesktopZoomInput(event) {
   state.camera.ty = anchorY - worldAnchorY * nextScale;
   applyCamera();
 }
+function rememberWorkingNode(node) {
+  if (!node || node.archived) return;
+  state.data.settings ||= {};
+  state.data.settings.lastWorkingNode ||= {};
+  state.data.settings.lastWorkingNode[state.space] = node.id;
+  saveData();
+}
 function smartFocusCurrent() {
+  if (state.focusOverview) {
+    state.focusOverview = false;
+    return fitAll(true);
+  }
   const nodes = currentNodes();
   if (!nodes.length) return centerCamera();
+  if (state.selectedLinkId) {
+    const link = state.data.links.find(item => item.id === state.selectedLinkId);
+    const a = nodeById(link?.a), b = nodeById(link?.b);
+    if (a && b && !a.archived && !b.archived) { state.focusOverview = true; return focusNodes([a,b]); }
+  }
   let node = nodeById(state.selectedId);
+  if (!node || node.archived || node.space !== state.space) {
+    const lastId = state.data.settings?.lastWorkingNode?.[state.space];
+    node = nodeById(lastId);
+  }
   if (!node || node.archived || node.space !== state.space) {
     const rect = $("#canvasViewport").getBoundingClientRect();
     const center = screenToWorld(rect.width / 2, Math.max(80, (rect.height - 170) / 2));
@@ -918,7 +1040,20 @@ function smartFocusCurrent() {
       return !best || score < best.score ? { item, score } : best;
     }, null)?.item || null;
   }
-  if (node) focusNode(node); else fitAll(true);
+  if (node) { state.focusOverview = true; rememberWorkingNode(node); focusNode(node); }
+  else fitAll(true);
+}
+function focusNodes(nodes) {
+  if (!nodes?.length) return;
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  nodes.forEach(node => { const d=cardDims(node); minX=Math.min(minX,node.x); minY=Math.min(minY,node.y); maxX=Math.max(maxX,node.x+d.w); maxY=Math.max(maxY,node.y+d.h); });
+  const rect=$("#canvasViewport").getBoundingClientRect();
+  const usableH=Math.max(240,rect.height-190);
+  const scale=clamp(Math.min((rect.width-56)/(maxX-minX+80),usableH/(maxY-minY+80)),.42,1.08);
+  state.camera.scale=scale;
+  state.camera.tx=rect.width/2-(minX+maxX)/2*scale;
+  state.camera.ty=Math.max(82,usableH/2)-(minY+maxY)/2*scale;
+  applyCamera();
 }
 function centerCamera() {
   const rect = $("#canvasViewport").getBoundingClientRect();
@@ -979,6 +1114,41 @@ function drawDots() {
   }
 }
 
+function cameraLimits(scale = state.camera.scale) {
+  const rect = $("#canvasViewport").getBoundingClientRect();
+  const nodes = currentNodes();
+  if (!nodes.length) return { minTx: -WORLD_W * scale + rect.width * .8, maxTx: rect.width * .2, minTy: -WORLD_H * scale + rect.height * .75, maxTy: rect.height * .25 };
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  nodes.forEach(node => { const d=cardDims(node); minX=Math.min(minX,node.x); minY=Math.min(minY,node.y); maxX=Math.max(maxX,node.x+d.w); maxY=Math.max(maxY,node.y+d.h); });
+  const marginX=Math.max(180,rect.width*.38), marginY=Math.max(220,rect.height*.34);
+  return { minTx: rect.width-marginX-maxX*scale, maxTx: marginX-minX*scale, minTy: rect.height-marginY-maxY*scale, maxTy: marginY-minY*scale };
+}
+function softenCameraBounds() {
+  const l=cameraLimits();
+  state.camera.tx=clamp(state.camera.tx,l.minTx-90,l.maxTx+90);
+  state.camera.ty=clamp(state.camera.ty,l.minTy-110,l.maxTy+110);
+}
+function settleCameraBounds() {
+  const l=cameraLimits();
+  const tx=clamp(state.camera.tx,l.minTx,l.maxTx), ty=clamp(state.camera.ty,l.minTy,l.maxTy);
+  if (Math.abs(tx-state.camera.tx)<.5 && Math.abs(ty-state.camera.ty)<.5) return;
+  $("#world").style.transition="transform .32s cubic-bezier(.2,.78,.2,1)";
+  state.camera.tx=tx; state.camera.ty=ty; applyCamera();
+  setTimeout(()=>$("#world").style.transition="",340);
+}
+function startCameraInertia(vx,vy) {
+  cancelAnimationFrame(state.cameraInertiaFrame);
+  let last=performance.now();
+  const step=now=>{
+    const dt=Math.min(32,now-last); last=now;
+    state.camera.tx+=vx*dt; state.camera.ty+=vy*dt; softenCameraBounds(); applyCamera();
+    const friction=Math.pow(.91,dt/16.7); vx*=friction; vy*=friction;
+    if(Math.hypot(vx,vy)<.015){ settleCameraBounds(); state.data.settings.cameras ||= {}; state.data.settings.cameras[state.space]=clone(state.camera); saveData(); return; }
+    state.cameraInertiaFrame=requestAnimationFrame(step);
+  };
+  state.cameraInertiaFrame=requestAnimationFrame(step);
+}
+
 /* Gestures */
 function onCanvasPointerDown(event) {
   if (event.target.closest(".node-card,.canvas-utility,.gesture-hint,.link-hit,.link-end-handle,.link-toolbar")) return;
@@ -986,7 +1156,7 @@ function onCanvasPointerDown(event) {
   event.currentTarget.setPointerCapture?.(event.pointerId);
   state.canvasPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
   if (state.canvasPointers.size === 1) {
-    state.canvasGesture = { type: "pan", startX: event.clientX, startY: event.clientY, tx: state.camera.tx, ty: state.camera.ty, moved: false, time: performance.now() };
+    state.canvasGesture = { type: "pan", startX: event.clientX, startY: event.clientY, tx: state.camera.tx, ty: state.camera.ty, moved: false, time: performance.now(), lastX:event.clientX,lastY:event.clientY,lastT:performance.now(),vx:0,vy:0 };
   } else if (state.canvasPointers.size === 2) {
     const points = [...state.canvasPointers.values()];
     const center = midpoint(points[0], points[1]);
@@ -1001,7 +1171,10 @@ function onCanvasPointerMove(event) {
   if (gesture.type === "pan" && state.canvasPointers.size === 1) {
     const dx = event.clientX - gesture.startX, dy = event.clientY - gesture.startY;
     if (Math.hypot(dx, dy) > 4) { gesture.moved = true; $("#canvasViewport").classList.add("is-panning"); }
-    state.camera.tx = gesture.tx + dx; state.camera.ty = gesture.ty + dy; applyCamera();
+    const now=performance.now(), dt=Math.max(1,now-gesture.lastT);
+    gesture.vx=(event.clientX-gesture.lastX)/dt; gesture.vy=(event.clientY-gesture.lastY)/dt;
+    gesture.lastX=event.clientX; gesture.lastY=event.clientY; gesture.lastT=now;
+    state.camera.tx = gesture.tx + dx; state.camera.ty = gesture.ty + dy; softenCameraBounds(); applyCamera();
   } else if (state.canvasPointers.size >= 2) {
     const points = [...state.canvasPointers.values()].slice(0, 2);
     const center = midpoint(points[0], points[1]); const ratio = distance(points[0], points[1]) / Math.max(1, gesture.distance);
@@ -1025,10 +1198,12 @@ function onCanvasPointerEnd(event) {
       if (state.linkCreateSourceId) { state.linkCreateSourceId = null; toast("Создание связи отменено"); }
       renderCards(); renderLinks();
     }
+    if (gesture?.type === "pan" && gesture.moved) startCameraInertia(gesture.vx || 0, gesture.vy || 0);
+    else settleCameraBounds();
     state.canvasGesture = null;
   } else if (state.canvasPointers.size === 1) {
     const point = [...state.canvasPointers.values()][0];
-    state.canvasGesture = { type: "pan", startX: point.x, startY: point.y, tx: state.camera.tx, ty: state.camera.ty, moved: false, time: performance.now() };
+    state.canvasGesture = { type: "pan", startX: point.x, startY: point.y, tx: state.camera.tx, ty: state.camera.ty, moved: false, time: performance.now(), lastX:point.x,lastY:point.y,lastT:performance.now(),vx:0,vy:0 };
   }
 }
 function distance(a, b) { return Math.hypot(b.x - a.x, b.y - a.y); }
@@ -1105,6 +1280,7 @@ function attachCardGestures(element, node) {
     }
     element.classList.remove("dragging");
     if (gesture?.type === "drag") {
+      pushUndoSnapshot("Перемещение карточки", gesture.before);
       saveData(); renderLinks();
     } else if (gesture && !gesture.moved && !longTriggered) {
       if (state.linkCreateSourceId) {
@@ -1117,7 +1293,7 @@ function attachCardGestures(element, node) {
         state.lastCardTap = { id: null, time: 0 }; openDetail(node);
       } else {
         state.lastCardTap = { id: node.id, time: now };
-        state.selectedId = node.id; state.selectedLinkId = null; renderCards(); renderLinks();
+        state.selectedId = node.id; state.selectedLinkId = null; state.focusOverview=false; rememberWorkingNode(node); renderCards(); renderLinks();
       }
     }
     gesture = null;
@@ -1134,9 +1310,9 @@ function handleCardActionClick(event) {
   const action = button.dataset.cardAction;
   if (action === "open") openDetail(node);
   if (action === "connect") startLinkCreation(node);
-  if (action === "expand") {
-    if ((node.level || 2) === 1) { node.level = 2; saveData(); render(); }
-    else openDetail(node);
+  if (action === "focus") {
+    state.selectedId = node.id; state.selectedLinkId = null; state.focusOverview = false;
+    rememberWorkingNode(node); renderCards(); renderLinks(); focusNode(node);
   }
   if (action === "quickExpense") {
     const title = $("[data-expense-title]", card)?.value.trim();
@@ -1165,7 +1341,8 @@ function completeLinkCreation(target) {
     state.linkCreateSourceId = null; renderCards(); renderLinks();
     return toast("Такая связь уже существует");
   }
-  state.data.links.push({ id: uid(), a: source.id, b: target.id, kind: "manual", createdAt: new Date().toISOString() });
+  pushUndo("Создание связи");
+  state.data.links.push({ id: uid(), a: source.id, b: target.id, kind: "manual", flow: "none", highlighted: false, createdAt: new Date().toISOString() });
   state.linkCreateSourceId = null;
   state.selectedId = target.id;
   saveData(); renderCards(); renderLinks();
@@ -1212,44 +1389,69 @@ function handleCreateAction(event) {
   if (action === "branch-idea") return createNode("idea", parent, true);
   if (action === "branch-goal") return createNode("goal", parent, true);
 }
+function findFreePosition(type, preferred) {
+  const dims = type === "process" ? { w: 250, h: 165 } : { w: 220, h: 145 };
+  const candidates = [{x:preferred.x-dims.w/2,y:preferred.y-dims.h/2}];
+  for (let ring=1; ring<=8; ring++) {
+    const radius = ring * 150;
+    for (let i=0; i<12; i++) {
+      const angle = i / 12 * Math.PI * 2;
+      candidates.push({ x: preferred.x + Math.cos(angle)*radius - dims.w/2, y: preferred.y + Math.sin(angle)*radius - dims.h/2 });
+    }
+  }
+  const nodes = currentNodes();
+  const viewport = $("#canvasViewport").getBoundingClientRect();
+  const safeOnScreen = pos => {
+    const left=pos.x*state.camera.scale+state.camera.tx, top=pos.y*state.camera.scale+state.camera.ty;
+    const right=left+dims.w*state.camera.scale, bottom=top+dims.h*state.camera.scale;
+    return left>18 && right<viewport.width-92 && top>178 && bottom<viewport.height-230;
+  };
+  const clear = pos => safeOnScreen(pos) && nodes.every(n => {
+    const d=cardDims(n), gap=34;
+    return pos.x+dims.w+gap < n.x || pos.x > n.x+d.w+gap || pos.y+dims.h+gap < n.y || pos.y > n.y+d.h+gap;
+  });
+  const found = candidates.find(clear) || candidates[0];
+  return { x: clamp(found.x, -1200, WORLD_W + 1200), y: clamp(found.y, -900, WORLD_H + 900) };
+}
+function offerNewCardSetup(node) {
+  setTimeout(() => {
+    if (!nodeById(node.id) || node.archived || document.querySelector("dialog[open]")) return;
+    toast(`${TYPE_LABELS[node.type]} создан${node.type === "idea" || node.type === "goal" ? "а" : ""}`, "Настроить", () => openEditor(node));
+  }, 1900);
+}
+
 function createNode(type, parent = null, openEditorNow = true, delayedEditor = false) {
-  const point = parent ? branchPosition(parent) : screenToWorld(innerWidth / 2, innerHeight / 2);
+  const preferred = parent ? branchPosition(parent) : screenToWorld(innerWidth / 2, Math.max(170, (innerHeight - 210) / 2));
+  const point = findFreePosition(type, preferred);
   const defaults = {
     project: { title: "Новый проект", status: "preparation", progress: 0, client: "", address: "", budget: "", assets: [] },
     goal: { title: "Новая цель", status: "active", progress: 0, deadline: "", metric: "", assets: [] },
     person: { title: "Новый человек", status: "active", speciality: "", zone: "Ближнее поле", tags: "", assets: [] },
     idea: { title: "Новая идея", status: "active", source: "", tags: "", assets: [] }
   };
-  const node = { id: uid(), type, space: state.space, x: clamp(point.x, 50, WORLD_W - 350), y: clamp(point.y, 80, WORLD_H - 300), level: 2, note: "", archived: false, ...defaults[type] };
+  pushUndo("Создание карточки");
+  const node = { id: uid(), type, space: state.space, x: point.x, y: point.y, level: 2, note: "", archived: false, ...defaults[type] };
   state.data.nodes.push(node);
-  if (parent) state.data.links.push({ id: uid(), a: parent.id, b: node.id, kind: type });
+  if (parent) state.data.links.push({ id: uid(), a: parent.id, b: node.id, kind: type, flow: "none", highlighted: false });
   state.selectedId = node.id; state.justCreatedId = node.id; saveData(); render(); focusNode(node);
   setTimeout(() => { if (state.justCreatedId === node.id) { state.justCreatedId = null; renderCards(); } }, 900);
-  if (openEditorNow) setTimeout(() => openEditor(node), 220);
-  if (delayedEditor) {
-    toast(`${TYPE_LABELS[type]} создан${type === "idea" || type === "goal" ? "а" : ""}`);
-    setTimeout(() => {
-      if (!nodeById(node.id) || node.archived || document.querySelector("dialog[open]") || !$("#scrim").classList.contains("hidden")) return;
-      openEditor(node);
-    }, 2300);
-  }
+  offerNewCardSetup(node);
   return node;
 }
 function createStandaloneProcess() {
-  const point = screenToWorld(innerWidth / 2, Math.max(170, (innerHeight - 210) / 2));
+  const preferred = screenToWorld(innerWidth / 2, Math.max(170, (innerHeight - 210) / 2));
+  const point = findFreePosition("process", preferred);
   const process = {
     id: uid(), type: "process", space: state.space, projectId: null,
-    x: clamp(point.x - 145, -1400, WORLD_W + 1400), y: clamp(point.y - 90, -1000, WORLD_H + 1000), level: 2,
+    x: point.x, y: point.y, level: 2,
     title: "Новый рабочий процесс", status: "active", progress: 0, stages: [], tasks: [], phonebook: [], peopleIds: [], expenses: [], assets: [], archived: false
   };
+  pushUndo("Создание рабочего процесса");
   state.data.nodes.push(process);
   state.selectedId = process.id; state.justCreatedId = process.id;
-  saveData(); render(); focusNode(process); toast("Рабочий процесс создан");
+  saveData(); render(); focusNode(process);
   setTimeout(() => { if (state.justCreatedId === process.id) { state.justCreatedId = null; renderCards(); } }, 900);
-  setTimeout(() => {
-    if (!nodeById(process.id) || process.archived || document.querySelector("dialog[open]") || !$("#scrim").classList.contains("hidden")) return;
-    openEditor(process);
-  }, 2300);
+  offerNewCardSetup(process);
   return process;
 }
 function branchPosition(parent) {
@@ -1262,16 +1464,17 @@ function createProcessForProject(project) {
   if (project.type !== "project") return;
   const existing = state.data.nodes.find(node => node.type === "process" && node.projectId === project.id && !node.archived);
   if (existing) { state.selectedId = existing.id; render(); focusNode(existing); return toast("Рабочий процесс уже создан"); }
-  const point = branchPosition(project);
+  const point = findFreePosition("process", branchPosition(project));
   const process = {
     id: uid(), type: "process", space: project.space, projectId: project.id,
     x: point.x, y: point.y, level: 2, title: `Рабочий процесс · ${project.title}`,
     status: "active", progress: 0, stages: [], tasks: [], phonebook: [], peopleIds: [], expenses: [], assets: [], archived: false
   };
-  state.data.nodes.push(process); state.data.links.push({ id: uid(), a: project.id, b: process.id, kind: "process" });
+  pushUndo("Создание рабочего процесса");
+  state.data.nodes.push(process); state.data.links.push({ id: uid(), a: project.id, b: process.id, kind: "process", flow: "none", highlighted: false });
   state.selectedId = process.id; state.justCreatedId = process.id; saveData(); render(); focusNode(process);
   setTimeout(() => { if (state.justCreatedId === process.id) { state.justCreatedId = null; renderCards(); } }, 900);
-  setTimeout(() => openEditor(process), 2300);
+  offerNewCardSetup(process);
 }
 function createBranchFor(node) {
   state.selectedId = node.id;
@@ -1282,6 +1485,8 @@ function createBranchFor(node) {
 /* Details */
 function openDetail(node) {
   state.activeNodeId = node.id;
+  rememberWorkingNode(node);
+  renderCards();
   state.processActionsUnlocked = node.type !== "process";
   $("#detailType").textContent = TYPE_LABELS[node.type].toUpperCase();
   $("#detailTitle").textContent = node.title || TYPE_LABELS[node.type];
@@ -2046,9 +2251,10 @@ function saveEditor(event) {
 }
 function archiveActiveNode() {
   const node = nodeById(state.activeNodeId); if (!node) return;
-  node.archived = true;
+  pushUndo("Архивация карточки");
+  node.archived = true; node.archivedAt = new Date().toISOString();
   if (state.selectedLinkId) { const selectedLink = state.data.links.find(link => link.id === state.selectedLinkId); if (selectedLink && (selectedLink.a === node.id || selectedLink.b === node.id)) state.selectedLinkId = null; }
-  state.selectedId = null; saveData(); closeEditor(); render(); toast("Перемещено в архив");
+  state.selectedId = null; saveData(); closeEditor(); render(); toast("Перемещено в архив", "Отменить", undoLast);
 }
 
 /* Assets */
@@ -2152,11 +2358,20 @@ function resultsPanelHtml() {
 function archivePanelHtml() {
   const entries = state.data.nodes.filter(node => node.space === state.space && node.archived);
   if (!entries.length) return `<div class="panel-empty">Архив пуст.</div>`;
-  return entries.map(node => `<div class="panel-card archive-node-card"><div class="panel-card-head"><div><b>${esc(node.title)}</b><p>${esc(TYPE_LABELS[node.type])}</p></div><div class="archive-node-actions"><button class="panel-chip" data-restore-node="${node.id}">${icon("restore")}<span>Восстановить</span></button><button class="panel-chip danger" data-delete-node="${node.id}" aria-label="Удалить навсегда">${icon("trash")}</button></div></div></div>`).join("");
+  const order=["process","project","person","idea","goal"];
+  return order.map(type => {
+    const group=entries.filter(node=>node.type===type);
+    if(!group.length)return "";
+    const cards=group.map(node => {
+      const linkCount=state.data.links.filter(link=>link.a===node.id||link.b===node.id).length;
+      return `<div class="panel-card archive-node-card"><div class="panel-card-head"><div><b>${esc(node.title)}</b><p>${esc(TYPE_LABELS[node.type])} · ${node.archivedAt ? new Date(node.archivedAt).toLocaleDateString("ru-RU") + " · " : ""}связей: ${linkCount}</p></div><div class="archive-node-actions"><button class="panel-chip" data-restore-node="${node.id}">${icon("restore")}<span>Восстановить</span></button><button class="panel-chip danger" data-delete-node="${node.id}" aria-label="Удалить навсегда">${icon("trash")}</button></div></div></div>`;
+    }).join("");
+    return `<section class="archive-group"><h3>${esc(TYPE_LABELS[type])} <span>${group.length}</span></h3>${cards}</section>`;
+  }).join("");
 }
 function handlePanelClick(event) {
   const open = event.target.closest("[data-panel-open-node]"); if (open) { const node = nodeById(open.dataset.panelOpenNode); closeOverlays(); if (node) { state.selectedId = node.id; state.selectedLinkId = null; render(); focusNode(node); setTimeout(() => openDetail(node), 350); } }
-  const restore = event.target.closest("[data-restore-node]"); if (restore) { const node = nodeById(restore.dataset.restoreNode); if (node) { node.archived = false; saveData(); $("#panelBody").innerHTML = archivePanelHtml(); render(); toast("Карточка восстановлена"); } }
+  const restore = event.target.closest("[data-restore-node]"); if (restore) { const node = nodeById(restore.dataset.restoreNode); if (node) { pushUndo("Восстановление карточки"); node.archived = false; node.archivedAt = ""; saveData(); $("#panelBody").innerHTML = archivePanelHtml(); render(); toast("Карточка восстановлена", "Отменить", undoLast); } }
   const remove = event.target.closest("[data-delete-node]"); if (remove) { const node = nodeById(remove.dataset.deleteNode); if (node && confirm(`Удалить карточку «${node.title || "Без названия"}» навсегда? Все её связи будут удалены.`)) { permanentlyDeleteNode(node); $("#panelBody").innerHTML = archivePanelHtml(); render(); toast("Карточка удалена навсегда"); } }
 }
 function permanentlyDeleteNode(node) {
@@ -2193,8 +2408,18 @@ function handleMenuAction(event) {
   if (action === "logout") logout();
   if (action === "reset") resetAll();
 }
-function exportData() {
-  const payload = { app: "BOONWAVE", version: VERSION, exportedAt: new Date().toISOString(), data: state.data };
+async function getAllAssetRecords() {
+  const db=await openAssetDB();
+  return new Promise((resolve,reject)=>{ const req=db.transaction("assets","readonly").objectStore("assets").getAll(); req.onsuccess=()=>resolve(req.result||[]); req.onerror=()=>reject(req.error); });
+}
+function blobToDataURL(blob) { return new Promise((resolve,reject)=>{ const reader=new FileReader(); reader.onload=()=>resolve(reader.result); reader.onerror=()=>reject(reader.error); reader.readAsDataURL(blob); }); }
+function dataURLToBlob(dataURL) { const [head,body]=dataURL.split(","); const mime=(head.match(/data:([^;]+)/)||[])[1]||"application/octet-stream"; const bytes=atob(body); const arr=new Uint8Array(bytes.length); for(let i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i); return new Blob([arr],{type:mime}); }
+async function exportData() {
+  toast("Подготавливаю полную резервную копию…");
+  const records=await getAllAssetRecords();
+  const assets=[];
+  for(const record of records){ assets.push({ ...record, blob: undefined, dataURL: record.blob ? await blobToDataURL(record.blob) : null }); }
+  const payload = { app: "BOONWAVE", version: VERSION, schemaVersion: SCHEMA_VERSION, exportedAt: new Date().toISOString(), data: state.data, assets };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `BOONWAVE_${new Date().toISOString().slice(0,10)}.json`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); closeOverlays(); toast("Резервная копия сохранена");
 }
@@ -2203,7 +2428,16 @@ async function importDataFile(event) {
   try {
     const parsed = JSON.parse(await file.text()); const data = normalizeData(parsed.data || parsed);
     if (!confirm("Заменить текущую структуру импортированной копией?")) return;
-    state.data = data; saveData(); closeOverlays(); render(); fitAll(true); toast("Данные импортированы");
+    state.data = data;
+    if (Array.isArray(parsed.assets)) {
+      await clearAssetDB();
+      for (const asset of parsed.assets) {
+        if (!asset?.id || !asset.dataURL) continue;
+        const { dataURL, ...meta } = asset;
+        await putAsset({ ...meta, blob: dataURLToBlob(dataURL) });
+      }
+    }
+    saveData(); closeOverlays(); render(); fitAll(true); toast(parsed.assets ? "Полная резервная копия восстановлена" : "Структура импортирована без вложений");
   } catch { toast("Не удалось прочитать JSON"); }
 }
 function logout() {
@@ -2211,14 +2445,43 @@ function logout() {
 }
 async function resetAll() {
   if (!confirm("Удалить все карточки, вложения и локальные настройки?")) return;
-  localStorage.removeItem(storageKey()); await clearAssetDB(); clearSession();
+  localStorage.removeItem(storageKey()); localStorage.removeItem(backupKey()); await clearAssetDB(); clearSession();
   if ("caches" in window) { const keys = await caches.keys(); await Promise.all(keys.map(key => caches.delete(key))); }
   const registrations = await navigator.serviceWorker?.getRegistrations?.() || []; await Promise.all(registrations.map(registration => registration.unregister()));
   location.href = location.pathname + `?reset=${Date.now()}`;
 }
 
-function toast(message) {
-  const element = $("#toast"); element.textContent = message; element.classList.remove("hidden"); clearTimeout(toast.timer); toast.timer = setTimeout(() => element.classList.add("hidden"), 2200);
+function pushUndo(label) { pushUndoSnapshot(label, clone(state.data), clone(state.camera)); }
+function pushUndoSnapshot(label, dataSnapshot, cameraSnapshot = clone(state.camera)) {
+  state.undoStack.push({ label, data: clone(dataSnapshot), camera: clone(cameraSnapshot), space: state.space });
+  if (state.undoStack.length > 20) state.undoStack.shift();
+}
+function undoLast() {
+  const item = state.undoStack.pop();
+  if (!item) return toast("Нет действий для отмены");
+  state.data = normalizeData(item.data);
+  state.space = item.space || state.space;
+  state.camera = clone(item.camera || state.camera);
+  state.selectedId = null; state.selectedLinkId = null; state.linkMenuId = null; state.linkDirectionModeId = null;
+  saveData(); render(); applyCamera();
+  toast(`${item.label}: отменено`);
+}
+function runToastAction() {
+  const action = toast.action;
+  toast.action = null;
+  if (typeof action === "function") action();
+}
+
+function toast(message, actionLabel = "", action = null) {
+  const element = $("#toast");
+  $("#toastMessage").textContent = message;
+  const button = $("#toastAction");
+  toast.action = action;
+  button.textContent = actionLabel;
+  button.classList.toggle("hidden", !actionLabel || typeof action !== "function");
+  element.classList.remove("hidden");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { element.classList.add("hidden"); toast.action = null; }, action ? 5200 : 2400);
 }
 
 /* Service worker */

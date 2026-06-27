@@ -901,3 +901,43 @@ html[data-theme="light"] .desktop-zoom-slider input[type=range]::-webkit-slider-
 .node-card.expanded{--cw:232px!important;--ch:166px!important}
 .cover-size-switch{grid-template-columns:repeat(2,1fr)!important}
 #canvasViewport.is-panning{cursor:grabbing}
+
+
+/* v6.0.33 — intelligent links, undo and calm interaction states */
+.link-path{stroke-width:2.15!important;opacity:.42!important}
+.link-path.active{stroke-width:2.8!important;opacity:.78!important;filter:drop-shadow(0 0 7px rgba(92,135,255,.28))}
+.link-path.highlighted{stroke-width:3.05!important;opacity:.92!important;filter:drop-shadow(0 0 6px rgba(105,118,255,.48)) drop-shadow(0 0 12px rgba(83,214,236,.16))}
+.link-path.selected{stroke-width:3.45!important;opacity:1!important;filter:drop-shadow(0 0 7px rgba(104,126,255,.58)) drop-shadow(0 0 12px rgba(85,220,236,.19))}
+.link-flow-overlay{fill:none;stroke:url(#linkPulseGradient);stroke-width:5.2;stroke-linecap:round;stroke-dasharray:135 865;opacity:.82;pointer-events:none;filter:drop-shadow(0 0 5px rgba(112,139,255,.62)) drop-shadow(0 0 10px rgba(84,220,236,.28));animation:linkPulseForward 3.4s linear infinite}
+.link-flow-overlay.reverse{animation-name:linkPulseReverse}
+@keyframes linkPulseForward{from{stroke-dashoffset:1000}to{stroke-dashoffset:0}}
+@keyframes linkPulseReverse{from{stroke-dashoffset:0}to{stroke-dashoffset:1000}}
+.link-toolbar{width:178px!important;height:auto!important;padding:6px!important;border-radius:16px!important;display:grid!important;gap:4px!important;background:rgba(13,17,27,.97)!important;border:1px solid rgba(101,115,151,.48)!important;box-shadow:0 16px 38px rgba(0,0,0,.58),0 0 22px rgba(82,100,255,.13)!important}
+.link-toolbar.hidden{display:none!important}
+.link-toolbar button{width:100%!important;height:38px!important;padding:0 10px!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:9px!important;border-radius:11px!important;background:transparent!important;color:#dce5f4!important;font-size:10px!important;text-align:left!important}
+.link-toolbar button:hover,.link-toolbar button:active,.link-toolbar button.active{background:rgba(91,105,155,.18)!important}
+.link-toolbar button.danger{color:#f0a1b2!important}
+.link-toolbar button svg{width:16px!important;height:16px!important;flex:0 0 auto}
+.link-toolbar button span{display:block;white-space:nowrap}
+.node-card.selected:not(.link-create-source){box-shadow:0 0 0 1.5px rgba(118,127,255,.72),0 0 18px rgba(94,112,255,.14),0 18px 50px rgba(0,0,0,.44)!important}
+.node-card.dragging{transform:scale(1.025)!important;filter:brightness(1.04);box-shadow:0 24px 60px rgba(0,0,0,.58),0 0 22px rgba(91,111,255,.16)!important}
+.node-card.link-create-source{box-shadow:0 0 0 2px rgba(126,117,255,.76),0 0 22px rgba(98,126,255,.2),0 18px 50px rgba(0,0,0,.46)!important}
+.node-card.link-create-candidate{animation:linkCandidatePulse33 2.35s ease-in-out infinite!important}
+@keyframes linkCandidatePulse33{0%,100%{box-shadow:0 18px 50px rgba(0,0,0,.42)}50%{box-shadow:0 0 0 1px rgba(98,221,236,.15),0 0 8px rgba(98,221,236,.055),0 18px 50px rgba(0,0,0,.42)}}
+.toast{display:flex!important;align-items:center;gap:10px;padding:9px 10px 9px 14px!important;background:rgba(21,27,40,.96)!important;border:1px solid rgba(107,124,170,.48);box-shadow:0 14px 40px rgba(0,0,0,.68),0 0 20px rgba(95,105,255,.13)!important}
+.toast.hidden{display:none!important}
+.toast span{min-width:0}
+.toast button{height:30px;padding:0 10px;border-radius:9px;background:linear-gradient(135deg,#795cff,#4d91ff);color:#fff;font-size:9px;font-weight:700;white-space:nowrap}
+.toast button.hidden{display:none!important}
+
+.archive-group{display:grid;gap:8px;margin-bottom:15px}.archive-group>h3{margin:0 2px 2px;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}.archive-group>h3 span{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:rgba(94,109,151,.2);color:#cbd4e5;font-size:8px}
+
+/* v6.0.34 — promised interaction completion */
+.node-card.opened .card-shell{border-color:rgba(110,178,255,.72);box-shadow:0 0 0 1px rgba(116,204,255,.22),0 0 22px rgba(79,123,255,.2),inset 0 0 0 1px rgba(255,255,255,.025)}
+.node-card.creation-dimmed{opacity:.72;filter:saturate(.82) brightness(.88);transition:opacity .34s ease,filter .34s ease}
+.link-path{transition:opacity .22s ease,stroke-width .22s ease,filter .22s ease}
+.link-path.muted{opacity:.18!important;filter:none!important}
+.link-path.active:not(.selected){opacity:.86}
+.link-path.selected{opacity:1!important}
+.canvas-viewport.is-panning{cursor:grabbing}
+.canvas-viewport.is-panning #dotCanvas{filter:brightness(1.12)}

@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="BOONWAVE">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=6.0.32">
+  <link rel="stylesheet" href="styles.css?v=6.0.34">
   <title>BOONWAVE</title>
 </head>
 <body>
@@ -71,7 +71,7 @@
       <div id="world">
         <svg id="linkLayer" width="3600" height="2600" viewBox="0 0 3600 2600" aria-label="Связи между карточками"></svg>
         <div id="cardLayer"></div>
-        <div id="linkToolbar" class="link-toolbar hidden" role="toolbar" aria-label="Действия со связью"><button type="button" id="deleteSelectedLink" aria-label="Удалить связь" title="Удалить связь"></button></div>
+        <div id="linkToolbar" class="link-toolbar hidden" role="menu" aria-label="Действия со связью"><button type="button" id="linkHighlightButton" role="menuitem"></button><button type="button" id="linkDirectionButton" role="menuitem"></button><button type="button" id="deleteSelectedLink" class="danger" role="menuitem"></button></div>
       </div>
       <div id="emptyState" class="empty-state hidden">
         <div class="empty-symbol">≈</div>
@@ -125,7 +125,7 @@
     <button class="menu-row" data-menu-action="fit"><span data-icon="focus"></span><div><b>Вписать всё</b><small>Вернуть все карточки в обзор</small></div></button>
     <button class="menu-row" data-menu-action="logout"><span data-icon="logout"></span><div><b>Выйти</b><small>Проекты останутся на устройстве</small></div></button>
     <button class="menu-row danger" data-menu-action="reset"><span data-icon="trash"></span><div><b>Полный сброс</b><small>Удалить локальные данные и вложения</small></div></button>
-    <footer>BOONWAVE 6.0.32 · LIGHT THEME</footer>
+    <footer>BOONWAVE 6.0.34 · LIGHT THEME</footer>
   </section>
 
   <section id="sidePanel" class="side-panel hidden">
@@ -202,8 +202,8 @@
   <input id="processCoverInput" type="file" accept="image/*" hidden>
   <input id="assetInput" type="file" multiple accept="image/*,.pdf,.svg,.ai,.eps,.cdr,.dxf,.dwg,.stl,.obj,.3mf,.step,.stp" hidden>
   <input id="importInput" type="file" accept="application/json,.json" hidden>
-  <div id="toast" class="toast hidden"></div>
+  <div id="toast" class="toast hidden"><span id="toastMessage"></span><button type="button" id="toastAction" class="hidden"></button></div>
 
-  <script src="app.js?v=6.0.32"></script>
+  <script src="app.js?v=6.0.34"></script>
 </body>
 </html>
