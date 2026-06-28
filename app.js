@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.51";
+const VERSION = "6.0.52";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -579,6 +579,7 @@ function enterApp(user, useDemo) {
   requestAnimationFrame(() => {
     if (currentNodes().length) fitAll(false);
     else centerCamera();
+    requestAnimationFrame(() => scheduleRenderLinks());
     if (!state.data.settings.hintDismissed) $("#gestureHint").classList.remove("hidden");
   });
 }
@@ -626,12 +627,18 @@ function bindWorkspaceOnce() {
     resetAllTransientGestures();
   }, { passive: false });
   window.addEventListener("blur", resetAllTransientGestures);
-  window.addEventListener("pageshow", resetAllTransientGestures);
+  window.addEventListener("pageshow", () => {
+    resetAllTransientGestures();
+    requestAnimationFrame(() => requestAnimationFrame(() => scheduleRenderLinks()));
+  });
   window.addEventListener("touchcancel", resetAllTransientGestures, { passive: true });
   window.addEventListener("pointerdown", event => {
     if (event.pointerType === "touch" && (state.linkDrag || state.linkFlowGesture) && event.pointerId !== state.linkDrag?.pointerId && event.pointerId !== state.linkFlowGesture?.pointerId) resetAllTransientGestures();
   }, { capture: true, passive: true });
-  document.addEventListener("visibilitychange", () => { if (document.hidden) resetAllTransientGestures(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) resetAllTransientGestures();
+    else requestAnimationFrame(() => requestAnimationFrame(() => scheduleRenderLinks()));
+  });
   $("#detailEditButton").addEventListener("click", () => {
     const node = nodeById(state.activeNodeId); if (node) openEditor(node);
   });
@@ -741,6 +748,16 @@ function bindWorkspaceOnce() {
   $("#assetDelete").addEventListener("click", deleteCurrentAsset);
   $("#detailBody").addEventListener("click", handleDetailClick);
   $("#panelBody").addEventListener("click", handlePanelClick);
+  const clearNowTaskPress = () => $$(".now-task.is-pressing", $("#panelBody")).forEach(item => item.classList.remove("is-pressing"));
+  $("#panelBody").addEventListener("pointerdown", event => {
+    const task = event.target.closest(".now-task");
+    if (!task) return;
+    clearNowTaskPress();
+    task.classList.add("is-pressing");
+  }, { passive: true });
+  $("#panelBody").addEventListener("pointerup", clearNowTaskPress, { passive: true });
+  $("#panelBody").addEventListener("pointercancel", clearNowTaskPress, { passive: true });
+  $("#panelBody").addEventListener("pointerleave", clearNowTaskPress, { passive: true });
   $$('.bottom-nav button[data-panel]').forEach(button => button.addEventListener("click", () => openPanel(button.dataset.panel)));
   $('[data-action="dismissHint"]').addEventListener("click", () => {
     state.data.settings.hintDismissed = true; saveData(); $("#gestureHint").classList.add("hidden");
@@ -1208,6 +1225,9 @@ function applyCamera() {
   world.style.transform = `translate3d(${state.camera.tx}px,${state.camera.ty}px,0) scale(${state.camera.scale})`;
   syncDesktopZoomSlider();
   if (!state.dotRenderFrame) state.dotRenderFrame = requestAnimationFrame(() => { state.dotRenderFrame = 0; drawDots(); });
+  // Links share the camera transform but their visibility culling depends on the current camera.
+  // Always schedule one rAF-limited pass after any camera change, including the first fitAll.
+  scheduleRenderLinks();
 }
 function activeBounds() {
   const nodes = currentNodes();

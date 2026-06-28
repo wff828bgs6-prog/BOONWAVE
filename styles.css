@@ -1405,7 +1405,7 @@ html[data-theme="light"] .now-task,html[data-theme="light"] .now-summary{backgro
   .stage-task-card.task-focus-flash{animation:none!important;border-color:#718cff!important;box-shadow:0 0 0 2px rgba(98,221,236,.22)!important}
 }
 
-/* v6.0.51 — sliding card actions and stable touch/link interaction */
+/* v6.0.52 — sliding card actions and stable touch/link interaction */
 .node-card{overflow:visible!important}
 .node-card .card-shell{position:relative;z-index:3}
 .card-actions,
@@ -1467,3 +1467,39 @@ html[data-theme="light"] .now-task,html[data-theme="light"] .now-summary{backgro
 .node-card.selected{z-index:25!important}
 html.interaction-locked,html.interaction-locked body{overscroll-behavior:none!important}
 #canvasViewport,#world,#linkLayer{touch-action:none!important}
+
+
+/* v6.0.52 — reveal actions fully, restore task press feedback */
+.node-card.selected .card-actions{
+  z-index:6!important;
+  top:calc(100% - 3px)!important;
+  transform:translate(-50%,0)!important;
+  opacity:1!important;
+  pointer-events:auto!important;
+}
+.node-card:not(.selected) .card-actions{
+  z-index:2!important;
+  transform:translate(-50%,-44px)!important;
+}
+.node-card.selected .card-shell{z-index:3!important}
+.compact.selected .card-actions{top:calc(100% - 2px)!important}
+
+.now-task{
+  transition:transform .16s cubic-bezier(.2,.8,.2,1),border-color .16s ease,box-shadow .16s ease,background .16s ease;
+  transform-origin:center;
+  will-change:transform;
+}
+.now-task.is-pressing{
+  transform:translateX(6px) scale(.992);
+  border-color:#4b5d82;
+  background:linear-gradient(145deg,#1a2232,#121925);
+  box-shadow:0 10px 28px rgba(0,0,0,.3),0 0 0 1px rgba(103,128,255,.12) inset;
+}
+html[data-theme="light"] .now-task.is-pressing{
+  background:#f6f8fc;
+  border-color:#aeb9cf;
+}
+@media (prefers-reduced-motion:reduce){
+  .now-task{transition:none!important}
+  .now-task.is-pressing{transform:none!important}
+}
