@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.53";
+const VERSION = "6.0.54";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -1619,22 +1619,9 @@ function handleCardActionClick(event) {
   const card = button.closest(".node-card"); const node = nodeById(card?.dataset.id); if (!node) return;
   const action = button.dataset.cardAction;
   if (action === "open") {
-    const now = performance.now();
-    if (state.eyeTap.id === node.id && state.eyeTap.timer && now - state.eyeTap.time < 360) {
-      clearTimeout(state.eyeTap.timer);
-      state.eyeTap = { id: null, timer: null, time: 0 };
-      openDetail(node);
-      return;
-    }
-    if (state.eyeTap.timer) clearTimeout(state.eyeTap.timer);
-    state.eyeTap.id = node.id;
-    state.eyeTap.time = now;
-    state.eyeTap.timer = setTimeout(() => {
-      state.eyeTap = { id: null, timer: null, time: 0 };
-      node.level = (node.level || 2) === 1 ? 2 : 1;
-      saveData();
-      render();
-    }, 300);
+    // The eye is a deterministic “view” action. Card scale is controlled only by semantic zoom / pinch.
+    state.eyeTap = { id: null, timer: null, time: 0 };
+    openDetail(node);
     return;
   }
   if (action === "connect") startLinkCreation(node);
@@ -3043,6 +3030,15 @@ function toast(message, actionLabel = "", action = null) {
   toast.timer = setTimeout(() => { element.classList.add("hidden"); element.classList.remove("attention"); toast.action = null; }, action ? 5200 : 2400);
 }
 
+function updateBuildInfo() {
+  const footer = document.getElementById("buildInfo");
+  if (!footer) return;
+  const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true;
+  const mode = standalone ? "PWA" : "Safari";
+  const path = location.pathname.replace(/\/$/, "") || "/";
+  footer.textContent = `BOONWAVE ${VERSION} · ${mode} · ${location.host}${path}`;
+}
+
 /* Service worker */
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
@@ -3059,5 +3055,5 @@ function registerServiceWorker() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  initializeOnboarding(); registerServiceWorker();
+  updateBuildInfo(); initializeOnboarding(); registerServiceWorker();
 });
