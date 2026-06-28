@@ -1,0 +1,16 @@
+this.canvas = canvas;
+this.pointers = new Map();
+this.lastPanPoint = null;
+this.lastPinchDistance = 0;
+this.cardPointerId = null;
+
+this.onPointerDown = this.onPointerDown.bind(this);
+this.onPointerMove = this.onPointerMove.bind(this);
+this.onPointerEnd = this.onPointerEnd.bind(this);
+
+this.canvas.style.touchAction = "none";
+
+this.canvas.addEventListener("pointerdown", this.onPointerDown);
+this.canvas.addEventListener("pointermove", this.onPointerMove);
+this.canvas.addEventListener("pointerup", this.onPointerEnd);
+this.canvas.addEventListener("pointercancel", this.onPointerEnd);
