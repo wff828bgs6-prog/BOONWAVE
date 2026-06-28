@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.48";
+const VERSION = "6.0.49";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -1878,9 +1878,17 @@ function personDetailHtml(node) {
   const socialHref = externalHref(node.social, "social");
   const telegramHref = externalHref(node.telegram, "telegram");
   const addressHref = node.address ? `https://maps.apple.com/?q=${encodeURIComponent(node.address)}` : "";
+  const contactItems = [
+    node.phone ? `<a class="person-contact-item" href="tel:${esc(node.phone)}"><span>${icon("phone")}</span><b>Позвонить</b><small>${esc(node.phone)}</small></a>` : "",
+    node.telegram ? `${telegramHref ? `<a class="person-contact-item" href="${esc(telegramHref)}" target="_blank" rel="noopener noreferrer">` : `<div class="person-contact-item">`}<span>${icon("telegram")}</span><b>Telegram</b><small>${esc(node.telegram)}</small>${telegramHref ? `</a>` : `</div>`}` : "",
+    node.email ? `<a class="person-contact-item" href="mailto:${esc(node.email)}"><span>${icon("mail")}</span><b>Email</b><small>${esc(node.email)}</small></a>` : "",
+    addressHref ? `<a class="person-contact-item" href="${esc(addressHref)}" target="_blank" rel="noopener noreferrer"><span>${icon("location")}</span><b>Адрес</b><small>${esc(node.address)}</small></a>` : "",
+    siteHref ? `<a class="person-contact-item" href="${esc(siteHref)}" target="_blank" rel="noopener noreferrer"><span>${icon("link")}</span><b>Сайт</b><small>${esc(node.site)}</small></a>` : "",
+    socialHref ? `<a class="person-contact-item" href="${esc(socialHref)}" target="_blank" rel="noopener noreferrer"><span>${icon("link")}</span><b>Соцсеть</b><small>${esc(node.social)}</small></a>` : (node.social ? `<div class="person-contact-item"><span>${icon("link")}</span><b>Соцсеть</b><small>${esc(node.social)}</small></div>` : "")
+  ].filter(Boolean).join("");
   return `<div class="detail-hero person-detail-hero">${personPhotoMediaHtml(node)}<div class="detail-hero-content"><p>${esc(node.speciality || "Специалист")}</p></div></div>
     <div class="detail-grid"><div class="detail-stat"><small>СТАТУС</small><b>${esc(node.personStatus || "Неизвестно")}</b></div><div class="detail-stat"><small>АКТИВНЫЕ ЗАДАЧИ</small><b>${tasksForPerson(node.id).filter(task => !task.done).length}</b></div></div>
-    <div class="detail-section"><div class="detail-section-head"><h3>Контакты</h3></div><div class="chips">${node.phone ? `<a class="chip" href="tel:${esc(node.phone)}">${icon("phone")} ${esc(node.phone)}</a>` : ""}${telegramHref ? `<a class="chip external-person-link" href="${esc(telegramHref)}" target="_blank" rel="noopener noreferrer">${icon("telegram")} ${esc(node.telegram)}</a>` : (node.telegram ? `<span class="chip">${icon("telegram")} ${esc(node.telegram)}</span>` : "")}${addressHref ? `<a class="chip external-person-link" href="${esc(addressHref)}" target="_blank" rel="noopener noreferrer">${icon("location")} ${esc(node.address)}</a>` : ""}${node.email ? `<a class="chip" href="mailto:${esc(node.email)}">${icon("mail")} ${esc(node.email)}</a>` : ""}${siteHref ? `<a class="chip external-person-link" href="${esc(siteHref)}" target="_blank" rel="noopener noreferrer">${icon("link")} ${esc(node.site)}</a>` : ""}${socialHref ? `<a class="chip external-person-link" href="${esc(socialHref)}" target="_blank" rel="noopener noreferrer">${esc(node.social)}</a>` : (node.social ? `<span class="chip">${esc(node.social)}</span>` : "")}</div></div>
+    ${contactItems ? `<div class="detail-section person-contact-section"><div class="detail-section-head"><h3>Контакты</h3></div><div class="person-contact-grid">${contactItems}</div></div>` : ""}
     ${node.tags ? `<div class="detail-section"><div class="detail-section-head"><h3>Ключевые слова</h3></div><div class="chips">${node.tags.split(",").filter(Boolean).map(tag => `<span class="chip">${esc(tag.trim())}</span>`).join("")}</div></div>` : ""}
     ${node.note ? `<div class="detail-section"><div class="detail-section-head"><h3>Заметка</h3></div><div class="note-block">${esc(node.note)}</div></div>` : ""}`;
 }
@@ -1912,7 +1920,10 @@ async function hydrateDetailAssets(node) {
   const detailCover = $('[data-detail-cover]', $("#detailBody"));
   if (detailCover) {
     const url = await assetUrl(detailCover.dataset.detailCover).catch(() => null);
-    if (url && detailCover.isConnected) detailCover.style.backgroundImage = `url("${url}")`;
+    if (url && detailCover.isConnected) {
+      if (detailCover.tagName === "IMG") detailCover.src = url;
+      else detailCover.style.backgroundImage = `url("${url}")`;
+    }
   }
   for (const tile of $$('[data-asset-id]', $("#detailBody"))) {
     const asset = (node.assets || []).find(item => item.id === tile.dataset.assetId);
@@ -2797,12 +2808,22 @@ function permanentlyDeleteNode(node) {
 
 /* Overlay and menu */
 function showOverlay(id) {
-  ["createMenu","accountMenu","sidePanel"].forEach(name => $("#" + name).classList.toggle("hidden", name !== id));
-  $("#scrim").classList.remove("hidden"); $("#createButton").classList.toggle("active", id === "createMenu");
+  ["scrim","createMenu","accountMenu","sidePanel"].forEach(name => {
+    const el = $("#" + name);
+    if (el && el.parentElement !== document.body) document.body.appendChild(el);
+  });
+  ["createMenu","accountMenu","sidePanel"].forEach(name => {
+    const el = $("#" + name);
+    el.classList.toggle("hidden", name !== id);
+    el.setAttribute("aria-hidden", name === id ? "false" : "true");
+  });
+  $("#scrim").classList.remove("hidden");
+  $("#scrim").setAttribute("aria-hidden", "false");
+  $("#createButton").classList.toggle("active", id === "createMenu");
 }
 function closeOverlays() {
   ["createMenu","accountMenu","sidePanel"].forEach(name => $("#" + name).classList.add("hidden"));
-  $("#scrim").classList.add("hidden"); $("#createButton").classList.remove("active");
+  $("#scrim").classList.add("hidden"); $("#scrim").setAttribute("aria-hidden", "true"); $("#createButton").classList.remove("active");
   $$('.bottom-nav button').forEach(button => button.classList.remove("active"));
 }
 function handleMenuAction(event) {
