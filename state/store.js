@@ -1,4 +1,3 @@
-
 // state/store.js
 
 const DEFAULT_STATE = Object.freeze({
