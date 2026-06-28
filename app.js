@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.58";
+const VERSION = "6.0.45";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -35,24 +35,6 @@ function externalHref(value, kind = "site") {
   } catch { return ""; }
 }
 
-function bindTactileFeedback(container, selector, options = {}) {
-  if (!container || container.dataset.tactileBound === "1") return;
-  const pressClass = options.pressClass || "is-pressing";
-  const vibrateMs = Number.isFinite(options.vibrate) ? options.vibrate : 8;
-  const clear = () => container.querySelectorAll(`.${pressClass}`).forEach(item => item.classList.remove(pressClass));
-  container.addEventListener("pointerdown", event => {
-    const target = event.target.closest(selector);
-    if (!target || target.disabled || target.getAttribute("aria-disabled") === "true") return;
-    clear();
-    target.classList.add(pressClass);
-    try { if (vibrateMs && navigator.vibrate) navigator.vibrate(vibrateMs); } catch (_) {}
-  }, { passive: true });
-  container.addEventListener("pointerup", clear, { passive: true });
-  container.addEventListener("pointercancel", clear, { passive: true });
-  container.addEventListener("pointerleave", clear, { passive: true });
-  container.dataset.tactileBound = "1";
-}
-
 const TYPE_LABELS = {
   project: "Проект",
   process: "Рабочий процесс",
@@ -74,7 +56,6 @@ function icon(name, className = "") {
   const paths = {
     tree: `<path d="M5 5h5v5H5zM14 4h5v5h-5zM9 15h6v5H9z"/><path d="M7.5 10v2.2c0 1 .8 1.8 1.8 1.8H12m4.5-5v3.2c0 1-.8 1.8-1.8 1.8H12"/>`,
     today: `<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3.5 2"/>`,
-    nowMe: `<circle cx="12" cy="7.2" r="2.5"/><path d="M7.7 20v-4.6c0-2.4 1.9-4.3 4.3-4.3s4.3 1.9 4.3 4.3V20"/><path d="M7.8 12.2 4.2 8.7M16.2 12.2l3.6-3.5M4.2 8.7V5.4M19.8 8.7V5.4"/>`,
     results: `<path d="M6 19V9m6 10V5m6 14v-7"/><path d="m5 7 4-3 3 2 6-4"/>`,
     archive: `<path d="M4 7h16v3H4zM6 10v9h12v-9M9 14h6"/>`,
     archiveSend: `<path d="M4 7h16v3H4zM6 10v9h12v-9M9 15h6"/><path d="M12 3v7m0 0-3-3m3 3 3-3"/>`,
@@ -123,7 +104,6 @@ const state = {
   data: null,
   space: "work",
   selectedId: null,
-  actionsOpenId: null,
   camera: { tx: 0, ty: 0, scale: 1 },
   canvasPointers: new Map(),
   canvasGesture: null,
@@ -175,10 +155,7 @@ const state = {
   focusOverview: false,
   cameraInertiaFrame: 0,
   lastSaveError: null,
-  activeInteraction: false,
-  interactionWatchdog: 0,
-  suppressCanvasTapUntil: 0,
-  capturedPointers: new Map()
+  activeInteraction: false
 };
 
 function blankData() {
@@ -352,29 +329,6 @@ function cardDims(node) {
 }
 function screenToWorld(x, y) {
   return { x: (x - state.camera.tx) / state.camera.scale, y: (y - state.camera.ty) / state.camera.scale };
-}
-function liveCardDims(node) {
-  const el = document.querySelector(`.node-card[data-id="${CSS.escape(String(node.id))}"]`);
-  if (!el) return cardDims(node);
-  const shell = el.querySelector('.card-shell') || el;
-  const w = shell.offsetWidth || el.offsetWidth;
-  const h = shell.offsetHeight || el.offsetHeight;
-  return w && h ? { w, h } : cardDims(node);
-}
-function rememberPointerCapture(pointerId, element) {
-  if (pointerId == null || !element) return;
-  state.capturedPointers.set(pointerId, element);
-}
-function releaseRememberedPointer(pointerId) {
-  const element = state.capturedPointers.get(pointerId);
-  if (element) { try { if (element.hasPointerCapture?.(pointerId)) element.releasePointerCapture(pointerId); } catch (_) {} }
-  state.capturedPointers.delete(pointerId);
-}
-function armInteractionWatchdog() {
-  clearTimeout(state.interactionWatchdog);
-  state.interactionWatchdog = setTimeout(() => {
-    if (state.canvasPointers.size || state.linkDrag || state.linkFlowGesture) resetAllTransientGestures();
-  }, 5000);
 }
 
 /* IndexedDB asset storage */
@@ -595,15 +549,10 @@ function enterApp(user, useDemo) {
   requestAnimationFrame(() => $("#app").classList.add("app-ready"));
   $("#accountLabel").textContent = user.name || user.email || "Локальный аккаунт";
   bindWorkspaceOnce();
-  resetAllTransientGestures();
   render();
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (currentNodes().length) fitAll(false);
-      else centerCamera();
-      scheduleRenderLinks();
-      setTimeout(() => { applyCamera(); scheduleRenderLinks(); }, 80);
-    });
+    if (currentNodes().length) fitAll(false);
+    else centerCamera();
     if (!state.data.settings.hintDismissed) $("#gestureHint").classList.remove("hidden");
   });
 }
@@ -617,7 +566,6 @@ function bindWorkspaceOnce() {
   viewport.addEventListener("pointermove", onCanvasPointerMove);
   viewport.addEventListener("pointerup", onCanvasPointerEnd);
   viewport.addEventListener("pointercancel", onCanvasPointerEnd);
-  viewport.addEventListener("lostpointercapture", event => { releaseRememberedPointer(event.pointerId); resetAllTransientGestures(); });
   window.addEventListener("resize", () => { drawDots(); applyCamera(); });
 
   $$('.space-switch button').forEach(button => button.addEventListener("click", () => switchSpace(button.dataset.space)));
@@ -651,18 +599,7 @@ function bindWorkspaceOnce() {
     resetAllTransientGestures();
   }, { passive: false });
   window.addEventListener("blur", resetAllTransientGestures);
-  window.addEventListener("pageshow", () => {
-    resetAllTransientGestures();
-    requestAnimationFrame(() => requestAnimationFrame(() => scheduleRenderLinks()));
-  });
-  window.addEventListener("touchcancel", resetAllTransientGestures, { passive: true });
-  window.addEventListener("pointerdown", event => {
-    if (event.pointerType === "touch" && (state.linkDrag || state.linkFlowGesture) && event.pointerId !== state.linkDrag?.pointerId && event.pointerId !== state.linkFlowGesture?.pointerId) resetAllTransientGestures();
-  }, { capture: true, passive: true });
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) resetAllTransientGestures();
-    else requestAnimationFrame(() => requestAnimationFrame(() => scheduleRenderLinks()));
-  });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) resetAllTransientGestures(); });
   $("#detailEditButton").addEventListener("click", () => {
     const node = nodeById(state.activeNodeId); if (node) openEditor(node);
   });
@@ -772,19 +709,6 @@ function bindWorkspaceOnce() {
   $("#assetDelete").addEventListener("click", deleteCurrentAsset);
   $("#detailBody").addEventListener("click", handleDetailClick);
   $("#panelBody").addEventListener("click", handlePanelClick);
-  const clearNowTaskPress = () => $$(".now-task.is-pressing", $("#panelBody")).forEach(item => item.classList.remove("is-pressing"));
-  $("#panelBody").addEventListener("pointerdown", event => {
-    const task = event.target.closest(".now-task");
-    if (!task) return;
-    clearNowTaskPress();
-    task.classList.add("is-pressing");
-    try { if (navigator.vibrate) navigator.vibrate(9); } catch (_) {}
-  }, { passive: true });
-  $("#panelBody").addEventListener("pointerup", clearNowTaskPress, { passive: true });
-  $("#panelBody").addEventListener("pointercancel", clearNowTaskPress, { passive: true });
-  $("#panelBody").addEventListener("pointerleave", clearNowTaskPress, { passive: true });
-  bindTactileFeedback($("#detailBody"), ".person-contact-item, .asset-tile, [data-detail-action], .task-archive-item-main, .process-phonebook-button, .task-contact-number");
-  bindTactileFeedback($("#accountMenu"), ".menu-row");
   $$('.bottom-nav button[data-panel]').forEach(button => button.addEventListener("click", () => openPanel(button.dataset.panel)));
   $('[data-action="dismissHint"]').addEventListener("click", () => {
     state.data.settings.hintDismissed = true; saveData(); $("#gestureHint").classList.add("hidden");
@@ -823,7 +747,7 @@ function switchSpace(space) {
 function cardClass(node) {
   const level = node.level || 2;
   const statusClass = node.status === "paused" ? "status-paused" : node.status === "done" ? "status-done" : node.status === "cancelled" ? "status-cancelled" : "";
-  return `node-card ${level === 1 ? "compact" : "medium"} ${statusClass} ${node.locked ? "locked" : ""} ${state.selectedId === node.id ? "selected" : ""} ${state.actionsOpenId === node.id ? "actions-open" : ""} ${state.activeNodeId === node.id ? "opened" : ""}`;
+  return `node-card ${level === 1 ? "compact" : "medium"} ${statusClass} ${node.locked ? "locked" : ""} ${state.selectedId === node.id ? "selected" : ""} ${state.activeNodeId === node.id ? "opened" : ""}`;
 }
 function nodeSubtitle(node) {
   if (node.type === "project") return node.client || node.address || "Новый проект";
@@ -845,16 +769,6 @@ function nodeMetrics(node) {
   if (node.type === "idea") return metricHtml("image", (node.assets || []).length) + metricHtml("link", linkNodesFor(node.id).length);
   return metricHtml("calendar", node.deadline || "без срока") + metricHtml("results", `${node.progress || 0}%`);
 }
-function syncCardSelectionDOM() {
-  $$(".node-card", $("#cardLayer")).forEach(card => {
-    const id = card.dataset.id;
-    card.classList.toggle("selected", state.selectedId === id);
-    card.classList.toggle("actions-open", state.actionsOpenId === id);
-    card.classList.toggle("link-create-source", state.linkCreateSourceId === id);
-    card.classList.toggle("link-create-candidate", Boolean(state.linkCreateSourceId) && state.linkCreateSourceId !== id);
-  });
-}
-
 function renderCards() {
   const layer = $("#cardLayer");
   layer.innerHTML = "";
@@ -908,10 +822,8 @@ async function hydrateCardCovers() {
         const position = processCoverPosition(node, String(node.level || 2));
         visual.style.backgroundPosition = `calc(50% + ${Number(position.x || 0)}%) calc(50% + ${Number(position.y || 0)}%)`;
         const base = position.fit === "contain" ? 100 : 100;
-        const forceCompactPersonCover = node.type === "person" && Number(node.level || 2) === 1;
-        visual.style.backgroundSize = forceCompactPersonCover ? `${Math.max(112, Number(position.scale || 1) * 100)}%` : (position.fit === "contain" ? `contain` : `${Math.max(base, Number(position.scale || 1) * 100)}%`);
+        visual.style.backgroundSize = position.fit === "contain" ? `contain` : `${Math.max(base, Number(position.scale || 1) * 100)}%`;
         visual.style.backgroundRepeat = "no-repeat";
-        if (forceCompactPersonCover && !Number(position.y || 0)) visual.style.backgroundPosition = `calc(50% + ${Number(position.x || 0)}%) 38%`;
       }
       visual.querySelector(".card-visual-placeholder")?.remove();
     }
@@ -952,7 +864,7 @@ function renderLinks() {
   state.data.links.forEach(link => {
     const a = nodeById(link.a), b = nodeById(link.b);
     if (!a || !b || a.space !== state.space || b.space !== state.space || a.archived || b.archived) return;
-    const aDims = liveCardDims(a), bDims = liveCardDims(b);
+    const aDims = cardDims(a), bDims = cardDims(b);
     if (viewBounds) {
       const minX = Math.min(a.x, b.x), minY = Math.min(a.y, b.y);
       const maxX = Math.max(a.x + aDims.w, b.x + bDims.w), maxY = Math.max(a.y + aDims.h, b.y + bDims.h);
@@ -1035,7 +947,6 @@ function curveBetweenPoints(start, end) {
 function resetCanvasGestureState() {
   cancelAnimationFrame(state.cameraInertiaFrame);
   state.cameraInertiaFrame = 0;
-  [...state.canvasPointers.keys()].forEach(releaseRememberedPointer);
   state.canvasPointers.clear();
   state.canvasGesture = null;
   const viewport = $("#canvasViewport");
@@ -1043,8 +954,6 @@ function resetCanvasGestureState() {
   setZoomInteraction(false);
 }
 function resetLinkGestureState() {
-  if (state.linkFlowGesture?.pointerId != null) releaseRememberedPointer(state.linkFlowGesture.pointerId);
-  if (state.linkDrag?.pointerId != null) releaseRememberedPointer(state.linkDrag.pointerId);
   state.linkFlowGesture = null;
   state.linkDrag = null;
   state.linkDropTargetId = null;
@@ -1053,12 +962,8 @@ function resetLinkGestureState() {
   setZoomInteraction(false);
 }
 function resetAllTransientGestures() {
-  clearTimeout(state.interactionWatchdog);
-  state.interactionWatchdog = 0;
   resetCanvasGestureState();
   resetLinkGestureState();
-  state.capturedPointers.forEach((_, id) => releaseRememberedPointer(id));
-  document.documentElement.classList.remove("interaction-locked");
 }
 
 function handleLinkPointerDown(event) {
@@ -1066,11 +971,8 @@ function handleLinkPointerDown(event) {
   const hit = event.target.closest?.(".link-hit,.link-path");
   if (!handle && !hit) return;
   event.preventDefault(); event.stopPropagation();
-  state.suppressCanvasTapUntil = performance.now() + 700;
   resetCanvasGestureState();
-  try { (handle || hit).setPointerCapture?.(event.pointerId); rememberPointerCapture(event.pointerId, handle || hit); } catch (_) {}
-  armInteractionWatchdog();
-  document.documentElement.classList.add("interaction-locked");
+  try { (handle || hit).setPointerCapture?.(event.pointerId); } catch (_) {}
   const linkId = (handle || hit).dataset.linkId;
   if (!linkId) return;
   const linkRecord = state.data.links.find(item => item.id === linkId);
@@ -1110,10 +1012,6 @@ function handleLinkPointerMove(event) {
   if (Math.hypot(point.x - flow.start.x, point.y - flow.start.y) > 30 / Math.max(.28, state.camera.scale)) flow.moved = true;
 }
 function finishLinkPointerDrag(event) {
-  state.suppressCanvasTapUntil = performance.now() + 700;
-  releaseRememberedPointer(event.pointerId);
-  clearTimeout(state.interactionWatchdog); state.interactionWatchdog = 0;
-  document.documentElement.classList.remove("interaction-locked");
   const flow = state.linkFlowGesture;
   if (flow && flow.pointerId === event.pointerId && !state.linkDrag) {
     state.linkFlowGesture = null;
@@ -1185,7 +1083,7 @@ function findLinkDropTarget(point, fixedId) {
   let best = null, bestDistance = Infinity;
   currentNodes().forEach(node => {
     if (node.id === fixedId) return;
-    const dim = liveCardDims(node);
+    const dim = cardDims(node);
     const pad = 28;
     if (point.x < node.x - pad || point.x > node.x + dim.w + pad || point.y < node.y - pad || point.y > node.y + dim.h + pad) return;
     const cx = node.x + dim.w / 2, cy = node.y + dim.h / 2;
@@ -1239,7 +1137,7 @@ function deleteSelectedLink() {
   saveData(); renderLinks(); toast("Связь удалена", "Отменить", undoLast);
 }
 function linkGeometry(a, b) {
-  const ad = liveCardDims(a), bd = liveCardDims(b);
+  const ad = cardDims(a), bd = cardDims(b);
   const ac = { x: a.x + ad.w / 2, y: a.y + ad.h / 2 };
   const bc = { x: b.x + bd.w / 2, y: b.y + bd.h / 2 };
   const dx = bc.x - ac.x, dy = bc.y - ac.y;
@@ -1264,9 +1162,6 @@ function applyCamera() {
   world.style.transform = `translate3d(${state.camera.tx}px,${state.camera.ty}px,0) scale(${state.camera.scale})`;
   syncDesktopZoomSlider();
   if (!state.dotRenderFrame) state.dotRenderFrame = requestAnimationFrame(() => { state.dotRenderFrame = 0; drawDots(); });
-  // Links share the camera transform but their visibility culling depends on the current camera.
-  // Always schedule one rAF-limited pass after any camera change, including the first fitAll.
-  scheduleRenderLinks();
 }
 function activeBounds() {
   const nodes = currentNodes();
@@ -1478,8 +1373,7 @@ function onCanvasPointerDown(event) {
   if (state.linkFlowGesture || state.linkDrag) resetLinkGestureState();
   if (event.target.closest(".node-card,.canvas-utility,.gesture-hint,.link-hit,.link-end-handle,.link-toolbar")) return;
   event.preventDefault();
-  event.currentTarget.setPointerCapture?.(event.pointerId); rememberPointerCapture(event.pointerId, event.currentTarget);
-  armInteractionWatchdog();
+  event.currentTarget.setPointerCapture?.(event.pointerId);
   state.canvasPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
   if (state.canvasPointers.size === 1) {
     state.canvasGesture = { type: "pan", startX: event.clientX, startY: event.clientY, tx: state.camera.tx, ty: state.camera.ty, moved: false, time: performance.now(), lastX:event.clientX,lastY:event.clientY,lastT:performance.now(),vx:0,vy:0,samples:[] };
@@ -1516,7 +1410,6 @@ function onCanvasPointerMove(event) {
   }
 }
 function onCanvasPointerEnd(event) {
-  releaseRememberedPointer(event.pointerId);
   if (!state.canvasPointers.has(event.pointerId)) {
     if (state.canvasPointers.size === 0) resetCanvasGestureState();
     return;
@@ -1527,22 +1420,17 @@ function onCanvasPointerEnd(event) {
     $("#canvasViewport").classList.remove("is-panning");
     if (gesture?.type === "pan" && !gesture.moved && performance.now() - gesture.time < 350) {
       const now = performance.now();
-      if (now >= state.suppressCanvasTapUntil) {
-        if (now - state.lastCanvasTap < 320) fitAll(true);
-        state.lastCanvasTap = now;
-        state.selectedId = null; state.actionsOpenId = null; state.selectedLinkId = null;
-        if (state.linkCreateSourceId) { state.linkCreateSourceId = null; toast("Создание связи отменено"); }
-        syncCardSelectionDOM(); renderLinks();
-      } else {
-        state.lastCanvasTap = 0;
-      }
+      if (now - state.lastCanvasTap < 320) fitAll(true);
+      state.lastCanvasTap = now;
+      state.selectedId = null; state.selectedLinkId = null;
+      if (state.linkCreateSourceId) { state.linkCreateSourceId = null; toast("Создание связи отменено"); }
+      renderCards(); renderLinks();
     }
     setZoomInteraction(false);
     $("#canvasViewport")?.classList.remove("is-zooming");
     if (gesture?.type === "pan" && gesture.moved) startCameraInertia(gesture.vx || 0, gesture.vy || 0);
     else settleCameraBounds();
     state.canvasGesture = null;
-    clearTimeout(state.interactionWatchdog); state.interactionWatchdog = 0;
   } else if (state.canvasPointers.size === 1) {
     const point = [...state.canvasPointers.values()][0];
     state.canvasGesture = { type: "pan", startX: point.x, startY: point.y, tx: state.camera.tx, ty: state.camera.ty, moved: false, time: performance.now(), lastX:point.x,lastY:point.y,lastT:performance.now(),vx:0,vy:0,samples:[] };
@@ -1560,9 +1448,8 @@ function attachCardGestures(element, node) {
 
   element.addEventListener("pointerdown", event => {
     cancelAnimationFrame(state.cameraInertiaFrame); state.cameraInertiaFrame=0;
-    if (event.target.closest("button,input,a")) return;
-    event.stopPropagation();
-    element.setPointerCapture?.(event.pointerId); rememberPointerCapture(event.pointerId, element); armInteractionWatchdog();
+    if (event.target.closest("button,input")) return;
+    event.preventDefault(); event.stopPropagation(); element.setPointerCapture?.(event.pointerId);
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY, t: performance.now() });
     if (pointers.size === 2) {
       cancelLong();
@@ -1602,17 +1489,16 @@ function attachCardGestures(element, node) {
     const dy = (event.clientY - gesture.startY) / state.camera.scale;
     if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > 8) {
       gesture.moved = true; cancelLong();
-      if (!node.locked) { gesture.type = "drag"; state.actionsOpenId = null; element.classList.add("dragging"); }
+      if (!node.locked) { gesture.type = "drag"; element.classList.add("dragging"); }
     }
     if (gesture.type === "drag") {
-      node.x = clamp(gesture.nodeX + dx, -12000, WORLD_W + 12000);
-      node.y = clamp(gesture.nodeY + dy, -12000, WORLD_H + 12000);
+      node.x = clamp(gesture.nodeX + dx, -1400, WORLD_W + 1400);
+      node.y = clamp(gesture.nodeY + dy, -1000, WORLD_H + 1000);
       element.style.left = `${node.x}px`; element.style.top = `${node.y}px`; scheduleRenderLinks();
     }
   });
 
   const finish = event => {
-    releaseRememberedPointer(event.pointerId);
     if (!pointers.has(event.pointerId)) return;
     pointers.delete(event.pointerId); cancelLong();
     if (gesture?.type === "pinch") {
@@ -1636,29 +1522,17 @@ function attachCardGestures(element, node) {
         return;
       }
       const now = performance.now();
-      if (state.lastCardTap.id === node.id && now - state.lastCardTap.time < 430) {
-        state.lastCardTap = { id: null, time: 0 };
-        state.selectedId = node.id;
-        state.actionsOpenId = null;
-        syncCardSelectionDOM();
-        openDetail(node);
+      if (state.lastCardTap.id === node.id && now - state.lastCardTap.time < 320) {
+        state.lastCardTap = { id: null, time: 0 }; openDetail(node);
       } else {
         state.lastCardTap = { id: node.id, time: now };
-        state.selectedId = node.id;
-        state.actionsOpenId = state.actionsOpenId === node.id ? null : node.id;
-        state.selectedLinkId = null;
-        state.focusOverview = false;
-        rememberWorkingNode(node);
-        syncCardSelectionDOM();
-        renderLinks();
+        state.selectedId = node.id; state.selectedLinkId = null; state.focusOverview=false; rememberWorkingNode(node); renderCards(); renderLinks();
       }
     }
     gesture = null;
-    if (!pointers.size) { clearTimeout(state.interactionWatchdog); state.interactionWatchdog = 0; }
   };
   element.addEventListener("pointerup", finish);
   element.addEventListener("pointercancel", finish);
-  element.addEventListener("lostpointercapture", event => { releaseRememberedPointer(event.pointerId); pointers.delete(event.pointerId); cancelLong(); element.classList.remove("dragging"); element.style.transform=""; element.style.zIndex=""; gesture=null; resetAllTransientGestures(); });
 }
 
 /* Create and card actions */
@@ -1667,11 +1541,23 @@ function handleCardActionClick(event) {
   event.stopPropagation();
   const card = button.closest(".node-card"); const node = nodeById(card?.dataset.id); if (!node) return;
   const action = button.dataset.cardAction;
-  state.actionsOpenId = null;
   if (action === "open") {
-    // The eye is a deterministic “view” action. Card scale is controlled only by semantic zoom / pinch.
-    state.eyeTap = { id: null, timer: null, time: 0 };
-    openDetail(node);
+    const now = performance.now();
+    if (state.eyeTap.id === node.id && state.eyeTap.timer && now - state.eyeTap.time < 360) {
+      clearTimeout(state.eyeTap.timer);
+      state.eyeTap = { id: null, timer: null, time: 0 };
+      openDetail(node);
+      return;
+    }
+    if (state.eyeTap.timer) clearTimeout(state.eyeTap.timer);
+    state.eyeTap.id = node.id;
+    state.eyeTap.time = now;
+    state.eyeTap.timer = setTimeout(() => {
+      state.eyeTap = { id: null, timer: null, time: 0 };
+      node.level = (node.level || 2) === 1 ? 2 : 1;
+      saveData();
+      render();
+    }, 300);
     return;
   }
   if (action === "connect") startLinkCreation(node);
@@ -1696,7 +1582,6 @@ function startLinkCreation(node) {
   if (!node || node.archived) return;
   state.linkCreateSourceId = node.id;
   state.selectedId = node.id;
-  state.actionsOpenId = null;
   state.selectedLinkId = null;
   renderCards(); renderLinks();
   toast("Выберите карточку для новой связи");
@@ -1782,7 +1667,7 @@ function findFreePosition(type, preferred) {
     return pos.x+dims.w+gap < n.x || pos.x > n.x+d.w+gap || pos.y+dims.h+gap < n.y || pos.y > n.y+d.h+gap;
   });
   const found = candidates.find(clear) || candidates[0];
-  return { x: clamp(found.x, -12000, WORLD_W + 12000), y: clamp(found.y, -12000, WORLD_H + 12000) };
+  return { x: clamp(found.x, -1200, WORLD_W + 1200), y: clamp(found.y, -900, WORLD_H + 900) };
 }
 function offerNewCardSetup(node) {
   setTimeout(() => {
@@ -1986,30 +1871,13 @@ function personPhotoMediaHtml(node) {
   return `<img class="person-photo-media" data-detail-cover="${esc(node.coverAssetId)}" style="${processCoverStyle(position)}" alt="">`;
 }
 function personDetailHtml(node) {
-  const telegramHref = normalizeTelegram(node.telegram);
-  const addressHref = mapsHref(node.address);
-  const siteHref = normalizeExternalUrl(node.site);
-  const socialHref = normalizeExternalUrl(node.social);
-  const contactItems = [
-    node.phone ? `<a class="person-contact-item" href="tel:${esc(node.phone)}"><span>${icon("phone")}</span><div><b>Позвонить</b><small>${esc(node.phone)}</small></div><i>›</i></a>` : "",
-    node.telegram ? `${telegramHref ? `<a class="person-contact-item" href="${esc(telegramHref)}" target="_blank" rel="noopener noreferrer">` : `<div class="person-contact-item">`}<span>${icon("telegram")}</span><div><b>Telegram</b><small>${esc(node.telegram)}</small></div><i>›</i>${telegramHref ? `</a>` : `</div>`}` : "",
-    node.email ? `<a class="person-contact-item" href="mailto:${esc(node.email)}"><span>${icon("mail")}</span><div><b>Email</b><small>${esc(node.email)}</small></div><i>›</i></a>` : "",
-    addressHref ? `<a class="person-contact-item" href="${esc(addressHref)}" target="_blank" rel="noopener noreferrer"><span>${icon("location")}</span><div><b>Адрес</b><small>${esc(node.address)}</small></div><i>›</i></a>` : "",
-    siteHref ? `<a class="person-contact-item" href="${esc(siteHref)}" target="_blank" rel="noopener noreferrer"><span>${icon("link")}</span><div><b>Сайт</b><small>${esc(node.site)}</small></div><i>›</i></a>` : "",
-    socialHref ? `<a class="person-contact-item" href="${esc(socialHref)}" target="_blank" rel="noopener noreferrer"><span>${icon("link")}</span><div><b>Соцсеть</b><small>${esc(node.social)}</small></div><i>›</i></a>` : (node.social ? `<div class="person-contact-item"><span>${icon("link")}</span><div><b>Соцсеть</b><small>${esc(node.social)}</small></div></div>` : "")
-  ].filter(Boolean).join("");
-  const activeTasks = tasksForPerson(node.id).filter(task => !task.done && !task.archived);
-  const taskRows = activeTasks.slice(0,6).map(task => {
-    const process = state.data.nodes.find(item => item.type === "process" && (item.tasks || []).some(t => t.id === task.id));
-    return `<button class="person-task-row" data-person-task-process="${esc(process?.id || "")}" data-person-task-id="${esc(task.id)}"><span>${icon("task")}</span><div><b>${esc(task.title || "Без названия")}</b><small>${esc(process?.title || "Рабочий процесс")} · ${esc(task.deadline || "Без срока")}</small></div><i>›</i></button>`;
-  }).join("");
-  const related = linkNodesFor(node.id).filter(item => !item.archived);
-  const relatedRows = related.slice(0,8).map(item => `<button class="person-relation-row" data-person-relation-id="${esc(item.id)}"><span>${icon(item.type === "process" ? "process" : item.type)}</span><div><b>${esc(item.title)}</b><small>${esc(TYPE_LABELS[item.type] || item.type)}</small></div><i>›</i></button>`).join("");
+  const siteHref = externalHref(node.site, "site");
+  const socialHref = externalHref(node.social, "social");
+  const telegramHref = externalHref(node.telegram, "telegram");
+  const addressHref = node.address ? `https://maps.apple.com/?q=${encodeURIComponent(node.address)}` : "";
   return `<div class="detail-hero person-detail-hero">${personPhotoMediaHtml(node)}<div class="detail-hero-content"><p>${esc(node.speciality || "Специалист")}</p></div></div>
-    <div class="detail-grid"><div class="detail-stat"><small>СТАТУС</small><b>${esc(node.personStatus || "Новый контакт")}</b></div><button class="detail-stat detail-stat-button" data-person-active-tasks="1"><small>АКТИВНЫЕ ЗАДАЧИ</small><b>${activeTasks.length}</b></button></div>
-    ${contactItems ? `<div class="detail-section person-contact-section"><div class="detail-section-head"><h3>Контакты</h3></div><div class="person-contact-grid">${contactItems}</div></div>` : ""}
-    ${taskRows ? `<div class="detail-section"><div class="detail-section-head"><h3>Активные задачи</h3></div><div class="person-task-list">${taskRows}</div></div>` : ""}
-    ${relatedRows ? `<div class="detail-section"><div class="detail-section-head"><h3>Связан с</h3></div><div class="person-relation-list">${relatedRows}</div></div>` : ""}
+    <div class="detail-grid"><div class="detail-stat"><small>СТАТУС</small><b>${esc(node.personStatus || "Неизвестно")}</b></div><div class="detail-stat"><small>АКТИВНЫЕ ЗАДАЧИ</small><b>${tasksForPerson(node.id).filter(task => !task.done).length}</b></div></div>
+    <div class="detail-section"><div class="detail-section-head"><h3>Контакты</h3></div><div class="chips">${node.phone ? `<a class="chip" href="tel:${esc(node.phone)}">${icon("phone")} ${esc(node.phone)}</a>` : ""}${telegramHref ? `<a class="chip external-person-link" href="${esc(telegramHref)}" target="_blank" rel="noopener noreferrer">${icon("telegram")} ${esc(node.telegram)}</a>` : (node.telegram ? `<span class="chip">${icon("telegram")} ${esc(node.telegram)}</span>` : "")}${addressHref ? `<a class="chip external-person-link" href="${esc(addressHref)}" target="_blank" rel="noopener noreferrer">${icon("location")} ${esc(node.address)}</a>` : ""}${node.email ? `<a class="chip" href="mailto:${esc(node.email)}">${icon("mail")} ${esc(node.email)}</a>` : ""}${siteHref ? `<a class="chip external-person-link" href="${esc(siteHref)}" target="_blank" rel="noopener noreferrer">${icon("link")} ${esc(node.site)}</a>` : ""}${socialHref ? `<a class="chip external-person-link" href="${esc(socialHref)}" target="_blank" rel="noopener noreferrer">${esc(node.social)}</a>` : (node.social ? `<span class="chip">${esc(node.social)}</span>` : "")}</div></div>
     ${node.tags ? `<div class="detail-section"><div class="detail-section-head"><h3>Ключевые слова</h3></div><div class="chips">${node.tags.split(",").filter(Boolean).map(tag => `<span class="chip">${esc(tag.trim())}</span>`).join("")}</div></div>` : ""}
     ${node.note ? `<div class="detail-section"><div class="detail-section-head"><h3>Заметка</h3></div><div class="note-block">${esc(node.note)}</div></div>` : ""}`;
 }
@@ -2041,10 +1909,7 @@ async function hydrateDetailAssets(node) {
   const detailCover = $('[data-detail-cover]', $("#detailBody"));
   if (detailCover) {
     const url = await assetUrl(detailCover.dataset.detailCover).catch(() => null);
-    if (url && detailCover.isConnected) {
-      if (detailCover.tagName === "IMG") detailCover.src = url;
-      else detailCover.style.backgroundImage = `url("${url}")`;
-    }
+    if (url && detailCover.isConnected) detailCover.style.backgroundImage = `url("${url}")`;
   }
   for (const tile of $$('[data-asset-id]', $("#detailBody"))) {
     const asset = (node.assets || []).find(item => item.id === tile.dataset.assetId);
@@ -2124,23 +1989,9 @@ function handleDetailClick(event) {
     expenseSelect.closest('.expense-item')?.classList.toggle('selected', expenseSelect.checked);
     return;
   }
-  const personTask = event.target.closest("[data-person-task-process]");
-  if (personTask) {
-    const process = nodeById(personTask.dataset.personTaskProcess);
-    if (process) { closeDetail(); state.selectedId = process.id; state.actionsOpenId = null; render(); focusNode(process); openDetail(process); requestAnimationFrame(() => { const row = document.querySelector(`[data-stage-task-id="${CSS.escape(personTask.dataset.personTaskId)}"]`); row?.classList.add("focus-flash"); setTimeout(() => row?.classList.remove("focus-flash"), 950); }); }
-    return;
-  }
-  const relation = event.target.closest("[data-person-relation-id]");
-  if (relation) { const target = nodeById(relation.dataset.personRelationId); if (target) { closeDetail(); state.selectedId = target.id; state.actionsOpenId = null; render(); focusNode(target); openDetail(target); } return; }
   const actionButton = event.target.closest("[data-detail-action]"); if (!actionButton) return;
   const action = actionButton.dataset.detailAction;
-  if (action === "addAssets") {
-    state.assetTargetNodeId = node.id;
-    document.body.classList.add("asset-picker-pending");
-    toast("Выберите изображения или файлы");
-    $("#assetInput").click();
-    setTimeout(() => document.body.classList.remove("asset-picker-pending"), 1200);
-  }
+  if (action === "addAssets") { state.assetTargetNodeId = node.id; $("#assetInput").click(); }
   if (action === "openProcess") { const existing=state.data.nodes.find(item=>item.type==="process"&&item.projectId===node.id&&!item.archived); if(existing){state.selectedId=existing.id;render();focusNode(existing);openDetail(existing);}else createProcessForProject(node); }
   if (action === "editNode") openEditor(node);
   if (action === "editBudget") openBudgetEditor(node);
@@ -2343,9 +2194,9 @@ function renderEditorBody() {
     <div class="field-grid"><div class="field"><label>Количество позиций</label><input name="positions" inputmode="numeric" value="${esc(d.positions || "")}"></div><div class="field"><label>Дата подписания</label><input name="signDate" type="date" value="${esc(d.signDate || "")}"></div></div>
     <div class="field-grid"><div class="field"><label>Бюджет</label><input name="budget" inputmode="decimal" value="${esc(d.budget || "")}"></div><div class="field"><label>Срок</label><input name="deadline" type="date" value="${esc(d.deadline || "")}"></div></div>
     <div class="field-grid"><div class="field"><label>Аванс</label><input name="advance" inputmode="decimal" value="${esc(d.advance || "")}"></div><div class="field"><label>Остаток</label><input name="balance" inputmode="decimal" value="${esc(d.balance || "")}"></div></div>
-    <div class="editor-group"><h3>Основные материалы</h3><button type="button" class="ghost" data-editor-action="addAssets">＋ Добавить изображения, PDF или векторные файлы</button></div>`;
+    <div class="editor-group"><h3>Основные материалы</h3><button type="button" class="ghost" data-editor-action="addAssets">＋ Изображения, PDF и векторные файлы</button></div>`;
   if (d.type === "person") {
-    const knownStatuses = ["Новый контакт","На связи","Перспективный","Работаем","Пауза","Важный человек"];
+    const knownStatuses = ["Неизвестно","Временно","Перспективный","Работаем"];
     const mode = knownStatuses.includes(d.personStatusMode) ? d.personStatusMode : (knownStatuses.includes(d.personStatus) ? d.personStatus : "custom");
     html += `
     <div class="field"><label>Специализация</label><input name="speciality" value="${esc(d.speciality || "")}"></div>
@@ -2380,13 +2231,7 @@ function processEditorHtml(d) {
 function bindEditorDynamicActions() {
   $("#editorBody").onclick = event => {
     const action = event.target.closest("[data-editor-action]")?.dataset.editorAction;
-    if (action === "addAssets") {
-      state.assetTargetNodeId = state.activeNodeId;
-      document.body.classList.add("asset-picker-pending");
-      toast("Выберите изображения или файлы");
-      $("#assetInput").click();
-      setTimeout(() => document.body.classList.remove("asset-picker-pending"), 1200);
-    }
+    if (action === "addAssets") { state.assetTargetNodeId = state.activeNodeId; $("#assetInput").click(); }
     if (action === "newProcessCover") $("#processCoverInput").click();
     if (action === "positionProcessCover" && state.editDraft?.coverAssetId) openProcessCoverPositionDialog(state.editDraft.coverAssetId);
     if (action === "removeProcessCover") removeProcessCoverFromDraft();
@@ -2718,7 +2563,7 @@ async function saveEditor(event) {
     else d[key] = String(value).trim();
   }
   if (d.type === "person") {
-    const mode = $("#personStatusMode", event.currentTarget)?.value || "Новый контакт";
+    const mode = $("#personStatusMode", event.currentTarget)?.value || "Неизвестно";
     if (mode === "custom") {
       const custom = String($("#personCustomStatus", event.currentTarget)?.value || "").trim().slice(0,30);
       if (!custom) return toast("Введите свой статус");
@@ -2743,7 +2588,6 @@ function archiveActiveNode() {
 
 /* Assets */
 async function handleAssetFiles(event) {
-  document.body.classList.remove("asset-picker-pending");
   const node = nodeById(state.assetTargetNodeId); const files = [...event.target.files]; event.target.value = "";
   if (!node || !files.length) return;
   node.assets ||= [];
@@ -2822,67 +2666,20 @@ async function deleteCurrentAsset() {
 /* Panels */
 function openPanel(panel) {
   $$('.bottom-nav button').forEach(button => button.classList.toggle("active", button.dataset.panel === panel));
-  const titles = { today: "Я сейчас", results: "Результаты", archive: "Архив" };
-  $("#panelTitle").textContent = titles[panel];
-  $("#panelEyebrow").textContent = panel === "today" ? "МОЙ ТЕКУЩИЙ ФОКУС" : (state.space === "work" ? "ПРОЕКТЫ" : "ЛИЧНОЕ");
+  const titles = { today: "Сегодня", results: "Результаты", archive: "Архив" };
+  $("#panelTitle").textContent = titles[panel]; $("#panelEyebrow").textContent = state.space === "work" ? "ПРОЕКТЫ" : "ЛИЧНОЕ";
   $("#panelBody").innerHTML = panel === "today" ? todayPanelHtml() : panel === "results" ? resultsPanelHtml() : archivePanelHtml();
-  $("#sidePanel").classList.toggle("now-panel", panel === "today");
   showOverlay("sidePanel");
 }
-function taskFocusDate(task) {
-  const raw = task.dateTime || task.due || task.intervalStart || "";
-  if (!raw) return null;
-  const date = new Date(raw.length === 10 ? `${raw}T23:59:00` : raw);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-function taskFocusBucket(task, now = new Date()) {
-  const date = taskFocusDate(task);
-  if (!date) return 3;
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const tomorrowStart = new Date(todayStart); tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-  const nearEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-  if (date < now) return 0;
-  if (date < tomorrowStart) return 1;
-  if (date <= nearEnd) return 2;
-  return 3;
-}
-function taskFocusDateLabel(task) {
-  const date = taskFocusDate(task);
-  if (!date) return "Без срока";
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const days = Math.round((target - today) / 86400000);
-  const time = task.dateTime ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(date) : "";
-  if (days < 0) return `Просрочено${time ? ` · ${time}` : ""}`;
-  if (days === 0) return `Сегодня${time ? ` · ${time}` : ""}`;
-  if (days === 1) return `Завтра${time ? ` · ${time}` : ""}`;
-  return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" }).format(date);
-}
 function todayPanelHtml() {
-  const entries = [];
-  const priorityRank = { high: 0, medium: 1, low: 2 };
-  state.data.nodes.filter(node => node.space === state.space && !node.archived && node.type === "process").forEach(node => {
-    const project = node.projectId ? nodeById(node.projectId) : null;
-    (node.tasks || []).filter(task => !task.archived && !task.done).forEach(task => {
-      entries.push({ node, project, task, bucket: taskFocusBucket(task), date: taskFocusDate(task) });
-    });
+  const today = todayISO(); const entries = [];
+  state.data.nodes.filter(node => node.space === state.space && !node.archived).forEach(node => {
+    if (node.type === "process") (node.tasks || []).filter(task => !task.archived && !task.done && task.due === today).forEach(task => entries.push({ node, task }));
+    if (node.type === "goal" && node.deadline === today) entries.push({ node, task: { title: node.title, due: today } });
+    if (node.type === "project" && node.deadline === today) entries.push({ node, task: { title: `Срок проекта: ${node.title}`, due: today } });
   });
-  entries.sort((a, b) => a.bucket - b.bucket || (priorityRank[a.task.priority] ?? 1) - (priorityRank[b.task.priority] ?? 1) || (a.date?.getTime() ?? Infinity) - (b.date?.getTime() ?? Infinity));
-  if (!entries.length) return `<div class="now-empty"><span>${icon("nowMe")}</span><b>Сейчас всё выполнено</b><p>Новые приоритетные задачи появятся здесь автоматически.</p></div>`;
-  const labels = ["Сейчас", "Сегодня", "Ближайшее", "Дальше"];
-  return `<div class="now-summary"><span>${entries.length}</span><div><b>Что делать сейчас</b><small>Задачи из всех рабочих процессов в порядке приоритета</small></div></div>` + labels.map((label, bucket) => {
-    const group = entries.filter(entry => entry.bucket === bucket);
-    if (!group.length) return "";
-    return `<section class="now-group"><h3>${label}<span>${group.length}</span></h3><div class="now-list">${group.map(({node, project, task}) => `<article class="now-task priority-${esc(task.priority || "medium")}">
-      <button type="button" class="now-check" data-now-toggle="${esc(task.id)}" data-now-node="${esc(node.id)}" aria-label="Отметить выполненной"><span>${icon("task")}</span></button>
-      <button type="button" class="now-task-main" data-panel-open-node="${esc(node.id)}" data-panel-open-task="${esc(task.id)}">
-        <b>${esc(task.title || "Задача без названия")}</b>
-        <small>${esc(project?.title || node.title)} · ${esc(taskFocusDateLabel(task))}</small>
-      </button>
-      <i class="now-priority" aria-label="${esc(priorityLabel(task.priority))}"></i>
-    </article>`).join("")}</div></section>`;
-  }).join("");
+  if (!entries.length) return `<div class="panel-empty">На сегодня нет обязательных действий.</div>`;
+  return entries.map(({ node, task }) => `<button class="panel-card" data-panel-open-node="${node.id}"><div class="panel-card-head"><b>${esc(task.title)}</b><span class="panel-chip">${esc(TYPE_LABELS[node.type])}</span></div><p>${esc(node.title)}</p></button>`).join("");
 }
 function resultsPanelHtml() {
   const entries = [];
@@ -2908,60 +2705,10 @@ function archivePanelHtml() {
   }).join("");
 }
 function handlePanelClick(event) {
-  const toggleNow = event.target.closest("[data-now-toggle]");
-  if (toggleNow) {
-    const node = nodeById(toggleNow.dataset.nowNode);
-    const task = node?.type === "process" ? (node.tasks || []).find(item => item.id === toggleNow.dataset.nowToggle) : null;
-    if (!task) return;
-    task.done = true;
-    task.completedAt = new Date().toISOString();
-    updateProcessProgress(node);
-    saveData();
-    $("#panelBody").innerHTML = todayPanelHtml();
-    render();
-    navigator.vibrate?.(12);
-    toast("Задача выполнена", "Отменить", () => {
-      task.done = false;
-      task.completedAt = "";
-      updateProcessProgress(node);
-      saveData();
-      if (!$("#sidePanel").classList.contains("hidden")) $("#panelBody").innerHTML = todayPanelHtml();
-      render();
-    });
-    return;
-  }
-  const open = event.target.closest("[data-panel-open-node]");
-  if (open) {
-    const node = nodeById(open.dataset.panelOpenNode);
-    const taskId = open.dataset.panelOpenTask || "";
-    const task = node?.type === "process" ? (node.tasks || []).find(item => item.id === taskId) : null;
-    closeOverlays();
-    if (node) {
-      if (task?.stageId) state.selectedProcessStageId = task.stageId;
-      state.selectedId = node.id;
-      state.selectedLinkId = null;
-      render();
-      focusNode(node);
-      setTimeout(() => {
-        openDetail(node);
-        if (taskId) setTimeout(() => highlightProcessTask(taskId), 120);
-      }, 350);
-    }
-  }
+  const open = event.target.closest("[data-panel-open-node]"); if (open) { const node = nodeById(open.dataset.panelOpenNode); closeOverlays(); if (node) { state.selectedId = node.id; state.selectedLinkId = null; render(); focusNode(node); setTimeout(() => openDetail(node), 350); } }
   const restore = event.target.closest("[data-restore-node]"); if (restore) { const node = nodeById(restore.dataset.restoreNode); if (node) { pushUndo("Восстановление карточки"); node.archived = false; node.archivedAt = ""; saveData(); $("#panelBody").innerHTML = archivePanelHtml(); render(); toast("Карточка восстановлена", "Отменить", undoLast); } }
   const remove = event.target.closest("[data-delete-node]"); if (remove) { const node = nodeById(remove.dataset.deleteNode); if (node && confirm(`Удалить карточку «${node.title || "Без названия"}» навсегда? Все её связи будут удалены.`)) { permanentlyDeleteNode(node); $("#panelBody").innerHTML = archivePanelHtml(); render(); toast("Карточка удалена навсегда"); } }
 }
-function highlightProcessTask(taskId) {
-  const input = document.querySelector(`[data-task-toggle="${CSS.escape(taskId)}"]`);
-  const card = input?.closest(".stage-task-card");
-  if (!card) return;
-  card.scrollIntoView({ behavior: "smooth", block: "center" });
-  card.classList.remove("task-focus-flash");
-  void card.offsetWidth;
-  card.classList.add("task-focus-flash");
-  setTimeout(() => card.classList.remove("task-focus-flash"), 1500);
-}
-
 function permanentlyDeleteNode(node) {
   if (!node) return;
   const ids = new Set([node.id]);
@@ -2978,22 +2725,12 @@ function permanentlyDeleteNode(node) {
 
 /* Overlay and menu */
 function showOverlay(id) {
-  ["scrim","createMenu","accountMenu","sidePanel"].forEach(name => {
-    const el = $("#" + name);
-    if (el && el.parentElement !== document.body) document.body.appendChild(el);
-  });
-  ["createMenu","accountMenu","sidePanel"].forEach(name => {
-    const el = $("#" + name);
-    el.classList.toggle("hidden", name !== id);
-    el.setAttribute("aria-hidden", name === id ? "false" : "true");
-  });
-  $("#scrim").classList.remove("hidden");
-  $("#scrim").setAttribute("aria-hidden", "false");
-  $("#createButton").classList.toggle("active", id === "createMenu");
+  ["createMenu","accountMenu","sidePanel"].forEach(name => $("#" + name).classList.toggle("hidden", name !== id));
+  $("#scrim").classList.remove("hidden"); $("#createButton").classList.toggle("active", id === "createMenu");
 }
 function closeOverlays() {
   ["createMenu","accountMenu","sidePanel"].forEach(name => $("#" + name).classList.add("hidden"));
-  $("#scrim").classList.add("hidden"); $("#scrim").setAttribute("aria-hidden", "true"); $("#createButton").classList.remove("active");
+  $("#scrim").classList.add("hidden"); $("#createButton").classList.remove("active");
   $$('.bottom-nav button').forEach(button => button.classList.remove("active"));
 }
 function handleMenuAction(event) {
@@ -3098,15 +2835,6 @@ function toast(message, actionLabel = "", action = null) {
   toast.timer = setTimeout(() => { element.classList.add("hidden"); element.classList.remove("attention"); toast.action = null; }, action ? 5200 : 2400);
 }
 
-function updateBuildInfo() {
-  const footer = document.getElementById("buildInfo");
-  if (!footer) return;
-  const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true;
-  const mode = standalone ? "PWA" : "Safari";
-  const path = location.pathname.replace(/\/$/, "") || "/";
-  footer.textContent = `BOONWAVE ${VERSION} · ${mode} · ${location.host}${path}`;
-}
-
 /* Service worker */
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
@@ -3123,5 +2851,5 @@ function registerServiceWorker() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  updateBuildInfo(); initializeOnboarding(); registerServiceWorker();
+  initializeOnboarding(); registerServiceWorker();
 });
