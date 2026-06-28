@@ -1,8 +1,13 @@
 // app.js
 import store from './state/store.js';
 import db from './storage/database.js';
+import { GestureMachine } from './canvas/gesture-machine.js';
 
 class BoonwaveApp {
+  constructor() {
+    this.gestureMachine = null;
+  }
+
   async init() {
     console.log('Инициализация ядра BOONWAVE...');
     
@@ -14,11 +19,19 @@ class BoonwaveApp {
       // 2. Загружаем все карточки и связи в глобальный Store
       await db.loadAllData();
       
-      // 3. Проверяем текущее состояние после загрузки
+      // 3. Инициализируем конечный автомат жестов на холсте
+      const canvasElement = document.getElementById('canvas'); // Наш будущий холст
+      if (canvasElement) {
+        this.gestureMachine = new GestureMachine(canvasElement);
+        console.log('Конечный автомат жестов успешно запущен.');
+      } else {
+        console.warn('DOM-элемент #canvas не найден. Ожидание отрисовки интерфейса...');
+      }
+
+      // 4. Проверяем текущее состояние после загрузки
       const currentState = store.getState();
       console.log('Ядро успешно запущено. Текущее состояние:', currentState);
 
-      // Здесь в следующих этапах мы запустим GestureMachine и Canvas Renderer
       this.bindGlobalEvents();
 
     } catch (error) {
@@ -27,11 +40,9 @@ class BoonwaveApp {
   }
 
   bindGlobalEvents() {
-    // Слушаем базовые события PWA, например, возвращение из фонового режима
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         console.log('Приложение вернулось из фонового режима. Проверка обновлений...');
-        // Будущая логика проверки обновлений pwa/update-manager.js
       }
     });
   }
