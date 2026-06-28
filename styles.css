@@ -1735,3 +1735,114 @@ body.asset-picker-pending [data-detail-action="addAssets"]{opacity:.72!important
   .node-card .card-actions { transition: opacity .12s linear !important; clip-path:none !important; }
   .node-card:not(.selected) .card-actions { display:none !important; }
 }
+
+
+/* v6.0.55 — person editor typography, shared popup easing, tactile detail rows */
+.process-cover-buttons .ghost{
+  font-weight:600!important;
+  font-size:12px!important;
+  line-height:1.2!important;
+  letter-spacing:.01em!important;
+  justify-content:center!important;
+}
+.process-cover-buttons .ghost.danger-text{font-weight:600!important}
+
+@keyframes softPopupIn{
+  from{opacity:0;transform:translateY(12px) scale(.985)}
+  to{opacity:1;transform:none}
+}
+.app-dialog[open],
+.cover-position-dialog[open],
+.asset-viewer[open]{
+  animation:softPopupIn .24s cubic-bezier(.2,.82,.2,1)!important;
+  transform-origin:center bottom!important;
+}
+.account-menu,
+.action-sheet,
+.side-panel{
+  animation-timing-function:cubic-bezier(.2,.82,.2,1)!important;
+}
+
+.person-contact-item,
+#detailBody .asset-tile,
+#detailBody [data-detail-action],
+#detailBody .task-archive-item-main,
+#detailBody .process-phonebook-button,
+#detailBody .task-contact-number,
+#accountMenu .menu-row{
+  transition:transform .14s cubic-bezier(.2,.8,.2,1),border-color .14s ease,box-shadow .14s ease,background .14s ease,filter .14s ease!important;
+  will-change:transform;
+}
+.person-contact-item:active,
+#detailBody .asset-tile:active,
+#detailBody [data-detail-action]:active,
+#detailBody .task-archive-item-main:active,
+#detailBody .process-phonebook-button:active,
+#detailBody .task-contact-number:active,
+#accountMenu .menu-row:active{
+  transform:none!important;
+}
+.person-contact-item.is-pressing,
+#detailBody .asset-tile.is-pressing,
+#detailBody [data-detail-action].is-pressing,
+#detailBody .task-archive-item-main.is-pressing,
+#detailBody .process-phonebook-button.is-pressing,
+#detailBody .task-contact-number.is-pressing,
+#accountMenu .menu-row.is-pressing{
+  transform:translateY(-3px) scale(1.006)!important;
+  border-color:#6075aa!important;
+  background:linear-gradient(145deg,#182132,#121925)!important;
+  box-shadow:0 14px 30px rgba(0,0,0,.34),inset 0 0 0 1px rgba(107,130,255,.16),0 0 18px rgba(93,115,229,.13)!important;
+  filter:brightness(1.03)!important;
+}
+html[data-theme="light"] .person-contact-item.is-pressing,
+html[data-theme="light"] #detailBody .asset-tile.is-pressing,
+html[data-theme="light"] #detailBody [data-detail-action].is-pressing,
+html[data-theme="light"] #detailBody .task-archive-item-main.is-pressing,
+html[data-theme="light"] #detailBody .process-phonebook-button.is-pressing,
+html[data-theme="light"] #detailBody .task-contact-number.is-pressing,
+html[data-theme="light"] #accountMenu .menu-row.is-pressing{
+  background:#f8faff!important;
+  border-color:#9caaca!important;
+  box-shadow:0 12px 24px rgba(58,73,104,.16),0 0 0 1px rgba(96,119,180,.12) inset!important;
+  filter:none!important;
+}
+
+
+/* v6.0.56 — explicit action tray state, no clip-path, person system refinement */
+.node-card .card-actions{
+  clip-path:none!important;
+  opacity:0!important;
+  visibility:hidden!important;
+  transform:translate3d(-50%,-42px,0) scale(.96)!important;
+  transition:transform .28s cubic-bezier(.2,.82,.2,1),opacity .16s ease,visibility 0s linear .28s!important;
+  will-change:transform,opacity!important;
+}
+.node-card.actions-open{z-index:30!important;overflow:visible!important}
+.node-card.actions-open .card-actions{
+  opacity:1!important;
+  visibility:visible!important;
+  pointer-events:auto!important;
+  transform:translate3d(-50%,0,0) scale(1)!important;
+  transition:transform .28s cubic-bezier(.2,.82,.2,1),opacity .16s ease,visibility 0s!important;
+}
+.node-card.selected:not(.actions-open) .card-actions{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
+.node-card.dragging .card-actions{opacity:0!important;visibility:hidden!important}
+
+.person-contact-grid{display:grid!important;grid-template-columns:1fr!important;gap:10px!important}
+.person-contact-item,.person-task-row,.person-relation-row{
+  width:100%;min-height:72px;display:grid;grid-template-columns:44px minmax(0,1fr) 20px;align-items:center;gap:14px;
+  padding:12px 14px;border:1px solid #30384c;border-radius:18px;background:#141a27;color:#edf2fb;text-align:left;text-decoration:none;
+}
+.person-contact-item>span,.person-task-row>span,.person-relation-row>span{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:#1d2637;border:1px solid #3a4660}
+.person-contact-item>div,.person-task-row>div,.person-relation-row>div{min-width:0;display:grid;gap:4px}
+.person-contact-item b,.person-task-row b,.person-relation-row b{font-size:15px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.person-contact-item small,.person-task-row small,.person-relation-row small{font-size:11px;line-height:1.25;color:#8f99ac;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.person-contact-item>i,.person-task-row>i,.person-relation-row>i{font-style:normal;font-size:24px;color:#727d93;text-align:right}
+.person-task-list,.person-relation-list{display:grid;gap:10px}
+.detail-stat-button{appearance:none;text-align:left;color:inherit;cursor:pointer}
+.detail-stat-button:active{transform:translateY(-2px)}
+.focus-flash{animation:focusFlash .9s ease both!important}
+@keyframes focusFlash{0%,100%{box-shadow:inherit}35%{border-color:#72d7f0;box-shadow:0 0 0 2px rgba(111,128,255,.35),0 0 22px rgba(91,218,237,.28)}}
+.process-cover-buttons .ghost{font-size:13px!important;font-weight:560!important;letter-spacing:0!important}
+.process-cover-buttons .ghost.danger-text{font-weight:560!important}

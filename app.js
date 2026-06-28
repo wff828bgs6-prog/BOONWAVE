@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.54";
+const VERSION = "6.0.56";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -33,6 +33,24 @@ function externalHref(value, kind = "site") {
     const url = new URL(candidate);
     return ["http:", "https:"].includes(url.protocol) ? url.href : "";
   } catch { return ""; }
+}
+
+function bindTactileFeedback(container, selector, options = {}) {
+  if (!container || container.dataset.tactileBound === "1") return;
+  const pressClass = options.pressClass || "is-pressing";
+  const vibrateMs = Number.isFinite(options.vibrate) ? options.vibrate : 8;
+  const clear = () => container.querySelectorAll(`.${pressClass}`).forEach(item => item.classList.remove(pressClass));
+  container.addEventListener("pointerdown", event => {
+    const target = event.target.closest(selector);
+    if (!target || target.disabled || target.getAttribute("aria-disabled") === "true") return;
+    clear();
+    target.classList.add(pressClass);
+    try { if (vibrateMs && navigator.vibrate) navigator.vibrate(vibrateMs); } catch (_) {}
+  }, { passive: true });
+  container.addEventListener("pointerup", clear, { passive: true });
+  container.addEventListener("pointercancel", clear, { passive: true });
+  container.addEventListener("pointerleave", clear, { passive: true });
+  container.dataset.tactileBound = "1";
 }
 
 const TYPE_LABELS = {
@@ -105,6 +123,7 @@ const state = {
   data: null,
   space: "work",
   selectedId: null,
+  actionsOpenId: null,
   camera: { tx: 0, ty: 0, scale: 1 },
   canvasPointers: new Map(),
   canvasGesture: null,
@@ -763,6 +782,8 @@ function bindWorkspaceOnce() {
   $("#panelBody").addEventListener("pointerup", clearNowTaskPress, { passive: true });
   $("#panelBody").addEventListener("pointercancel", clearNowTaskPress, { passive: true });
   $("#panelBody").addEventListener("pointerleave", clearNowTaskPress, { passive: true });
+  bindTactileFeedback($("#detailBody"), ".person-contact-item, .asset-tile, [data-detail-action], .task-archive-item-main, .process-phonebook-button, .task-contact-number");
+  bindTactileFeedback($("#accountMenu"), ".menu-row");
   $$('.bottom-nav button[data-panel]').forEach(button => button.addEventListener("click", () => openPanel(button.dataset.panel)));
   $('[data-action="dismissHint"]').addEventListener("click", () => {
     state.data.settings.hintDismissed = true; saveData(); $("#gestureHint").classList.add("hidden");
@@ -801,7 +822,7 @@ function switchSpace(space) {
 function cardClass(node) {
   const level = node.level || 2;
   const statusClass = node.status === "paused" ? "status-paused" : node.status === "done" ? "status-done" : node.status === "cancelled" ? "status-cancelled" : "";
-  return `node-card ${level === 1 ? "compact" : "medium"} ${statusClass} ${node.locked ? "locked" : ""} ${state.selectedId === node.id ? "selected" : ""} ${state.activeNodeId === node.id ? "opened" : ""}`;
+  return `node-card ${level === 1 ? "compact" : "medium"} ${statusClass} ${node.locked ? "locked" : ""} ${state.selectedId === node.id ? "selected" : ""} ${state.actionsOpenId === node.id ? "actions-open" : ""} ${state.activeNodeId === node.id ? "opened" : ""}`;
 }
 function nodeSubtitle(node) {
   if (node.type === "project") return node.client || node.address || "Новый проект";
@@ -1495,7 +1516,7 @@ function onCanvasPointerEnd(event) {
       const now = performance.now();
       if (now - state.lastCanvasTap < 320) fitAll(true);
       state.lastCanvasTap = now;
-      state.selectedId = null; state.selectedLinkId = null;
+      state.selectedId = null; state.actionsOpenId = null; state.selectedLinkId = null;
       if (state.linkCreateSourceId) { state.linkCreateSourceId = null; toast("Создание связи отменено"); }
       renderCards(); renderLinks();
     }
@@ -1522,8 +1543,9 @@ function attachCardGestures(element, node) {
 
   element.addEventListener("pointerdown", event => {
     cancelAnimationFrame(state.cameraInertiaFrame); state.cameraInertiaFrame=0;
-    if (event.target.closest("button,input")) return;
-    event.preventDefault(); event.stopPropagation(); element.setPointerCapture?.(event.pointerId); rememberPointerCapture(event.pointerId, element); armInteractionWatchdog();
+    if (event.target.closest("button,input,a")) return;
+    event.stopPropagation();
+    element.setPointerCapture?.(event.pointerId); rememberPointerCapture(event.pointerId, element); armInteractionWatchdog();
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY, t: performance.now() });
     if (pointers.size === 2) {
       cancelLong();
@@ -1563,7 +1585,7 @@ function attachCardGestures(element, node) {
     const dy = (event.clientY - gesture.startY) / state.camera.scale;
     if (Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > 8) {
       gesture.moved = true; cancelLong();
-      if (!node.locked) { gesture.type = "drag"; element.classList.add("dragging"); }
+      if (!node.locked) { gesture.type = "drag"; state.actionsOpenId = null; element.classList.add("dragging"); }
     }
     if (gesture.type === "drag") {
       node.x = clamp(gesture.nodeX + dx, -12000, WORLD_W + 12000);
@@ -1601,7 +1623,9 @@ function attachCardGestures(element, node) {
         state.lastCardTap = { id: null, time: 0 }; openDetail(node);
       } else {
         state.lastCardTap = { id: node.id, time: now };
-        state.selectedId = node.id; state.selectedLinkId = null; state.focusOverview=false; rememberWorkingNode(node); renderCards(); renderLinks();
+        state.selectedId = node.id;
+        state.actionsOpenId = state.actionsOpenId === node.id ? null : node.id;
+        state.selectedLinkId = null; state.focusOverview=false; rememberWorkingNode(node); renderCards(); renderLinks();
       }
     }
     gesture = null;
@@ -1618,6 +1642,7 @@ function handleCardActionClick(event) {
   event.stopPropagation();
   const card = button.closest(".node-card"); const node = nodeById(card?.dataset.id); if (!node) return;
   const action = button.dataset.cardAction;
+  state.actionsOpenId = null;
   if (action === "open") {
     // The eye is a deterministic “view” action. Card scale is controlled only by semantic zoom / pinch.
     state.eyeTap = { id: null, timer: null, time: 0 };
@@ -1646,6 +1671,7 @@ function startLinkCreation(node) {
   if (!node || node.archived) return;
   state.linkCreateSourceId = node.id;
   state.selectedId = node.id;
+  state.actionsOpenId = null;
   state.selectedLinkId = null;
   renderCards(); renderLinks();
   toast("Выберите карточку для новой связи");
@@ -1935,21 +1961,30 @@ function personPhotoMediaHtml(node) {
   return `<img class="person-photo-media" data-detail-cover="${esc(node.coverAssetId)}" style="${processCoverStyle(position)}" alt="">`;
 }
 function personDetailHtml(node) {
-  const siteHref = externalHref(node.site, "site");
-  const socialHref = externalHref(node.social, "social");
-  const telegramHref = externalHref(node.telegram, "telegram");
-  const addressHref = node.address ? `https://maps.apple.com/?q=${encodeURIComponent(node.address)}` : "";
+  const telegramHref = normalizeTelegram(node.telegram);
+  const addressHref = mapsHref(node.address);
+  const siteHref = normalizeExternalUrl(node.site);
+  const socialHref = normalizeExternalUrl(node.social);
   const contactItems = [
-    node.phone ? `<a class="person-contact-item" href="tel:${esc(node.phone)}"><span>${icon("phone")}</span><b>Позвонить</b><small>${esc(node.phone)}</small></a>` : "",
-    node.telegram ? `${telegramHref ? `<a class="person-contact-item" href="${esc(telegramHref)}" target="_blank" rel="noopener noreferrer">` : `<div class="person-contact-item">`}<span>${icon("telegram")}</span><b>Telegram</b><small>${esc(node.telegram)}</small>${telegramHref ? `</a>` : `</div>`}` : "",
-    node.email ? `<a class="person-contact-item" href="mailto:${esc(node.email)}"><span>${icon("mail")}</span><b>Email</b><small>${esc(node.email)}</small></a>` : "",
-    addressHref ? `<a class="person-contact-item" href="${esc(addressHref)}" target="_blank" rel="noopener noreferrer"><span>${icon("location")}</span><b>Адрес</b><small>${esc(node.address)}</small></a>` : "",
-    siteHref ? `<a class="person-contact-item" href="${esc(siteHref)}" target="_blank" rel="noopener noreferrer"><span>${icon("link")}</span><b>Сайт</b><small>${esc(node.site)}</small></a>` : "",
-    socialHref ? `<a class="person-contact-item" href="${esc(socialHref)}" target="_blank" rel="noopener noreferrer"><span>${icon("link")}</span><b>Соцсеть</b><small>${esc(node.social)}</small></a>` : (node.social ? `<div class="person-contact-item"><span>${icon("link")}</span><b>Соцсеть</b><small>${esc(node.social)}</small></div>` : "")
+    node.phone ? `<a class="person-contact-item" href="tel:${esc(node.phone)}"><span>${icon("phone")}</span><div><b>Позвонить</b><small>${esc(node.phone)}</small></div><i>›</i></a>` : "",
+    node.telegram ? `${telegramHref ? `<a class="person-contact-item" href="${esc(telegramHref)}" target="_blank" rel="noopener noreferrer">` : `<div class="person-contact-item">`}<span>${icon("telegram")}</span><div><b>Telegram</b><small>${esc(node.telegram)}</small></div><i>›</i>${telegramHref ? `</a>` : `</div>`}` : "",
+    node.email ? `<a class="person-contact-item" href="mailto:${esc(node.email)}"><span>${icon("mail")}</span><div><b>Email</b><small>${esc(node.email)}</small></div><i>›</i></a>` : "",
+    addressHref ? `<a class="person-contact-item" href="${esc(addressHref)}" target="_blank" rel="noopener noreferrer"><span>${icon("location")}</span><div><b>Адрес</b><small>${esc(node.address)}</small></div><i>›</i></a>` : "",
+    siteHref ? `<a class="person-contact-item" href="${esc(siteHref)}" target="_blank" rel="noopener noreferrer"><span>${icon("link")}</span><div><b>Сайт</b><small>${esc(node.site)}</small></div><i>›</i></a>` : "",
+    socialHref ? `<a class="person-contact-item" href="${esc(socialHref)}" target="_blank" rel="noopener noreferrer"><span>${icon("link")}</span><div><b>Соцсеть</b><small>${esc(node.social)}</small></div><i>›</i></a>` : (node.social ? `<div class="person-contact-item"><span>${icon("link")}</span><div><b>Соцсеть</b><small>${esc(node.social)}</small></div></div>` : "")
   ].filter(Boolean).join("");
+  const activeTasks = tasksForPerson(node.id).filter(task => !task.done && !task.archived);
+  const taskRows = activeTasks.slice(0,6).map(task => {
+    const process = state.data.nodes.find(item => item.type === "process" && (item.tasks || []).some(t => t.id === task.id));
+    return `<button class="person-task-row" data-person-task-process="${esc(process?.id || "")}" data-person-task-id="${esc(task.id)}"><span>${icon("task")}</span><div><b>${esc(task.title || "Без названия")}</b><small>${esc(process?.title || "Рабочий процесс")} · ${esc(task.deadline || "Без срока")}</small></div><i>›</i></button>`;
+  }).join("");
+  const related = linkNodesFor(node.id).filter(item => !item.archived);
+  const relatedRows = related.slice(0,8).map(item => `<button class="person-relation-row" data-person-relation-id="${esc(item.id)}"><span>${icon(item.type === "process" ? "process" : item.type)}</span><div><b>${esc(item.title)}</b><small>${esc(TYPE_LABELS[item.type] || item.type)}</small></div><i>›</i></button>`).join("");
   return `<div class="detail-hero person-detail-hero">${personPhotoMediaHtml(node)}<div class="detail-hero-content"><p>${esc(node.speciality || "Специалист")}</p></div></div>
-    <div class="detail-grid"><div class="detail-stat"><small>СТАТУС</small><b>${esc(node.personStatus || "Неизвестно")}</b></div><div class="detail-stat"><small>АКТИВНЫЕ ЗАДАЧИ</small><b>${tasksForPerson(node.id).filter(task => !task.done).length}</b></div></div>
+    <div class="detail-grid"><div class="detail-stat"><small>СТАТУС</small><b>${esc(node.personStatus || "Новый контакт")}</b></div><button class="detail-stat detail-stat-button" data-person-active-tasks="1"><small>АКТИВНЫЕ ЗАДАЧИ</small><b>${activeTasks.length}</b></button></div>
     ${contactItems ? `<div class="detail-section person-contact-section"><div class="detail-section-head"><h3>Контакты</h3></div><div class="person-contact-grid">${contactItems}</div></div>` : ""}
+    ${taskRows ? `<div class="detail-section"><div class="detail-section-head"><h3>Активные задачи</h3></div><div class="person-task-list">${taskRows}</div></div>` : ""}
+    ${relatedRows ? `<div class="detail-section"><div class="detail-section-head"><h3>Связан с</h3></div><div class="person-relation-list">${relatedRows}</div></div>` : ""}
     ${node.tags ? `<div class="detail-section"><div class="detail-section-head"><h3>Ключевые слова</h3></div><div class="chips">${node.tags.split(",").filter(Boolean).map(tag => `<span class="chip">${esc(tag.trim())}</span>`).join("")}</div></div>` : ""}
     ${node.note ? `<div class="detail-section"><div class="detail-section-head"><h3>Заметка</h3></div><div class="note-block">${esc(node.note)}</div></div>` : ""}`;
 }
@@ -2064,6 +2099,14 @@ function handleDetailClick(event) {
     expenseSelect.closest('.expense-item')?.classList.toggle('selected', expenseSelect.checked);
     return;
   }
+  const personTask = event.target.closest("[data-person-task-process]");
+  if (personTask) {
+    const process = nodeById(personTask.dataset.personTaskProcess);
+    if (process) { closeDetail(); state.selectedId = process.id; state.actionsOpenId = null; render(); focusNode(process); openDetail(process); requestAnimationFrame(() => { const row = document.querySelector(`[data-stage-task-id="${CSS.escape(personTask.dataset.personTaskId)}"]`); row?.classList.add("focus-flash"); setTimeout(() => row?.classList.remove("focus-flash"), 950); }); }
+    return;
+  }
+  const relation = event.target.closest("[data-person-relation-id]");
+  if (relation) { const target = nodeById(relation.dataset.personRelationId); if (target) { closeDetail(); state.selectedId = target.id; state.actionsOpenId = null; render(); focusNode(target); openDetail(target); } return; }
   const actionButton = event.target.closest("[data-detail-action]"); if (!actionButton) return;
   const action = actionButton.dataset.detailAction;
   if (action === "addAssets") {
@@ -2277,7 +2320,7 @@ function renderEditorBody() {
     <div class="field-grid"><div class="field"><label>Аванс</label><input name="advance" inputmode="decimal" value="${esc(d.advance || "")}"></div><div class="field"><label>Остаток</label><input name="balance" inputmode="decimal" value="${esc(d.balance || "")}"></div></div>
     <div class="editor-group"><h3>Основные материалы</h3><button type="button" class="ghost" data-editor-action="addAssets">＋ Добавить изображения, PDF или векторные файлы</button></div>`;
   if (d.type === "person") {
-    const knownStatuses = ["Неизвестно","Временно","Перспективный","Работаем"];
+    const knownStatuses = ["Новый контакт","На связи","Перспективный","Работаем","Пауза","Важный человек"];
     const mode = knownStatuses.includes(d.personStatusMode) ? d.personStatusMode : (knownStatuses.includes(d.personStatus) ? d.personStatus : "custom");
     html += `
     <div class="field"><label>Специализация</label><input name="speciality" value="${esc(d.speciality || "")}"></div>
@@ -2650,7 +2693,7 @@ async function saveEditor(event) {
     else d[key] = String(value).trim();
   }
   if (d.type === "person") {
-    const mode = $("#personStatusMode", event.currentTarget)?.value || "Неизвестно";
+    const mode = $("#personStatusMode", event.currentTarget)?.value || "Новый контакт";
     if (mode === "custom") {
       const custom = String($("#personCustomStatus", event.currentTarget)?.value || "").trim().slice(0,30);
       if (!custom) return toast("Введите свой статус");
