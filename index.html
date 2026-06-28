@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="BOONWAVE">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=6.0.45">
+  <link rel="stylesheet" href="styles.css?v=6.0.50">
   <title>BOONWAVE</title>
 </head>
 <body>
@@ -71,8 +71,7 @@
       <div id="world">
         <svg id="linkLayer" width="3600" height="2600" viewBox="0 0 3600 2600" aria-label="Связи между карточками"></svg>
         <div id="cardLayer"></div>
-        <div id="linkToolbar" class="link-toolbar hidden" role="menu" aria-label="Действия со связью"><button type="button" id="linkHighlightButton" role="menuitem"></button><button type="button" id="linkDirectionButton" role="menuitem"></button><button type="button" id="deleteSelectedLink" class="danger" role="menuitem"></button></div>
-      </div>
+</div>
       <div id="emptyState" class="empty-state hidden">
         <div class="empty-symbol">≈</div>
         <h1>Поле возможностей</h1>
@@ -91,7 +90,7 @@
     </main>
 
     <div class="desktop-zoom-controls" aria-label="Управление рабочим столом">
-      <button id="todayQuickButton" class="desktop-round-action today-action" type="button" aria-label="Сегодня">S</button>
+      <button id="todayQuickButton" class="desktop-round-action today-action" type="button" aria-label="Я сейчас" title="Я сейчас"><span data-icon="nowMe"></span></button>
       <label class="desktop-zoom-slider" aria-label="Масштаб рабочего стола">
         <span class="zoom-minus" aria-hidden="true">−</span>
         <input id="desktopZoomRange" type="range" min="-50" max="50" step="1" value="0" aria-label="Смысловой масштаб: вся картина, рабочий режим, крупный режим">
@@ -124,11 +123,11 @@
     <button class="menu-row" data-menu-action="fit"><span data-icon="focus"></span><div><b>Вписать всё</b><small>Вернуть все карточки в обзор</small></div></button>
     <button class="menu-row" data-menu-action="logout"><span data-icon="logout"></span><div><b>Выйти</b><small>Проекты останутся на устройстве</small></div></button>
     <button class="menu-row danger" data-menu-action="reset"><span data-icon="trash"></span><div><b>Полный сброс</b><small>Удалить локальные данные и вложения</small></div></button>
-    <footer>BOONWAVE 6.0.45 · LIGHT THEME</footer>
+    <footer>BOONWAVE 6.0.50 · LIGHT THEME</footer>
   </section>
 
   <section id="sidePanel" class="side-panel hidden">
-    <header><div><small id="panelEyebrow">BOONWAVE</small><h2 id="panelTitle">Сегодня</h2></div><button data-close-sheet="sidePanel">×</button></header>
+    <header><div><small id="panelEyebrow">BOONWAVE</small><h2 id="panelTitle">Я сейчас</h2></div><button data-close-sheet="sidePanel">×</button></header>
     <div id="panelBody" class="panel-body"></div>
   </section>
 
@@ -204,6 +203,6 @@
   <input id="importInput" type="file" accept="application/json,.json" hidden>
   <div id="toast" class="toast hidden"><span id="toastMessage"></span><button type="button" id="toastAction" class="hidden"></button></div>
 
-  <script src="app.js?v=6.0.45"></script>
+  <script src="app.js?v=6.0.50"></script>
 </body>
 </html>

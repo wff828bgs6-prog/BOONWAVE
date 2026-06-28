@@ -1,6 +1,6 @@
 "use strict";
 
-const VERSION = "6.0.45";
+const VERSION = "6.0.50";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
@@ -56,6 +56,7 @@ function icon(name, className = "") {
   const paths = {
     tree: `<path d="M5 5h5v5H5zM14 4h5v5h-5zM9 15h6v5H9z"/><path d="M7.5 10v2.2c0 1 .8 1.8 1.8 1.8H12m4.5-5v3.2c0 1-.8 1.8-1.8 1.8H12"/>`,
     today: `<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3.5 2"/>`,
+    nowMe: `<circle cx="12" cy="7.2" r="2.5"/><path d="M7.7 20v-4.6c0-2.4 1.9-4.3 4.3-4.3s4.3 1.9 4.3 4.3V20"/><path d="M7.8 12.2 4.2 8.7M16.2 12.2l3.6-3.5M4.2 8.7V5.4M19.8 8.7V5.4"/>`,
     results: `<path d="M6 19V9m6 10V5m6 14v-7"/><path d="m5 7 4-3 3 2 6-4"/>`,
     archive: `<path d="M4 7h16v3H4zM6 10v9h12v-9M9 14h6"/>`,
     archiveSend: `<path d="M4 7h16v3H4zM6 10v9h12v-9M9 15h6"/><path d="M12 3v7m0 0-3-3m3 3 3-3"/>`,
@@ -141,14 +142,9 @@ const state = {
   linkDrag: null,
   linkCreateSourceId: null,
   linkDropTargetId: null,
-  linkFlowGesture: null,
-  linkFlow: null,
-  linkMenuId: null,
   linkRenderFrame: 0,
   zoomIdleTimer: 0,
   dotRenderFrame: 0,
-  linkDirectionModeId: null,
-  lastLinkTap: { id: null, time: 0 },
   undoStack: [],
   justCreatedId: null,
   isReloadingForWorker: false,
@@ -307,7 +303,9 @@ function normalizeData(data) {
     }
     return normalizedNode;
   }) : [];
-  normalized.links = Array.isArray(data.links) ? data.links.map(link => ({ flow: "none", highlighted: false, ...link })) : [];
+  normalized.links = Array.isArray(data.links) ? data.links.map(link => ({
+    id: link.id || uid(), a: link.a, b: link.b, kind: link.kind || "manual", createdAt: link.createdAt || new Date().toISOString()
+  })).filter(link => link.a && link.b && link.a !== link.b) : [];
   normalized.settings = { ...base.settings, cameras: {}, lastWorkingNode: {}, ...(data.settings || {}) };
   normalized.schemaVersion = SCHEMA_VERSION;
   normalized.nodes.forEach(node => { if (node.archived && !node.archivedAt) node.archivedAt = new Date(node.updatedAt || normalized.updatedAt || Date.now()).toISOString(); });
@@ -584,9 +582,6 @@ function bindWorkspaceOnce() {
   $("#accountMenu").addEventListener("click", handleMenuAction);
   $("#cardLayer").addEventListener("click", handleCardActionClick);
   $("#linkLayer").addEventListener("pointerdown", handleLinkPointerDown);
-  $("#linkHighlightButton")?.addEventListener("click", toggleSelectedLinkHighlight);
-  $("#linkDirectionButton")?.addEventListener("click", enableSelectedLinkDirection);
-  $("#deleteSelectedLink")?.addEventListener("click", deleteSelectedLink);
   $("#toastAction")?.addEventListener("click", runToastAction);
   window.addEventListener("pointermove", handleLinkPointerMove, { passive: false });
   window.addEventListener("pointerup", finishLinkPointerDrag, { passive: false });
@@ -736,7 +731,7 @@ function switchSpace(space) {
   state.data.settings ||= {};
   state.data.settings.cameras ||= {};
   state.data.settings.cameras[state.space] = clone(state.camera);
-  state.space = space; state.selectedId = null; state.selectedLinkId = null; state.linkMenuId = null;
+  state.space = space; state.selectedId = null; state.selectedLinkId = null;
   const savedCamera = state.data.settings.cameras[space];
   render(); requestAnimationFrame(() => {
     if (savedCamera) { state.camera = clone(savedCamera); applyCamera(); }
@@ -822,8 +817,10 @@ async function hydrateCardCovers() {
         const position = processCoverPosition(node, String(node.level || 2));
         visual.style.backgroundPosition = `calc(50% + ${Number(position.x || 0)}%) calc(50% + ${Number(position.y || 0)}%)`;
         const base = position.fit === "contain" ? 100 : 100;
-        visual.style.backgroundSize = position.fit === "contain" ? `contain` : `${Math.max(base, Number(position.scale || 1) * 100)}%`;
+        const forceCompactPersonCover = node.type === "person" && Number(node.level || 2) === 1;
+        visual.style.backgroundSize = forceCompactPersonCover ? `${Math.max(112, Number(position.scale || 1) * 100)}%` : (position.fit === "contain" ? `contain` : `${Math.max(base, Number(position.scale || 1) * 100)}%`);
         visual.style.backgroundRepeat = "no-repeat";
+        if (forceCompactPersonCover && !Number(position.y || 0)) visual.style.backgroundPosition = `calc(50% + ${Number(position.x || 0)}%) 38%`;
       }
       visual.querySelector(".card-visual-placeholder")?.remove();
     }
@@ -845,9 +842,9 @@ function setZoomInteraction(active = true) {
 }
 function renderLinks() {
   const svg = $("#linkLayer");
+  if (!svg) return;
   const fragment = document.createDocumentFragment();
   const viewport = $("#canvasViewport");
-  const lightweight = Boolean(viewport?.classList.contains("is-panning") || viewport?.classList.contains("is-zooming") || $(".node-card.dragging"));
   const rect = viewport?.getBoundingClientRect();
   const margin = 220 / Math.max(state.camera.scale, .2);
   const viewBounds = rect ? {
@@ -856,11 +853,7 @@ function renderLinks() {
     right: (rect.width - state.camera.tx) / state.camera.scale + margin,
     bottom: (rect.height - state.camera.ty) / state.camera.scale + margin
   } : null;
-  svg.classList.toggle("link-editing", Boolean(state.selectedLinkId));
-  svg.innerHTML = `<defs>
-    <linearGradient id="linkGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a14eff"/><stop offset=".55" stop-color="#6177ff"/><stop offset="1" stop-color="#55dcec"/></linearGradient>
-    <linearGradient id="linkPulseGradient" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9c55ff" stop-opacity="0"/><stop offset=".42" stop-color="#8a68ff" stop-opacity=".5"/><stop offset=".66" stop-color="#6fa7ff" stop-opacity="1"/><stop offset="1" stop-color="#62e2ef" stop-opacity="0"/></linearGradient>
-  </defs>`;
+  svg.innerHTML = "";
   state.data.links.forEach(link => {
     const a = nodeById(link.a), b = nodeById(link.b);
     if (!a || !b || a.space !== state.space || b.space !== state.space || a.archived || b.archived) return;
@@ -871,68 +864,56 @@ function renderLinks() {
       if (maxX < viewBounds.left || minX > viewBounds.right || maxY < viewBounds.top || minY > viewBounds.bottom) return;
     }
     const geometry = linkGeometry(a, b);
-    let pathData = geometry.d;
-    let startPoint = geometry.start;
-    let endPoint = geometry.end;
+    let startPoint = geometry.start, endPoint = geometry.end;
     if (state.linkDrag?.linkId === link.id && state.linkDrag.point) {
       if (state.linkDrag.end === "a") startPoint = state.linkDrag.point;
       else endPoint = state.linkDrag.point;
-      pathData = curveBetweenPoints(startPoint, endPoint);
     }
+    const pathData = curveBetweenPoints(startPoint, endPoint);
     const selected = state.selectedLinkId === link.id;
-    const related = state.selectedId === a.id || state.selectedId === b.id;
+    const connected = state.selectedId === link.a || state.selectedId === link.b;
+    const active = state.linkDrag?.linkId === link.id;
+    const stateClasses = [selected ? "is-selected" : "", connected ? "is-connected" : "", active ? "is-active" : ""].filter(Boolean).join(" ");
+    const safeLinkId = String(link.id).replace(/[^a-zA-Z0-9_-]/g, "");
+    const gradientId = `link-flow-${safeLinkId}`;
+    const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+    gradient.setAttribute("id", gradientId);
+    gradient.setAttribute("gradientUnits", "userSpaceOnUse");
+    gradient.setAttribute("x1", startPoint.x); gradient.setAttribute("y1", startPoint.y);
+    gradient.setAttribute("x2", endPoint.x); gradient.setAttribute("y2", endPoint.y);
+    [["0%", "#7567ff", "0"], ["24%", "#7567ff", ".18"], ["58%", "#67d9ff", ".95"], ["100%", "#b7f4ff", ".08"]].forEach(([offset, color, opacity]) => {
+      const stop = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+      stop.setAttribute("offset", offset); stop.setAttribute("stop-color", color); stop.setAttribute("stop-opacity", opacity);
+      gradient.appendChild(stop);
+    });
+    defs.appendChild(gradient); fragment.appendChild(defs);
     const hit = document.createElementNS("http://www.w3.org/2000/svg", "path");
     hit.setAttribute("d", pathData);
     hit.setAttribute("class", "link-hit");
     hit.dataset.linkId = link.id;
     fragment.appendChild(hit);
-
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("d", pathData);
-    path.setAttribute("pathLength", "1000");
-    const muted = state.selectedLinkId ? !selected : (state.selectedId ? !related : false);
-    path.setAttribute("class", `link-path ${related ? "active" : ""} ${selected ? "selected" : ""} ${muted ? "muted" : ""} ${link.highlighted ? "highlighted" : ""}`);
-    path.dataset.linkId = link.id;
+    path.setAttribute("class", `link-path ${stateClasses}`.trim());
     fragment.appendChild(path);
-
-    if (!lightweight && link.flow && link.flow !== "none") {
-      const cometSegments = [
-        { cls: "comet-tail-near", lag: 118 },
-        { cls: "comet-body", lag: 48 },
-        { cls: "comet-head", lag: 0 }
-      ];
-      const addPulse = reverse => {
-        cometSegments.forEach(segment => {
-          const pulse = document.createElementNS("http://www.w3.org/2000/svg", "path");
-          pulse.setAttribute("d", pathData);
-          pulse.setAttribute("pathLength", "1000");
-          pulse.setAttribute("class", `link-flow-overlay ${segment.cls} ${reverse ? "reverse" : "forward"}`);
-          pulse.style.setProperty("--comet-lag", String(segment.lag));
-          fragment.appendChild(pulse);
-        });
-      };
-      if (link.flow === "forward") addPulse(false);
-      if (link.flow === "reverse") addPulse(true);
-      if (link.flow === "bidirectional") { addPulse(false); addPulse(true); }
-    }
-
-    [startPoint, endPoint].forEach((point, index) => {
-      const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      dot.setAttribute("cx", point.x); dot.setAttribute("cy", point.y); dot.setAttribute("r", selected ? "5" : "3");
-      dot.setAttribute("class", `link-dot ${selected ? "selected" : ""}`);
-      fragment.appendChild(dot);
-      if (selected) {
+    const glow = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    glow.setAttribute("d", pathData);
+    glow.setAttribute("class", `link-flow-overlay ${stateClasses}`.trim());
+    glow.setAttribute("stroke", `url(#${gradientId})`);
+    fragment.appendChild(glow);
+    if (state.selectedLinkId === link.id) {
+      [startPoint, endPoint].forEach((point, index) => {
         const handle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        handle.setAttribute("cx", point.x); handle.setAttribute("cy", point.y); handle.setAttribute("r", "14");
+        handle.setAttribute("cx", point.x); handle.setAttribute("cy", point.y); handle.setAttribute("r", "13");
         handle.setAttribute("class", "link-end-handle");
         handle.dataset.linkId = link.id;
         handle.dataset.linkEnd = index === 0 ? "a" : "b";
         fragment.appendChild(handle);
-      }
-    });
+      });
+    }
   });
   svg.appendChild(fragment);
-  updateLinkToolbar();
   updateLinkDropHighlight();
 }
 function curveBetweenPoints(start, end) {
@@ -954,7 +935,6 @@ function resetCanvasGestureState() {
   setZoomInteraction(false);
 }
 function resetLinkGestureState() {
-  state.linkFlowGesture = null;
   state.linkDrag = null;
   state.linkDropTargetId = null;
   const viewport = $("#canvasViewport");
@@ -968,115 +948,54 @@ function resetAllTransientGestures() {
 
 function handleLinkPointerDown(event) {
   const handle = event.target.closest?.(".link-end-handle");
-  const hit = event.target.closest?.(".link-hit,.link-path");
+  const hit = event.target.closest?.(".link-hit");
   if (!handle && !hit) return;
   event.preventDefault(); event.stopPropagation();
   resetCanvasGestureState();
-  try { (handle || hit).setPointerCapture?.(event.pointerId); } catch (_) {}
   const linkId = (handle || hit).dataset.linkId;
-  if (!linkId) return;
-  const linkRecord = state.data.links.find(item => item.id === linkId);
-  const endpointA = nodeById(linkRecord?.a), endpointB = nodeById(linkRecord?.b);
+  const link = state.data.links.find(item => item.id === linkId);
+  if (!link) return;
+  const endpointA = nodeById(link.a), endpointB = nodeById(link.b);
   if (endpointA?.locked && endpointB?.locked) return;
   state.selectedLinkId = linkId;
   state.selectedId = null;
-  state.linkMenuId = null;
   if (handle) {
-    const link = state.data.links.find(item => item.id === linkId); if (!link) return;
     const movingEnd = handle.dataset.linkEnd;
     const fixedId = movingEnd === "a" ? link.b : link.a;
-    state.linkDrag = { linkId, end: movingEnd, pointerId: event.pointerId, fixedId, originalId: movingEnd === "a" ? link.a : link.b, point: screenToWorld(event.clientX, event.clientY), before: clone(state.data) };
+    state.linkDrag = {
+      linkId, end: movingEnd, pointerId: event.pointerId, fixedId,
+      originalId: movingEnd === "a" ? link.a : link.b,
+      point: screenToWorld(event.clientX, event.clientY), before: clone(state.data)
+    };
     state.linkDropTargetId = null;
-    state.linkFlowGesture = null;
-  } else {
-    const directionMode = state.linkDirectionModeId === linkId;
-    state.linkFlowGesture = { linkId, pointerId: event.pointerId, start: screenToWorld(event.clientX, event.clientY), last: screenToWorld(event.clientX, event.clientY), points: [], moved: false, directionMode };
+    try { handle.setPointerCapture?.(event.pointerId); } catch (_) {}
   }
   renderCards(); renderLinks();
 }
 function handleLinkPointerMove(event) {
   const drag = state.linkDrag;
-  if (drag && drag.pointerId === event.pointerId) {
-    event.preventDefault();
-    drag.point = screenToWorld(event.clientX, event.clientY);
-    const target = findLinkDropTarget(drag.point, drag.fixedId);
-    state.linkDropTargetId = target?.id || null;
-    scheduleRenderLinks();
-    return;
-  }
-  const flow = state.linkFlowGesture;
-  if (!flow || flow.pointerId !== event.pointerId) return;
-  const point = screenToWorld(event.clientX, event.clientY);
-  flow.last = point;
-  flow.points.push(point);
-  if (Math.hypot(point.x - flow.start.x, point.y - flow.start.y) > 30 / Math.max(.28, state.camera.scale)) flow.moved = true;
-}
-function finishLinkPointerDrag(event) {
-  const flow = state.linkFlowGesture;
-  if (flow && flow.pointerId === event.pointerId && !state.linkDrag) {
-    state.linkFlowGesture = null;
-    setZoomInteraction(false);
-    $("#canvasViewport")?.classList.remove("is-panning", "is-zooming");
-    const link = state.data.links.find(item => item.id === flow.linkId);
-    if (!link) return;
-    const lockedA = nodeById(link.a)?.locked, lockedB = nodeById(link.b)?.locked;
-    if (lockedA && lockedB) return;
-    if (!flow.moved) {
-      const now = performance.now();
-      if (state.lastLinkTap.id === link.id && now - state.lastLinkTap.time < 340) {
-        state.lastLinkTap = { id: null, time: 0 };
-        state.linkMenuId = link.id;
-      } else {
-        state.lastLinkTap = { id: link.id, time: now };
-      }
-      renderLinks();
-      return;
-    }
-    if (flow.directionMode) {
-      const a = nodeById(link.a), b = nodeById(link.b);
-      if (a && b) {
-        const geometry = linkGeometry(a, b);
-        const vx = geometry.end.x - geometry.start.x, vy = geometry.end.y - geometry.start.y;
-        const denom = Math.max(1, vx * vx + vy * vy);
-        const projections = [flow.start, ...flow.points, flow.last].map(p => ((p.x - geometry.start.x) * vx + (p.y - geometry.start.y) * vy) / denom);
-        let reversals = 0, lastSign = 0;
-        for (let i = 1; i < projections.length; i++) {
-          const delta = projections[i] - projections[i-1];
-          const sign = Math.abs(delta) < .008 ? 0 : Math.sign(delta);
-          if (sign && lastSign && sign !== lastSign) reversals++;
-          if (sign) lastSign = sign;
-        }
-        pushUndo("Направление связи");
-        if (reversals > 0) link.flow = "bidirectional";
-        else link.flow = projections.at(-1) >= projections[0] ? "forward" : "reverse";
-        state.linkDirectionModeId = null;
-        saveData(); renderLinks();
-        toast(link.flow === "bidirectional" ? "Двустороннее направление сохранено" : "Направление связи сохранено", "Отменить", undoLast);
-        navigator.vibrate?.(8);
-      }
-    }
-    state.canvasPointers.clear();
-    state.canvasGesture = null;
-    return;
-  }
-  const drag = state.linkDrag;
   if (!drag || drag.pointerId !== event.pointerId) return;
   event.preventDefault();
+  drag.point = screenToWorld(event.clientX, event.clientY);
+  const target = findLinkDropTarget(drag.point, drag.fixedId);
+  state.linkDropTargetId = target?.id || null;
+  scheduleRenderLinks();
+}
+function finishLinkPointerDrag(event) {
+  const drag = state.linkDrag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
   const link = state.data.links.find(item => item.id === drag.linkId);
   const targetId = state.linkDropTargetId;
   if (link && targetId && targetId !== drag.fixedId) {
     const duplicate = state.data.links.some(item => item.id !== link.id && ((item.a === targetId && item.b === drag.fixedId) || (item.b === targetId && item.a === drag.fixedId)));
-    if (duplicate) toast("Такая связь уже существует");
-    else {
-      pushUndoSnapshot("Переназначение связи", drag.before);
+    if (!duplicate) {
+      pushUndoSnapshot(drag.before, "Перемещение связи");
       if (drag.end === "a") link.a = targetId; else link.b = targetId;
-      saveData(); toast("Связь переназначена", "Отменить", undoLast);
+      saveData();
     }
-  } else if (link) toast("Связь оставлена без изменений");
-  state.linkDrag = null; state.linkDropTargetId = null;
-  state.canvasPointers.clear(); state.canvasGesture = null;
-  setZoomInteraction(false);
-  $("#canvasViewport")?.classList.remove("is-panning", "is-zooming");
+  }
+  state.linkDrag = null;
+  state.linkDropTargetId = null;
   renderCards(); renderLinks();
 }
 function findLinkDropTarget(point, fixedId) {
@@ -1094,47 +1013,6 @@ function findLinkDropTarget(point, fixedId) {
 }
 function updateLinkDropHighlight() {
   $$(".node-card", $("#cardLayer")).forEach(card => card.classList.toggle("link-drop-target", card.dataset.id === state.linkDropTargetId));
-}
-function updateLinkToolbar() {
-  const toolbar = $("#linkToolbar"); if (!toolbar) return;
-  const link = state.data.links.find(item => item.id === state.linkMenuId);
-  const a = nodeById(link?.a), b = nodeById(link?.b);
-  if (!link || !a || !b || a.archived || b.archived || state.linkDrag) { toolbar.classList.add("hidden"); return; }
-  const geometry = linkGeometry(a,b);
-  const mx = (geometry.start.x + geometry.end.x) / 2;
-  const my = (geometry.start.y + geometry.end.y) / 2;
-  toolbar.style.left = `${mx}px`;
-  toolbar.style.top = `${my}px`;
-  toolbar.classList.remove("hidden");
-  $("#linkHighlightButton").classList.toggle("active", Boolean(link.highlighted));
-  $("#linkHighlightButton").innerHTML = `${icon("link")}<span>${link.highlighted ? "Снять выделение" : "Выделить связь"}</span>`;
-  $("#linkDirectionButton").innerHTML = `${icon("branch")}<span>Задать направление</span>`;
-  $("#deleteSelectedLink").innerHTML = `${icon("trash")}<span>Удалить связь</span>`;
-}
-function toggleSelectedLinkHighlight() {
-  const link = state.data.links.find(item => item.id === state.linkMenuId); if (!link) return;
-  pushUndo("Выделение связи");
-  link.highlighted = !link.highlighted;
-  state.linkMenuId = null;
-  saveData(); renderLinks();
-  toast(link.highlighted ? "Связь выделена" : "Выделение снято", "Отменить", undoLast);
-}
-function enableSelectedLinkDirection() {
-  const link = state.data.links.find(item => item.id === state.linkMenuId); if (!link) return;
-  state.linkDirectionModeId = link.id;
-  state.selectedLinkId = link.id;
-  state.linkMenuId = null;
-  renderLinks();
-  toast("Проведите по линии. Движение туда-обратно задаст двусторонний поток");
-}
-function deleteSelectedLink() {
-  const id = state.linkMenuId || state.selectedLinkId;
-  const link = state.data.links.find(item => item.id === id); if (!link) return;
-  if (!confirm("Удалить выбранную связь?")) return;
-  pushUndo("Удаление связи");
-  state.data.links = state.data.links.filter(item => item.id !== link.id);
-  state.selectedLinkId = null; state.linkMenuId = null; state.linkDirectionModeId = null; state.linkDrag = null; state.linkDropTargetId = null;
-  saveData(); renderLinks(); toast("Связь удалена", "Отменить", undoLast);
 }
 function linkGeometry(a, b) {
   const ad = cardDims(a), bd = cardDims(b);
@@ -1370,7 +1248,7 @@ function startCameraInertia(vx,vy) {
 function onCanvasPointerDown(event) {
   cancelAnimationFrame(state.cameraInertiaFrame); state.cameraInertiaFrame=0;
   if (!event.isPrimary && state.canvasPointers.size > 2) resetCanvasGestureState();
-  if (state.linkFlowGesture || state.linkDrag) resetLinkGestureState();
+  if (state.linkDrag) resetLinkGestureState();
   if (event.target.closest(".node-card,.canvas-utility,.gesture-hint,.link-hit,.link-end-handle,.link-toolbar")) return;
   event.preventDefault();
   event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -1492,8 +1370,8 @@ function attachCardGestures(element, node) {
       if (!node.locked) { gesture.type = "drag"; element.classList.add("dragging"); }
     }
     if (gesture.type === "drag") {
-      node.x = clamp(gesture.nodeX + dx, -1400, WORLD_W + 1400);
-      node.y = clamp(gesture.nodeY + dy, -1000, WORLD_H + 1000);
+      node.x = clamp(gesture.nodeX + dx, -12000, WORLD_W + 12000);
+      node.y = clamp(gesture.nodeY + dy, -12000, WORLD_H + 12000);
       element.style.left = `${node.x}px`; element.style.top = `${node.y}px`; scheduleRenderLinks();
     }
   });
@@ -1599,7 +1477,7 @@ function completeLinkCreation(target) {
     return toast("Такая связь уже существует");
   }
   pushUndo("Создание связи");
-  state.data.links.push({ id: uid(), a: source.id, b: target.id, kind: "manual", flow: "none", highlighted: false, createdAt: new Date().toISOString() });
+  state.data.links.push({ id: uid(), a: source.id, b: target.id, kind: "manual", createdAt: new Date().toISOString() });
   state.linkCreateSourceId = null;
   state.selectedId = target.id;
   saveData(); renderCards(); renderLinks();
@@ -1667,7 +1545,7 @@ function findFreePosition(type, preferred) {
     return pos.x+dims.w+gap < n.x || pos.x > n.x+d.w+gap || pos.y+dims.h+gap < n.y || pos.y > n.y+d.h+gap;
   });
   const found = candidates.find(clear) || candidates[0];
-  return { x: clamp(found.x, -1200, WORLD_W + 1200), y: clamp(found.y, -900, WORLD_H + 900) };
+  return { x: clamp(found.x, -12000, WORLD_W + 12000), y: clamp(found.y, -12000, WORLD_H + 12000) };
 }
 function offerNewCardSetup(node) {
   setTimeout(() => {
@@ -1688,7 +1566,7 @@ function createNode(type, parent = null, openEditorNow = true, delayedEditor = f
   pushUndo("Создание карточки");
   const node = { id: uid(), type, space: state.space, x: point.x, y: point.y, level: 2, note: "", archived: false, locked: false, ...defaults[type] };
   state.data.nodes.push(node);
-  if (parent) state.data.links.push({ id: uid(), a: parent.id, b: node.id, kind: type, flow: "none", highlighted: false });
+  if (parent) state.data.links.push({ id: uid(), a: parent.id, b: node.id, kind: type });
   state.selectedId = node.id; state.justCreatedId = node.id; saveData(); render(); focusNode(node);
   setTimeout(() => { if (state.justCreatedId === node.id) { state.justCreatedId = null; renderCards(); } }, 900);
   offerNewCardSetup(node);
@@ -1727,7 +1605,7 @@ function createProcessForProject(project) {
     status: "active", progress: 0, stages: [], tasks: [], phonebook: [], peopleIds: [], expenses: [], assets: [], archived: false, locked: false
   };
   pushUndo("Создание рабочего процесса");
-  state.data.nodes.push(process); state.data.links.push({ id: uid(), a: project.id, b: process.id, kind: "process", flow: "none", highlighted: false });
+  state.data.nodes.push(process); state.data.links.push({ id: uid(), a: project.id, b: process.id, kind: "process" });
   state.selectedId = process.id; state.justCreatedId = process.id; saveData(); render(); focusNode(process);
   setTimeout(() => { if (state.justCreatedId === process.id) { state.justCreatedId = null; renderCards(); } }, 900);
   offerNewCardSetup(process);
@@ -2666,20 +2544,67 @@ async function deleteCurrentAsset() {
 /* Panels */
 function openPanel(panel) {
   $$('.bottom-nav button').forEach(button => button.classList.toggle("active", button.dataset.panel === panel));
-  const titles = { today: "Сегодня", results: "Результаты", archive: "Архив" };
-  $("#panelTitle").textContent = titles[panel]; $("#panelEyebrow").textContent = state.space === "work" ? "ПРОЕКТЫ" : "ЛИЧНОЕ";
+  const titles = { today: "Я сейчас", results: "Результаты", archive: "Архив" };
+  $("#panelTitle").textContent = titles[panel];
+  $("#panelEyebrow").textContent = panel === "today" ? "МОЙ ТЕКУЩИЙ ФОКУС" : (state.space === "work" ? "ПРОЕКТЫ" : "ЛИЧНОЕ");
   $("#panelBody").innerHTML = panel === "today" ? todayPanelHtml() : panel === "results" ? resultsPanelHtml() : archivePanelHtml();
+  $("#sidePanel").classList.toggle("now-panel", panel === "today");
   showOverlay("sidePanel");
 }
+function taskFocusDate(task) {
+  const raw = task.dateTime || task.due || task.intervalStart || "";
+  if (!raw) return null;
+  const date = new Date(raw.length === 10 ? `${raw}T23:59:00` : raw);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+function taskFocusBucket(task, now = new Date()) {
+  const date = taskFocusDate(task);
+  if (!date) return 3;
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrowStart = new Date(todayStart); tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  const nearEnd = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+  if (date < now) return 0;
+  if (date < tomorrowStart) return 1;
+  if (date <= nearEnd) return 2;
+  return 3;
+}
+function taskFocusDateLabel(task) {
+  const date = taskFocusDate(task);
+  if (!date) return "Без срока";
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const days = Math.round((target - today) / 86400000);
+  const time = task.dateTime ? new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(date) : "";
+  if (days < 0) return `Просрочено${time ? ` · ${time}` : ""}`;
+  if (days === 0) return `Сегодня${time ? ` · ${time}` : ""}`;
+  if (days === 1) return `Завтра${time ? ` · ${time}` : ""}`;
+  return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" }).format(date);
+}
 function todayPanelHtml() {
-  const today = todayISO(); const entries = [];
-  state.data.nodes.filter(node => node.space === state.space && !node.archived).forEach(node => {
-    if (node.type === "process") (node.tasks || []).filter(task => !task.archived && !task.done && task.due === today).forEach(task => entries.push({ node, task }));
-    if (node.type === "goal" && node.deadline === today) entries.push({ node, task: { title: node.title, due: today } });
-    if (node.type === "project" && node.deadline === today) entries.push({ node, task: { title: `Срок проекта: ${node.title}`, due: today } });
+  const entries = [];
+  const priorityRank = { high: 0, medium: 1, low: 2 };
+  state.data.nodes.filter(node => node.space === state.space && !node.archived && node.type === "process").forEach(node => {
+    const project = node.projectId ? nodeById(node.projectId) : null;
+    (node.tasks || []).filter(task => !task.archived && !task.done).forEach(task => {
+      entries.push({ node, project, task, bucket: taskFocusBucket(task), date: taskFocusDate(task) });
+    });
   });
-  if (!entries.length) return `<div class="panel-empty">На сегодня нет обязательных действий.</div>`;
-  return entries.map(({ node, task }) => `<button class="panel-card" data-panel-open-node="${node.id}"><div class="panel-card-head"><b>${esc(task.title)}</b><span class="panel-chip">${esc(TYPE_LABELS[node.type])}</span></div><p>${esc(node.title)}</p></button>`).join("");
+  entries.sort((a, b) => a.bucket - b.bucket || (priorityRank[a.task.priority] ?? 1) - (priorityRank[b.task.priority] ?? 1) || (a.date?.getTime() ?? Infinity) - (b.date?.getTime() ?? Infinity));
+  if (!entries.length) return `<div class="now-empty"><span>${icon("nowMe")}</span><b>Сейчас всё выполнено</b><p>Новые приоритетные задачи появятся здесь автоматически.</p></div>`;
+  const labels = ["Сейчас", "Сегодня", "Ближайшее", "Дальше"];
+  return `<div class="now-summary"><span>${entries.length}</span><div><b>Что делать сейчас</b><small>Задачи из всех рабочих процессов в порядке приоритета</small></div></div>` + labels.map((label, bucket) => {
+    const group = entries.filter(entry => entry.bucket === bucket);
+    if (!group.length) return "";
+    return `<section class="now-group"><h3>${label}<span>${group.length}</span></h3><div class="now-list">${group.map(({node, project, task}) => `<article class="now-task priority-${esc(task.priority || "medium")}">
+      <button type="button" class="now-check" data-now-toggle="${esc(task.id)}" data-now-node="${esc(node.id)}" aria-label="Отметить выполненной"><span>${icon("task")}</span></button>
+      <button type="button" class="now-task-main" data-panel-open-node="${esc(node.id)}">
+        <b>${esc(task.title || "Задача без названия")}</b>
+        <small>${esc(project?.title || node.title)} · ${esc(taskFocusDateLabel(task))}</small>
+      </button>
+      <i class="now-priority" aria-label="${esc(priorityLabel(task.priority))}"></i>
+    </article>`).join("")}</div></section>`;
+  }).join("");
 }
 function resultsPanelHtml() {
   const entries = [];
@@ -2705,6 +2630,28 @@ function archivePanelHtml() {
   }).join("");
 }
 function handlePanelClick(event) {
+  const toggleNow = event.target.closest("[data-now-toggle]");
+  if (toggleNow) {
+    const node = nodeById(toggleNow.dataset.nowNode);
+    const task = node?.type === "process" ? (node.tasks || []).find(item => item.id === toggleNow.dataset.nowToggle) : null;
+    if (!task) return;
+    task.done = true;
+    task.completedAt = new Date().toISOString();
+    updateProcessProgress(node);
+    saveData();
+    $("#panelBody").innerHTML = todayPanelHtml();
+    render();
+    navigator.vibrate?.(12);
+    toast("Задача выполнена", "Отменить", () => {
+      task.done = false;
+      task.completedAt = "";
+      updateProcessProgress(node);
+      saveData();
+      if (!$("#sidePanel").classList.contains("hidden")) $("#panelBody").innerHTML = todayPanelHtml();
+      render();
+    });
+    return;
+  }
   const open = event.target.closest("[data-panel-open-node]"); if (open) { const node = nodeById(open.dataset.panelOpenNode); closeOverlays(); if (node) { state.selectedId = node.id; state.selectedLinkId = null; render(); focusNode(node); setTimeout(() => openDetail(node), 350); } }
   const restore = event.target.closest("[data-restore-node]"); if (restore) { const node = nodeById(restore.dataset.restoreNode); if (node) { pushUndo("Восстановление карточки"); node.archived = false; node.archivedAt = ""; saveData(); $("#panelBody").innerHTML = archivePanelHtml(); render(); toast("Карточка восстановлена", "Отменить", undoLast); } }
   const remove = event.target.closest("[data-delete-node]"); if (remove) { const node = nodeById(remove.dataset.deleteNode); if (node && confirm(`Удалить карточку «${node.title || "Без названия"}» навсегда? Все её связи будут удалены.`)) { permanentlyDeleteNode(node); $("#panelBody").innerHTML = archivePanelHtml(); render(); toast("Карточка удалена навсегда"); } }
@@ -2810,7 +2757,7 @@ function undoLast() {
   state.data = normalizeData(item.data);
   state.space = item.space || state.space;
   state.camera = clone(item.camera || state.camera);
-  state.selectedId = null; state.selectedLinkId = null; state.linkMenuId = null; state.linkDirectionModeId = null;
+  state.selectedId = null; state.selectedLinkId = null;
   saveData(); render(); applyCamera();
   toast(`${item.label}: отменено`);
 }
