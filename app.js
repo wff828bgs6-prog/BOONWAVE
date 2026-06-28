@@ -1,12 +1,12 @@
 "use strict";
 
-const VERSION = "6.0.43";
+const VERSION = "6.0.44";
 const THEME_KEY = "boonwave_theme";
 const ACCOUNTS_KEY = "boonwave_v6_accounts";
 const SESSION_KEY = "boonwave_v6_session";
 const DATA_PREFIX = "boonwave_v6_data_";
 const DATA_BACKUP_PREFIX = "boonwave_v6_backup_";
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 const GUEST_ID = "visual-demo";
 const WORLD_W = 3600;
 const WORLD_H = 2600;
@@ -153,7 +153,9 @@ const state = {
   justCreatedId: null,
   isReloadingForWorker: false,
   focusOverview: false,
-  cameraInertiaFrame: 0
+  cameraInertiaFrame: 0,
+  lastSaveError: null,
+  activeInteraction: false
 };
 
 function blankData() {
@@ -234,15 +236,24 @@ function demoData() {
 
 function storageKey() { return `${DATA_PREFIX}${state.userId}`; }
 function backupKey() { return `${DATA_BACKUP_PREFIX}${state.userId}`; }
-function saveData() {
-  if (!state.data || !state.userId) return;
-  state.data.version = VERSION;
-  state.data.schemaVersion = SCHEMA_VERSION;
-  state.data.updatedAt = Date.now();
-  const next = JSON.stringify(state.data);
-  const current = localStorage.getItem(storageKey());
-  if (current && current !== next) localStorage.setItem(backupKey(), current);
-  localStorage.setItem(storageKey(), next);
+function saveData({ silent = false } = {}) {
+  if (!state.data || !state.userId) return false;
+  try {
+    state.data.version = VERSION;
+    state.data.schemaVersion = SCHEMA_VERSION;
+    state.data.updatedAt = Date.now();
+    const next = JSON.stringify(state.data);
+    const current = localStorage.getItem(storageKey());
+    if (current && current !== next) localStorage.setItem(backupKey(), current);
+    localStorage.setItem(storageKey(), next);
+    state.lastSaveError = null;
+    return true;
+  } catch (error) {
+    console.error("BOONWAVE save failed", error);
+    state.lastSaveError = error;
+    if (!silent) setTimeout(() => toast("Не удалось сохранить изменения. Освободите место и повторите."), 0);
+    return false;
+  }
 }
 function loadData(userId, useDemo = false) {
   const raw = localStorage.getItem(`${DATA_PREFIX}${userId}`);
@@ -332,6 +343,43 @@ function openAssetDB() {
   });
   return dbPromise;
 }
+const MAX_IMAGE_EDGE = 2048;
+const MAX_UPLOAD_BYTES = 30 * 1024 * 1024;
+
+async function optimizeImageFile(file) {
+  if (!file?.type?.startsWith("image/") || file.type === "image/svg+xml") return file;
+  if (file.size > MAX_UPLOAD_BYTES) throw new Error("FILE_TOO_LARGE");
+  let bitmap;
+  try { bitmap = await createImageBitmap(file); }
+  catch { return file; }
+  const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(bitmap.width, bitmap.height));
+  if (scale === 1 && file.size < 2.5 * 1024 * 1024) { bitmap.close?.(); return file; }
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const context = canvas.getContext("2d", { alpha: false });
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+  const mime = file.type === "image/png" && file.size < 1.5 * 1024 * 1024 ? "image/png" : "image/jpeg";
+  const quality = mime === "image/jpeg" ? 0.84 : undefined;
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, mime, quality));
+  return blob || file;
+}
+
+function assetMetadata(id, file, blob = file) {
+  return {
+    id,
+    ownerId: state.userId,
+    name: file.name,
+    type: blob.type || file.type || guessMime(file.name),
+    size: blob.size,
+    originalSize: file.size,
+    createdAt: Date.now()
+  };
+}
+
 async function putAsset(record) {
   const db = await openAssetDB();
   return new Promise((resolve, reject) => {
@@ -358,11 +406,19 @@ async function deleteAssetRecord(id) {
     tx.onerror = () => reject(tx.error);
   });
 }
-async function clearAssetDB() {
+async function clearAssetDB(ownerId = state.userId) {
   const db = await openAssetDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction("assets", "readwrite");
-    tx.objectStore("assets").clear();
+    const store = tx.objectStore("assets");
+    const request = store.openCursor();
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) return;
+      const recordOwner = cursor.value?.ownerId || GUEST_ID;
+      if (!ownerId || recordOwner === ownerId) cursor.delete();
+      cursor.continue();
+    };
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
@@ -784,6 +840,16 @@ function setZoomInteraction(active = true) {
 function renderLinks() {
   const svg = $("#linkLayer");
   const fragment = document.createDocumentFragment();
+  const viewport = $("#canvasViewport");
+  const lightweight = Boolean(viewport?.classList.contains("is-panning") || viewport?.classList.contains("is-zooming") || $(".node-card.dragging"));
+  const rect = viewport?.getBoundingClientRect();
+  const margin = 220 / Math.max(state.camera.scale, .2);
+  const viewBounds = rect ? {
+    left: (-state.camera.tx) / state.camera.scale - margin,
+    top: (-state.camera.ty) / state.camera.scale - margin,
+    right: (rect.width - state.camera.tx) / state.camera.scale + margin,
+    bottom: (rect.height - state.camera.ty) / state.camera.scale + margin
+  } : null;
   svg.classList.toggle("link-editing", Boolean(state.selectedLinkId));
   svg.innerHTML = `<defs>
     <linearGradient id="linkGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a14eff"/><stop offset=".55" stop-color="#6177ff"/><stop offset="1" stop-color="#55dcec"/></linearGradient>
@@ -792,6 +858,12 @@ function renderLinks() {
   state.data.links.forEach(link => {
     const a = nodeById(link.a), b = nodeById(link.b);
     if (!a || !b || a.space !== state.space || b.space !== state.space || a.archived || b.archived) return;
+    const aDims = cardDims(a), bDims = cardDims(b);
+    if (viewBounds) {
+      const minX = Math.min(a.x, b.x), minY = Math.min(a.y, b.y);
+      const maxX = Math.max(a.x + aDims.w, b.x + bDims.w), maxY = Math.max(a.y + aDims.h, b.y + bDims.h);
+      if (maxX < viewBounds.left || minX > viewBounds.right || maxY < viewBounds.top || minY > viewBounds.bottom) return;
+    }
     const geometry = linkGeometry(a, b);
     let pathData = geometry.d;
     let startPoint = geometry.start;
@@ -817,11 +889,9 @@ function renderLinks() {
     path.dataset.linkId = link.id;
     fragment.appendChild(path);
 
-    if (link.flow && link.flow !== "none") {
+    if (!lightweight && link.flow && link.flow !== "none") {
       const cometSegments = [
-        { cls: "comet-tail-far", lag: 255 },
-        { cls: "comet-tail-mid", lag: 185 },
-        { cls: "comet-tail-near", lag: 112 },
+        { cls: "comet-tail-near", lag: 118 },
         { cls: "comet-body", lag: 48 },
         { cls: "comet-head", lag: 0 }
       ];
@@ -1504,7 +1574,6 @@ function completeLinkCreation(target) {
 }
 function quickCreateFromDock(type) {
   closeOverlays();
-  if (type === "process") return createStandaloneProcess();
   if (["person","idea","goal"].includes(type)) return createNode(type, null, false, true);
 }
 
@@ -2245,8 +2314,11 @@ async function handleProcessCoverFile(event) {
   }
   const previousId = state.editDraft.coverAssetId;
   const id = uid();
-  const metadata = { id, name: file.name, type: file.type || "image/jpeg", size: file.size, createdAt: Date.now() };
-  await putAsset({ ...metadata, blob: file });
+  let blob;
+  try { blob = await optimizeImageFile(file); }
+  catch (error) { return toast(error.message === "FILE_TOO_LARGE" ? "Изображение слишком большое. Максимум 30 МБ." : "Не удалось обработать изображение"); }
+  const metadata = assetMetadata(id, file, blob);
+  await putAsset({ ...metadata, blob });
   state.editDraft.assets ||= [];
   if (previousId && !state.quickCoverNodeId) {
     state.editDraft.assets = state.editDraft.assets.filter(asset => asset.id !== previousId);
@@ -2469,17 +2541,23 @@ async function handleAssetFiles(event) {
   const node = nodeById(state.assetTargetNodeId); const files = [...event.target.files]; event.target.value = "";
   if (!node || !files.length) return;
   node.assets ||= [];
+  let added = 0;
   for (const file of files) {
+    if (file.size > MAX_UPLOAD_BYTES) { toast(`Файл «${file.name}» больше 30 МБ и пропущен`); continue; }
     const id = uid();
-    const metadata = { id, name: file.name, type: file.type || guessMime(file.name), size: file.size, createdAt: Date.now() };
-    await putAsset({ ...metadata, blob: file });
+    let blob = file;
+    try { if (file.type.startsWith("image/")) blob = await optimizeImageFile(file); }
+    catch { toast(`Не удалось обработать «${file.name}»`); continue; }
+    const metadata = assetMetadata(id, file, blob);
+    await putAsset({ ...metadata, blob });
     node.assets.push(metadata);
+    added += 1;
     if (!node.coverAssetId && metadata.type.startsWith("image/")) node.coverAssetId = id;
   }
   saveData(); render();
   if ($("#detailDialog").open && state.activeNodeId === node.id) renderDetailBody(node);
   if ($("#editorDialog").open && state.activeNodeId === node.id) { state.editDraft.assets = clone(node.assets); state.editDraft.coverAssetId = node.coverAssetId; }
-  toast(`Добавлено файлов: ${files.length}`);
+  toast(`Добавлено файлов: ${added}`);
 }
 function guessMime(name) {
   const ext = name.split(".").pop()?.toLowerCase();
@@ -2615,9 +2693,13 @@ function handleMenuAction(event) {
   if (action === "logout") logout();
   if (action === "reset") resetAll();
 }
-async function getAllAssetRecords() {
+async function getAllAssetRecords(ownerId = state.userId) {
   const db=await openAssetDB();
-  return new Promise((resolve,reject)=>{ const req=db.transaction("assets","readonly").objectStore("assets").getAll(); req.onsuccess=()=>resolve(req.result||[]); req.onerror=()=>reject(req.error); });
+  return new Promise((resolve,reject)=>{
+    const req=db.transaction("assets","readonly").objectStore("assets").getAll();
+    req.onsuccess=()=>resolve((req.result||[]).filter(record => !ownerId || (record.ownerId || GUEST_ID) === ownerId));
+    req.onerror=()=>reject(req.error);
+  });
 }
 function blobToDataURL(blob) { return new Promise((resolve,reject)=>{ const reader=new FileReader(); reader.onload=()=>resolve(reader.result); reader.onerror=()=>reject(reader.error); reader.readAsDataURL(blob); }); }
 function dataURLToBlob(dataURL) { const [head,body]=dataURL.split(","); const mime=(head.match(/data:([^;]+)/)||[])[1]||"application/octet-stream"; const bytes=atob(body); const arr=new Uint8Array(bytes.length); for(let i=0;i<bytes.length;i++)arr[i]=bytes.charCodeAt(i); return new Blob([arr],{type:mime}); }
@@ -2633,19 +2715,28 @@ async function exportData() {
 async function importDataFile(event) {
   const file = event.target.files[0]; event.target.value = ""; if (!file) return;
   try {
-    const parsed = JSON.parse(await file.text()); const data = normalizeData(parsed.data || parsed);
-    if (!confirm("Заменить текущую структуру импортированной копией?")) return;
+    if (file.size > 150 * 1024 * 1024) throw new Error("BACKUP_TOO_LARGE");
+    const parsed = JSON.parse(await file.text());
+    if (parsed.app && parsed.app !== "BOONWAVE") throw new Error("WRONG_APP");
+    if (parsed.schemaVersion && Number(parsed.schemaVersion) > SCHEMA_VERSION) throw new Error("NEWER_SCHEMA");
+    const data = normalizeData(parsed.data || parsed);
+    if (!Array.isArray(data.nodes) || !Array.isArray(data.links)) throw new Error("INVALID_STRUCTURE");
+    if (!confirm("Заменить текущую структуру импортированной копией? Текущая версия будет сохранена как локальная резервная копия.")) return;
+    saveData({ silent: true });
     state.data = data;
     if (Array.isArray(parsed.assets)) {
-      await clearAssetDB();
+      await clearAssetDB(state.userId);
       for (const asset of parsed.assets) {
         if (!asset?.id || !asset.dataURL) continue;
         const { dataURL, ...meta } = asset;
-        await putAsset({ ...meta, blob: dataURLToBlob(dataURL) });
+        await putAsset({ ...meta, ownerId: state.userId, blob: dataURLToBlob(dataURL) });
       }
     }
     saveData(); closeOverlays(); render(); fitAll(true); toast(parsed.assets ? "Полная резервная копия восстановлена" : "Структура импортирована без вложений");
-  } catch { toast("Не удалось прочитать JSON"); }
+  } catch (error) {
+    const messages = { BACKUP_TOO_LARGE: "Резервная копия слишком большая", WRONG_APP: "Это не резервная копия BOONWAVE", NEWER_SCHEMA: "Копия создана в более новой версии BOONWAVE", INVALID_STRUCTURE: "Повреждена структура резервной копии" };
+    toast(messages[error.message] || "Не удалось прочитать резервную копию");
+  }
 }
 function logout() {
   saveData(); clearSession(); location.reload();

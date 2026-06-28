@@ -874,7 +874,7 @@ html[data-theme="light"] .desktop-zoom-slider input[type=range]::-webkit-slider-
 .canvas-utility-stack .canvas-utility{position:relative!important;top:auto!important;right:auto!important;left:auto!important;bottom:auto!important;width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;border-radius:14px!important;display:grid!important;place-items:center!important;background:linear-gradient(180deg,rgba(22,28,41,.88),rgba(15,19,29,.9))!important;border:1px solid rgba(95,108,136,.42)!important;color:#dce5f4!important;box-shadow:0 10px 24px rgba(0,0,0,.5),0 0 0 1px rgba(26,33,47,.72) inset!important;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
 .canvas-utility-stack .canvas-utility svg{width:22px;height:22px;stroke-width:1.8}
 #fitButton::before{content:"";width:22px;height:22px;opacity:.92;background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dce5f4' stroke-width='1.65' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 10V7h3M17 10V7h-3M7 14v3h3M17 14v3h-3'/%3E%3Cpath d='m10 10-3-3m7 3 3-3m-7 7-3 3m7-3 3 3'/%3E%3C/svg%3E")}
-.bottom-nav.workspace-actions{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:2px!important;padding:5px!important;left:10px!important;right:10px!important}
+.bottom-nav.workspace-actions{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:2px!important;padding:5px!important;left:10px!important;right:10px!important}
 .bottom-nav.workspace-actions button{min-width:0!important;padding:5px 2px!important;border-radius:16px!important}
 .bottom-nav.workspace-actions .nav-icon{width:22px!important;height:22px!important}
 .bottom-nav.workspace-actions small{font-size:7.6px!important;white-space:nowrap;letter-spacing:-.02em}
@@ -941,8 +941,8 @@ html[data-theme="light"] .desktop-zoom-slider input[type=range]::-webkit-slider-
 .link-path.muted{opacity:.18!important;filter:none!important}
 .link-path.active:not(.selected){opacity:.86}
 .link-path.selected{opacity:1!important}
-.canvas-viewport.is-panning{cursor:grabbing}
-.canvas-viewport.is-panning #dotCanvas{filter:brightness(1.12)}
+#canvasViewport.is-panning{cursor:grabbing}
+#canvasViewport.is-panning #dotCanvas{filter:brightness(1.12)}
 
 /* v6.0.38 — tapered link impulse, person photo and status */
 .link-flow-overlay{fill:none;stroke:url(#linkPulseGradient);stroke-linecap:round;pointer-events:none;animation:linkPulseForward 5.1s linear infinite;will-change:stroke-dashoffset;}
@@ -985,7 +985,7 @@ html[data-theme="light"] .desktop-zoom-slider input[type=range]::-webkit-slider-
 @keyframes cometFlowForward{from{stroke-dashoffset:calc(1000 + var(--comet-lag,0))}to{stroke-dashoffset:calc(0 + var(--comet-lag,0))}}
 @keyframes cometFlowReverse{from{stroke-dashoffset:calc(0 - var(--comet-lag,0))}to{stroke-dashoffset:calc(1000 - var(--comet-lag,0))}}
 
-/* v6.0.42 — goal photo, link performance and softer comet */
+/* v6.0.44 — release foundation: safe storage, scoped assets and lightweight links */
 .goal-photo-thumb{
   width:118px;
   height:86px;
@@ -998,17 +998,17 @@ html[data-theme="light"] .desktop-zoom-slider input[type=range]::-webkit-slider-
 .goal-photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 
 /* Fewer animated SVG elements and lighter effects during gestures. */
-.canvas-viewport.is-panning .link-flow-overlay,
-.canvas-viewport.is-zooming .link-flow-overlay{
+#canvasViewport.is-panning .link-flow-overlay,
+#canvasViewport.is-zooming .link-flow-overlay{
   animation-play-state:paused!important;
   filter:none!important;
   opacity:.26!important;
 }
-.canvas-viewport.is-panning .link-path,
-.canvas-viewport.is-zooming .link-path{
+#canvasViewport.is-panning .link-path,
+#canvasViewport.is-zooming .link-path{
   filter:none!important;
 }
-.canvas-viewport.is-zooming .node-card{
+#canvasViewport.is-zooming .node-card{
   filter:none!important;
 }
 
