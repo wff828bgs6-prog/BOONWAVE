@@ -1,5 +1,6 @@
 import store from '../state/store.js';
 import storage from '../storage/index.js';
+import { migrateStoredNodes } from './data-migration-service.js';
 
 const DEFAULT_CAMERA = Object.freeze({ x: 0, y: 0, zoom: 0.82 });
 
@@ -16,6 +17,7 @@ export function isValidCamera(camera) {
 export async function loadWorkspace() {
   await storage.init();
   await storage.loadWorkspace();
+  await migrateStoredNodes();
 
   const savedCamera = await storage.loadSetting('camera');
   const camera = isValidCamera(savedCamera) ? savedCamera : { ...DEFAULT_CAMERA };
