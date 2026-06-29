@@ -1,10 +1,10 @@
 import store from '../state/store.js';
-import db from '../storage/database.js';
+import storage from '../storage/index.js';
 import { createNode } from '../domain/node.js';
 
 export async function createCardNode(input) {
   const node = createNode(input);
-  await db.saveCard(node);
+  await storage.saveCard(node);
 
   const state = store.getState();
   store.setState({
@@ -28,7 +28,7 @@ export async function updateCardNode(cardId, patch = {}) {
     updatedAt: new Date().toISOString(),
   };
 
-  await db.saveCard(updatedCard);
+  await storage.saveCard(updatedCard);
   store.setState({
     cards: { ...state.cards, [cardId]: updatedCard },
     selectedCardId: cardId,
@@ -47,8 +47,8 @@ export async function deleteCardNode(cardId) {
   );
 
   await Promise.all([
-    db.deleteCard(cardId),
-    ...relatedLinks.map((link) => db.deleteLink(link.id)),
+    storage.deleteCard(cardId),
+    ...relatedLinks.map((link) => storage.deleteLink(link.id)),
   ]);
 
   const nextCards = { ...state.cards };
