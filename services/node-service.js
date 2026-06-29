@@ -84,7 +84,7 @@ export async function deleteCardNode(cardId, options = {}) {
   const linkIds = relatedLinks.map((link) => link.id);
   const mediaIds = getCardMediaIds(card);
 
-  if (typeof storageAdapter.deleteCardGraph === 'function') {
+  if (storageAdapter.supportsAtomicCardGraphDelete === true) {
     await storageAdapter.deleteCardGraph({ cardId, linkIds, mediaIds });
   } else {
     await storageAdapter.deleteCardWithLinks(cardId, linkIds);
