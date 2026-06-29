@@ -1,6 +1,7 @@
 import store from '../state/store.js';
 import storage from '../storage/index.js';
-import { createNode } from '../domain/node.js';
+import { createNode, normalizeNode } from '../domain/node.js';
+import { mergeNodeData } from '../domain/node-schemas.js';
 
 export async function createCardNode(input) {
   const node = createNode(input);
@@ -20,13 +21,16 @@ export async function updateCardNode(cardId, patch = {}) {
   const card = state.cards[cardId];
   if (!card) throw new Error(`Card not found: ${cardId}`);
 
-  const updatedCard = {
+  const updatedCard = normalizeNode({
     ...card,
     ...patch,
     id: card.id,
     type: card.type,
+    data: patch.data === undefined
+      ? card.data
+      : mergeNodeData(card.type, card.data, patch.data),
     updatedAt: new Date().toISOString(),
-  };
+  });
 
   await storage.saveCard(updatedCard);
   store.setState({
