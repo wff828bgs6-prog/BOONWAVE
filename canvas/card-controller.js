@@ -1,6 +1,16 @@
 import store from '../state/store.js';
 
 const DRAGGING = 'DRAGGING_CARD';
+const MOVE_THRESHOLD_PX = 1.5;
+
+function getSafeCamera() {
+  const { camera = {} } = store.getState();
+  return {
+    x: Number.isFinite(camera.x) ? camera.x : 0,
+    y: Number.isFinite(camera.y) ? camera.y : 0,
+    zoom: Math.max(Number.isFinite(camera.zoom) ? camera.zoom : 1, 0.01),
+  };
+}
 
 export class CardController {
   constructor(root, { onCommit, onTap } = {}) {
@@ -29,9 +39,13 @@ export class CardController {
     const element = event.target.closest('[data-card-id]');
     if (!element || !this.root.contains(element)) return;
 
-    const { cards, camera } = store.getState();
+    const { cards } = store.getState();
     const card = cards[element.dataset.cardId];
     if (!card) return;
+
+    const camera = getSafeCamera();
+    const pointerWorldX = (event.clientX - camera.x) / camera.zoom;
+    const pointerWorldY = (event.clientY - camera.y) / camera.zoom;
 
     event.stopPropagation();
     element.setPointerCapture?.(event.pointerId);
@@ -42,9 +56,8 @@ export class CardController {
       element,
       startClientX: event.clientX,
       startClientY: event.clientY,
-      startX: card.x,
-      startY: card.y,
-      zoom: Math.max(camera.zoom || 1, 0.01),
+      grabOffsetX: pointerWorldX - card.x,
+      grabOffsetY: pointerWorldY - card.y,
       moved: false,
     };
 
@@ -58,21 +71,33 @@ export class CardController {
     event.preventDefault();
     event.stopPropagation();
 
-    const dx = (event.clientX - drag.startClientX) / drag.zoom;
-    const dy = (event.clientY - drag.startClientY) / drag.zoom;
-    drag.moved = drag.moved || Math.hypot(dx, dy) > 2;
+    const screenDistance = Math.hypot(
+      event.clientX - drag.startClientX,
+      event.clientY - drag.startClientY,
+    );
+    drag.moved = drag.moved || screenDistance > MOVE_THRESHOLD_PX;
+
+    const camera = getSafeCamera();
+    const nextX = (event.clientX - camera.x) / camera.zoom - drag.grabOffsetX;
+    const nextY = (event.clientY - camera.y) / camera.zoom - drag.grabOffsetY;
 
     const state = store.getState();
     const card = state.cards[drag.cardId];
     if (!card) return;
+
+    const x = Math.round(nextX);
+    const y = Math.round(nextY);
+    if (card.x === x && card.y === y) return;
+
+    drag.element.style.transform = `translate3d(${x}px, ${y}px, 0)`;
 
     store.setState({
       cards: {
         ...state.cards,
         [drag.cardId]: {
           ...card,
-          x: Math.round(drag.startX + dx),
-          y: Math.round(drag.startY + dy),
+          x,
+          y,
         },
       },
     });
