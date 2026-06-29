@@ -26,8 +26,9 @@
     .card p { margin: 0; color: #b7bdd7; font-size: 13px; line-height: 1.45; }
     .hint { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20; padding: 10px 14px; border-radius: 999px; background: rgba(14,16,30,.78); color: #b7bdd7; border: 1px solid rgba(255,255,255,.1); font-size: 12px; white-space: nowrap; backdrop-filter: blur(16px); pointer-events: none; max-width: calc(100vw - 120px); overflow: hidden; text-overflow: ellipsis; }
     .toolbar { position: fixed; right: 18px; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 58px); z-index: 30; display: grid; gap: 10px; }
-    .tool-button { width: 56px; height: 56px; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; background: rgba(22,25,43,.92); color: white; font-size: 24px; box-shadow: 0 14px 34px rgba(0,0,0,.28); backdrop-filter: blur(14px); }
-    .tool-button.primary { background: linear-gradient(145deg, #7868ff, #5b4adf); font-size: 32px; }
+    .tool-button { width: 52px; height: 52px; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; background: rgba(22,25,43,.92); color: white; font-size: 21px; box-shadow: 0 14px 34px rgba(0,0,0,.28); backdrop-filter: blur(14px); }
+    .tool-button.primary { background: linear-gradient(145deg, #7868ff, #5b4adf); font-size: 30px; }
+    .tool-button.danger { color: #ff9ca9; }
     .tool-button[aria-pressed="true"] { border-color: #9c8cff; box-shadow: 0 0 0 2px rgba(145,126,255,.22), 0 0 26px rgba(100,78,255,.38); }
     .sheet[hidden] { display: none; }
     .sheet { position: fixed; inset: 0; z-index: 50; display: grid; align-items: end; background: rgba(3,4,10,.56); backdrop-filter: blur(8px); }
@@ -42,7 +43,7 @@
     .field span { display: block; margin-bottom: 6px; font-size: 12px; color: #979fbd; }
     .field input, .field textarea { width: 100%; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: #0c0f1d; color: white; padding: 12px 14px; outline: none; }
     .field textarea { min-height: 74px; resize: none; }
-    .create-button { width: 100%; margin-top: 14px; padding: 14px; border: 0; border-radius: 16px; background: linear-gradient(135deg, #7d6eff, #5948db); color: white; font-weight: 700; }
+    .submit-button { width: 100%; margin-top: 14px; padding: 14px; border: 0; border-radius: 16px; background: linear-gradient(135deg, #7d6eff, #5948db); color: white; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -59,11 +60,13 @@
     </section>
 
     <div class="toolbar">
+      <button class="tool-button" id="editButton" type="button" aria-label="Редактировать карточку">✎</button>
+      <button class="tool-button danger" id="deleteButton" type="button" aria-label="Удалить карточку">⌫</button>
       <button class="tool-button" id="connectButton" type="button" aria-label="Создать связь" aria-pressed="false">↗</button>
       <button class="tool-button" id="disconnectButton" type="button" aria-label="Удалить связь" aria-pressed="false">×</button>
       <button class="tool-button primary" id="addCardButton" type="button" aria-label="Создать карточку">+</button>
     </div>
-    <div class="hint" id="hint">Карточки двигаются отдельно • ↗ создаёт связь</div>
+    <div class="hint" id="hint">Выбери карточку • ✎ редактировать • ⌫ удалить</div>
   </main>
 
   <section class="sheet" id="createSheet" hidden>
@@ -81,7 +84,19 @@
       </div>
       <label class="field"><span>Название</span><input id="cardTitle" name="title" maxlength="80" autocomplete="off"></label>
       <label class="field"><span>Описание</span><textarea id="cardDescription" name="description" maxlength="240"></textarea></label>
-      <button class="create-button" type="submit">Создать карточку</button>
+      <button class="submit-button" type="submit">Создать карточку</button>
+    </form>
+  </section>
+
+  <section class="sheet" id="editSheet" hidden>
+    <form class="sheet-panel" id="editCardForm">
+      <div class="sheet-head">
+        <h2>Редактирование</h2>
+        <button class="close-button" id="closeEditSheetButton" type="button" aria-label="Закрыть">×</button>
+      </div>
+      <label class="field"><span>Название</span><input id="editCardTitle" maxlength="80" autocomplete="off"></label>
+      <label class="field"><span>Описание</span><textarea id="editCardDescription" maxlength="240"></textarea></label>
+      <button class="submit-button" type="submit">Сохранить изменения</button>
     </form>
   </section>
 
