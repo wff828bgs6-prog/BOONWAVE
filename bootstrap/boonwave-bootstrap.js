@@ -1,4 +1,4 @@
-import { WorkspaceController } from '../controllers/workspace-controller.js';
+import { TypedWorkspaceController as WorkspaceController } from '../controllers/typed-workspace-controller.js';
 import { storagePlatform } from '../storage/index.js';
 
 export async function bootstrapBoonwave({
