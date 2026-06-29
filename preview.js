@@ -1,43 +1,25 @@
 import store from './state/store.js';
 import db from './storage/database.js';
+import { createNode } from './domain/node.js';
 import { GestureMachine } from './canvas/gesture-machine.js';
 import { CardController } from './canvas/card-controller.js';
 import { createLinksRenderer } from './canvas/links.js';
 
 const canvas = document.getElementById('canvas');
 const world = document.getElementById('world');
+const addCardButton = document.getElementById('addCardButton');
+const createSheet = document.getElementById('createSheet');
+const closeSheetButton = document.getElementById('closeSheetButton');
+const createCardForm = document.getElementById('createCardForm');
+const typeGrid = document.getElementById('typeGrid');
+const cardTitle = document.getElementById('cardTitle');
+const cardDescription = document.getElementById('cardDescription');
+let selectedNodeType = 'project';
 
 const seedCards = {
-  project_demo: {
-    id: 'project_demo',
-    type: 'project',
-    title: 'BOONWAVE Core',
-    description: 'Модульное ядро, камера, жесты и SVG-связи.',
-    x: 120,
-    y: 170,
-    width: 230,
-    height: 138,
-  },
-  process_demo: {
-    id: 'process_demo',
-    type: 'process',
-    title: 'Рабочий процесс',
-    description: 'Связь берётся из общего store и перерисовывается реактивно.',
-    x: 520,
-    y: 310,
-    width: 230,
-    height: 138,
-  },
-  person_demo: {
-    id: 'person_demo',
-    type: 'person',
-    title: 'Человек',
-    description: 'Положение сохраняется после перетаскивания.',
-    x: 330,
-    y: 560,
-    width: 230,
-    height: 138,
-  },
+  project_demo: { id: 'project_demo', type: 'project', title: 'BOONWAVE Core', description: 'Модульное ядро, камера, жесты и SVG-связи.', x: 120, y: 170, width: 230, height: 138 },
+  process_demo: { id: 'process_demo', type: 'process', title: 'Рабочий процесс', description: 'Связь берётся из общего store и перерисовывается реактивно.', x: 520, y: 310, width: 230, height: 138 },
+  person_demo: { id: 'person_demo', type: 'person', title: 'Человек', description: 'Положение сохраняется после перетаскивания.', x: 330, y: 560, width: 230, height: 138 },
 };
 
 const seedLinks = [
@@ -49,19 +31,13 @@ function createCardElement(card) {
   const element = document.createElement('article');
   element.className = 'card';
   element.dataset.cardId = card.id;
-  element.innerHTML = `
-    <div class="card-type"></div>
-    <h2></h2>
-    <p></p>
-  `;
+  element.innerHTML = '<div class="card-type"></div><h2></h2><p></p>';
   return element;
 }
 
 function reconcileCards() {
   const state = store.getState();
-  const existing = new Map(
-    [...world.querySelectorAll('[data-card-id]')].map((element) => [element.dataset.cardId, element]),
-  );
+  const existing = new Map([...world.querySelectorAll('[data-card-id]')].map((element) => [element.dataset.cardId, element]));
 
   for (const card of Object.values(state.cards)) {
     let element = existing.get(card.id);
@@ -69,7 +45,6 @@ function reconcileCards() {
       element = createCardElement(card);
       world.append(element);
     }
-
     existing.delete(card.id);
     element.dataset.selected = String(state.selectedCardId === card.id);
     element.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
@@ -86,11 +61,26 @@ function applyCamera() {
   world.style.transform = `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`;
 }
 
+function viewportCenterInWorld() {
+  const { camera } = store.getState();
+  return {
+    x: (window.innerWidth / 2 - camera.x) / camera.zoom - 115,
+    y: (window.innerHeight / 2 - camera.y) / camera.zoom - 69,
+  };
+}
+
+function openCreateSheet() {
+  createSheet.hidden = false;
+  cardTitle.focus();
+}
+
+function closeCreateSheet() {
+  createSheet.hidden = true;
+  createCardForm.reset();
+}
+
 async function seedDatabase() {
-  await Promise.all([
-    ...Object.values(seedCards).map((card) => db.saveCard(card)),
-    ...seedLinks.map((link) => db.saveLink(link)),
-  ]);
+  await Promise.all([...Object.values(seedCards).map((card) => db.saveCard(card)), ...seedLinks.map((link) => db.saveLink(link))]);
 }
 
 async function bootstrap() {
@@ -102,32 +92,53 @@ async function bootstrap() {
     await db.loadAllData();
   }
 
-  store.setState({
-    selectedCardId: 'project_demo',
-    camera: { x: 0, y: 0, zoom: 0.82 },
-  });
-
+  store.setState({ selectedCardId: 'project_demo', camera: { x: 0, y: 0, zoom: 0.82 } });
   reconcileCards();
   applyCamera();
 
   const gestureMachine = new GestureMachine(canvas);
-  const cardController = new CardController(world, { onCommit: (card) => db.saveCard(card) });
+  const cardController = new CardController(world, { onCommit: (card) => db.saveCard({ ...card, updatedAt: new Date().toISOString() }) });
   const linksRenderer = createLinksRenderer(world);
 
   const unsubscribe = store.subscribe((next, previous) => {
-    if (next.cards !== previous.cards || next.selectedCardId !== previous.selectedCardId) {
-      reconcileCards();
-    }
-
-    if (next.camera !== previous.camera) {
-      applyCamera();
-    }
+    if (next.cards !== previous.cards || next.selectedCardId !== previous.selectedCardId) reconcileCards();
+    if (next.camera !== previous.camera) applyCamera();
   });
 
   canvas.addEventListener('click', (event) => {
-    if (!event.target.closest('[data-card-id]')) {
-      store.setState({ selectedCardId: null });
+    if (!event.target.closest('[data-card-id]')) store.setState({ selectedCardId: null });
+  });
+
+  addCardButton.addEventListener('click', openCreateSheet);
+  closeSheetButton.addEventListener('click', closeCreateSheet);
+  createSheet.addEventListener('click', (event) => {
+    if (event.target === createSheet) closeCreateSheet();
+  });
+
+  typeGrid.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-node-type]');
+    if (!button) return;
+    selectedNodeType = button.dataset.nodeType;
+    for (const item of typeGrid.querySelectorAll('[data-node-type]')) {
+      item.setAttribute('aria-pressed', String(item === button));
     }
+  });
+
+  createCardForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const position = viewportCenterInWorld();
+    const node = createNode({
+      type: selectedNodeType,
+      title: cardTitle.value,
+      description: cardDescription.value,
+      x: position.x,
+      y: position.y,
+    });
+
+    await db.saveCard(node);
+    const state = store.getState();
+    store.setState({ cards: { ...state.cards, [node.id]: node }, selectedCardId: node.id });
+    closeCreateSheet();
   });
 
   window.addEventListener('beforeunload', () => {
