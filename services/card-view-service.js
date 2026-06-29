@@ -28,9 +28,15 @@ export async function updateCardView(cardId, patch = {}, options = {}) {
   const next = normalizeNodeView({
     ...current,
     ...definedEntries(patch),
-    cover: {
-      ...current.cover,
-      ...definedEntries(patch.cover),
+    coverFrames: {
+      compact: {
+        ...current.coverFrames.compact,
+        ...definedEntries(patch.coverFrames?.compact),
+      },
+      working: {
+        ...current.coverFrames.working,
+        ...definedEntries(patch.coverFrames?.working),
+      },
     },
   });
 
@@ -44,11 +50,16 @@ export function cycleCardView(cardId, options = {}) {
   return updateCardView(cardId, { mode: getNextCardViewMode(card.view?.mode) }, options);
 }
 
-export function setCoverFraming(cardId, { shape, scale, positionX, positionY } = {}, options = {}) {
+export function setCoverFraming(cardId, mode, { shape, scale, positionX, positionY } = {}, options = {}) {
+  if (!['compact', 'working'].includes(mode)) {
+    throw new TypeError(`Unsupported cover framing mode: ${mode}`);
+  }
   if (shape !== undefined && !COVER_SHAPES.includes(shape)) {
     throw new TypeError(`Unsupported cover shape: ${shape}`);
   }
   return updateCardView(cardId, {
-    cover: definedEntries({ shape, scale, positionX, positionY }),
+    coverFrames: {
+      [mode]: definedEntries({ shape, scale, positionX, positionY }),
+    },
   }, options);
 }
