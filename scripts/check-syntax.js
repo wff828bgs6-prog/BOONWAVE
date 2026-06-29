@@ -49,8 +49,8 @@ function collectJavaScriptFiles(directory) {
 function collectLocalImportSpecifiers(source) {
   const specifiers = new Set();
   const patterns = [
-    /\bimport\s+(?:[^;]*?\sfrom\s+)?['"](\.[^'"]+)['"]/g,
-    /\bexport\s+[^;]*?\sfrom\s+['"](\.[^'"]+)['"]/g,
+    /^\s*import\s+(?:[^;]*?\sfrom\s+)?['"](\.[^'"]+)['"]/gm,
+    /^\s*export\s+[^;]*?\sfrom\s+['"](\.[^'"]+)['"]/gm,
     /\bimport\s*\(\s*['"](\.[^'"]+)['"]\s*\)/g,
   ];
 
