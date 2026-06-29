@@ -11,7 +11,7 @@
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; background: var(--bw-bg-canvas); color: var(--bw-text-primary); overflow: hidden; }
     body { min-height: 100svh; }
-    button, input, textarea { font: inherit; }
+    button, input, textarea, select { font: inherit; }
     .preview-shell { position: relative; min-height: 100svh; background: radial-gradient(circle at 50% -10%, rgba(var(--bw-brand-violet),.20), transparent 36%), var(--bw-bg-canvas); }
     .preview-header { position: fixed; inset: max(12px, env(safe-area-inset-top)) 14px auto; z-index: 20; pointer-events: none; }
     .preview-badge { padding: 10px 14px; border: 1px solid var(--bw-border-soft); border-radius: 16px; background: rgba(14,16,30,.76); backdrop-filter: blur(18px); box-shadow: 0 12px 32px rgba(0,0,0,.28); }
@@ -19,19 +19,7 @@
     .preview-badge span { display: block; margin-top: 3px; font-size: 11px; color: #aeb5d4; }
     #canvas { position: absolute; inset: 0; overflow: hidden; touch-action: none; }
     #world { position: absolute; inset: 0; transform-origin: 0 0; }
-    .card {
-      --node-rgb: var(--bw-type-project);
-      position: absolute;
-      width: 230px;
-      min-height: 138px;
-      padding: 18px;
-      border-radius: var(--bw-radius-card);
-      border: 1px solid rgba(var(--node-rgb), .42);
-      background: linear-gradient(145deg, rgba(34,38,64,.92), var(--bw-bg-surface));
-      box-shadow: inset 0 0 0 1px rgba(var(--node-rgb), .10), 0 0 18px rgba(var(--node-rgb), .10), var(--bw-shadow-card), inset 0 1px 0 rgba(255,255,255,.06);
-      z-index: 2;
-      transition: border-color var(--bw-motion-fast) ease, box-shadow var(--bw-motion-fast) ease;
-    }
+    .card { --node-rgb: var(--bw-type-project); position: absolute; width: 230px; min-height: 138px; padding: 18px; border-radius: var(--bw-radius-card); border: 1px solid rgba(var(--node-rgb), .42); background: linear-gradient(145deg, rgba(34,38,64,.92), var(--bw-bg-surface)); box-shadow: inset 0 0 0 1px rgba(var(--node-rgb), .10), 0 0 18px rgba(var(--node-rgb), .10), var(--bw-shadow-card), inset 0 1px 0 rgba(255,255,255,.06); z-index: 2; transition: border-color var(--bw-motion-fast) ease, box-shadow var(--bw-motion-fast) ease; }
     .card[data-node-type="project"] { --node-rgb: var(--bw-type-project); }
     .card[data-node-type="process"] { --node-rgb: var(--bw-type-process); }
     .card[data-node-type="person"] { --node-rgb: var(--bw-type-person); }
@@ -53,24 +41,27 @@
     .tool-button[aria-pressed="true"] { border-color: rgba(var(--bw-brand-violet),.85); box-shadow: 0 0 0 2px rgba(var(--bw-brand-violet),.22), 0 0 26px rgba(var(--bw-brand-violet),.38); }
     .sheet[hidden] { display: none; }
     .sheet { position: fixed; inset: 0; z-index: 50; display: grid; align-items: end; background: rgba(3,4,10,.56); backdrop-filter: blur(8px); }
-    .sheet-panel { padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); border-radius: 28px 28px 0 0; border: 1px solid var(--bw-border-soft); background: var(--bw-bg-surface-strong); box-shadow: 0 -20px 60px rgba(0,0,0,.44); }
-    .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .sheet-panel { max-height: min(82svh, 760px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); border-radius: 28px 28px 0 0; border: 1px solid var(--bw-border-soft); background: var(--bw-bg-surface-strong); box-shadow: 0 -20px 60px rgba(0,0,0,.44); }
+    .sheet-head { position: sticky; top: -18px; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -18px -18px 14px; padding: 18px; background: linear-gradient(180deg, var(--bw-bg-surface-strong) 75%, transparent); }
     .sheet-head h2 { margin: 0; font-size: 20px; }
     .close-button { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: #c5c9dd; font-size: 24px; }
     .type-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; margin-bottom: 12px; }
     .type-button { min-height: 54px; padding: 8px 5px; border-radius: 14px; border: 1px solid rgba(255,255,255,.11); background: #1a1e34; color: #c4c9df; font-size: 11px; }
     .type-button[aria-pressed="true"] { border-color: rgba(var(--bw-brand-violet),.85); color: white; box-shadow: 0 0 20px rgba(var(--bw-brand-violet),.25); }
+    .typed-fields { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
     .field { display: block; margin-top: 10px; }
+    .typed-fields .field { margin-top: 0; }
     .field span { display: block; margin-bottom: 6px; font-size: 12px; color: #979fbd; }
-    .field input, .field textarea { width: 100%; border: 1px solid var(--bw-border-soft); border-radius: 14px; background: #0c0f1d; color: white; padding: 12px 14px; outline: none; }
-    .field input:focus-visible, .field textarea:focus-visible, button:focus-visible { outline: 2px solid rgba(var(--bw-brand-cyan),.90); outline-offset: 2px; }
+    .field input, .field textarea, .field select { width: 100%; min-height: 44px; border: 1px solid var(--bw-border-soft); border-radius: 14px; background: #0c0f1d; color: white; padding: 12px 14px; outline: none; }
+    .field input:focus-visible, .field textarea:focus-visible, .field select:focus-visible, button:focus-visible { outline: 2px solid rgba(var(--bw-brand-cyan),.90); outline-offset: 2px; }
     .field textarea { min-height: 74px; resize: none; }
     .submit-button { width: 100%; min-height: 48px; margin-top: 14px; padding: 14px; border: 0; border-radius: 16px; background: linear-gradient(135deg, rgb(var(--bw-brand-violet)), rgb(var(--bw-brand-blue))); color: white; font-weight: 700; }
+    @media (max-width: 390px) { .typed-fields { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <main class="preview-shell">
-    <header class="preview-header"><div class="preview-badge"><strong>BOONWAVE</strong><span>Core Stage C · Adaptive Premium UI</span></div></header>
+    <header class="preview-header"><div class="preview-badge"><strong>BOONWAVE</strong><span>Core Stage D · Typed Forms</span></div></header>
     <section id="canvas" aria-label="Тестовый холст BOONWAVE"><div id="world"></div></section>
     <div class="toolbar">
       <button class="tool-button" id="editButton" type="button" aria-label="Редактировать карточку">✎</button>
@@ -81,8 +72,34 @@
     </div>
     <div class="hint" id="hint">Выбери карточку • ✎ редактировать • ⌫ удалить</div>
   </main>
-  <section class="sheet" id="createSheet" hidden><form class="sheet-panel" id="createCardForm"><div class="sheet-head"><h2>Новая карточка</h2><button class="close-button" id="closeSheetButton" type="button" aria-label="Закрыть">×</button></div><div class="type-grid" id="typeGrid"><button class="type-button" type="button" data-node-type="project" aria-pressed="true">Проект</button><button class="type-button" type="button" data-node-type="process" aria-pressed="false">Процесс</button><button class="type-button" type="button" data-node-type="person" aria-pressed="false">Человек</button><button class="type-button" type="button" data-node-type="idea" aria-pressed="false">Идея</button><button class="type-button" type="button" data-node-type="goal" aria-pressed="false">Цель</button></div><label class="field"><span>Название</span><input id="cardTitle" name="title" maxlength="80" autocomplete="off"></label><label class="field"><span>Описание</span><textarea id="cardDescription" name="description" maxlength="240"></textarea></label><button class="submit-button" type="submit">Создать карточку</button></form></section>
-  <section class="sheet" id="editSheet" hidden><form class="sheet-panel" id="editCardForm"><div class="sheet-head"><h2>Редактирование</h2><button class="close-button" id="closeEditSheetButton" type="button" aria-label="Закрыть">×</button></div><label class="field"><span>Название</span><input id="editCardTitle" maxlength="80" autocomplete="off"></label><label class="field"><span>Описание</span><textarea id="editCardDescription" maxlength="240"></textarea></label><button class="submit-button" type="submit">Сохранить изменения</button></form></section>
+
+  <section class="sheet" id="createSheet" hidden>
+    <form class="sheet-panel" id="createCardForm">
+      <div class="sheet-head"><h2>Новая карточка</h2><button class="close-button" id="closeSheetButton" type="button" aria-label="Закрыть">×</button></div>
+      <div class="type-grid" id="typeGrid">
+        <button class="type-button" type="button" data-node-type="project" aria-pressed="true">Проект</button>
+        <button class="type-button" type="button" data-node-type="process" aria-pressed="false">Процесс</button>
+        <button class="type-button" type="button" data-node-type="person" aria-pressed="false">Человек</button>
+        <button class="type-button" type="button" data-node-type="idea" aria-pressed="false">Идея</button>
+        <button class="type-button" type="button" data-node-type="goal" aria-pressed="false">Цель</button>
+      </div>
+      <label class="field"><span>Название</span><input id="cardTitle" name="title" maxlength="80" autocomplete="off"></label>
+      <label class="field"><span>Описание</span><textarea id="cardDescription" name="description" maxlength="240"></textarea></label>
+      <div class="typed-fields" id="createTypeFields"></div>
+      <button class="submit-button" type="submit">Создать карточку</button>
+    </form>
+  </section>
+
+  <section class="sheet" id="editSheet" hidden>
+    <form class="sheet-panel" id="editCardForm">
+      <div class="sheet-head"><h2>Редактирование</h2><button class="close-button" id="closeEditSheetButton" type="button" aria-label="Закрыть">×</button></div>
+      <label class="field"><span>Название</span><input id="editCardTitle" maxlength="80" autocomplete="off"></label>
+      <label class="field"><span>Описание</span><textarea id="editCardDescription" maxlength="240"></textarea></label>
+      <div class="typed-fields" id="editTypeFields"></div>
+      <button class="submit-button" type="submit">Сохранить изменения</button>
+    </form>
+  </section>
+
   <script type="module" src="./preview.js"></script>
 </body>
 </html>
