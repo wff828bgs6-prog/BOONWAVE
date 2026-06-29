@@ -63,15 +63,19 @@ test('node UI and transactional persistence keep separate responsibilities', () 
   const cardSaveService = readFileSync(join(ROOT, 'services/card-save-service.js'), 'utf8');
 
   assert.match(nodeController, /\.\.\/domain\/card-media\.js/);
-  for (const forbiddenSymbol of [
-    'createCardNode',
-    'updateCardNode',
-    'attachMediaToCard',
-  ]) {
+  for (const forbiddenSymbol of ['createCardNode', 'updateCardNode', 'attachMediaToCard']) {
     assert.equal(nodeController.includes(forbiddenSymbol), false);
   }
   assert.doesNotMatch(nodeController, /\bcreateMedia\b/);
   assert.match(transactionalController, /\.\.\/services\/card-save-service\.js/);
   assert.match(cardSaveService, /\bsaveCardBundle\b/);
   assert.doesNotMatch(cardSaveService, /storageAdapter\.saveMedia\s*\(/);
+});
+
+test('public production entry never loads the legacy monolith', () => {
+  const index = readFileSync(join(ROOT, 'index.html'), 'utf8');
+  const legacy = readFileSync(join(ROOT, 'legacy-v8.html'), 'utf8');
+  assert.match(index, /type="module" src="app\.js"/);
+  assert.doesNotMatch(index, /boonwave\.v8\.js/);
+  assert.match(legacy, /boonwave\.v8\.js\?v=8\.0\.0/);
 });
