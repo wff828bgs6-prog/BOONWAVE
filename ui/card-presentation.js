@@ -16,6 +16,14 @@ export function hasCoverMedia(card = {}) {
   return Boolean(getCoverMediaId(card));
 }
 
+export function collectActiveCoverMediaIds(cards = {}) {
+  return new Set(
+    Object.values(cards)
+      .map((card) => getCoverMediaId(card))
+      .filter(Boolean),
+  );
+}
+
 export function getCoverFallback(card = {}) {
   return TYPE_FALLBACKS[card.type] ?? '•';
 }
