@@ -1,6 +1,14 @@
 export const MEDIA_SCHEMA_VERSION = 1;
 export const MEDIA_KINDS = Object.freeze(['image', 'document', 'file']);
 
+const DOCUMENT_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/rtf',
+  'text/plain',
+  'text/csv',
+]);
+
 const toFiniteSize = (value) => {
   const size = Number(value);
   return Number.isFinite(size) && size >= 0 ? Math.round(size) : 0;
@@ -8,8 +16,11 @@ const toFiniteSize = (value) => {
 
 export function inferMediaKind(kind, mimeType = '') {
   if (MEDIA_KINDS.includes(kind)) return kind;
-  if (String(mimeType).startsWith('image/')) return 'image';
-  if (String(mimeType) === 'application/pdf') return 'document';
+  const mime = String(mimeType).toLowerCase();
+  if (mime.startsWith('image/')) return 'image';
+  if (DOCUMENT_MIME_TYPES.has(mime)
+    || mime.startsWith('application/vnd.openxmlformats-officedocument')
+    || mime.startsWith('application/vnd.ms-')) return 'document';
   return 'file';
 }
 
