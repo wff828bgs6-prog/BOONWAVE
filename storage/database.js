@@ -4,7 +4,7 @@ import store from '../state/store.js';
 class BoonwaveDatabase {
   constructor() {
     this.dbName = 'boonwave_db';
-    this.version = 1;
+    this.version = 2;
     this.db = null;
   }
 
@@ -21,6 +21,9 @@ class BoonwaveDatabase {
         }
         if (!db.objectStoreNames.contains('links')) {
           db.createObjectStore('links', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('settings')) {
+          db.createObjectStore('settings', { keyPath: 'key' });
         }
       };
 
@@ -74,6 +77,24 @@ class BoonwaveDatabase {
     return new Promise((resolve, reject) => {
       const request = os.delete(id);
       request.onsuccess = () => resolve();
+      request.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async saveSetting(key, value) {
+    const os = await this._getStore('settings', 'readwrite');
+    return new Promise((resolve, reject) => {
+      const request = os.put({ key, value, updatedAt: new Date().toISOString() });
+      request.onsuccess = () => resolve();
+      request.onerror = (e) => reject(e.target.error);
+    });
+  }
+
+  async loadSetting(key) {
+    const os = await this._getStore('settings', 'readonly');
+    return new Promise((resolve, reject) => {
+      const request = os.get(key);
+      request.onsuccess = () => resolve(request.result?.value ?? null);
       request.onerror = (e) => reject(e.target.error);
     });
   }
