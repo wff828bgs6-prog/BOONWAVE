@@ -3,6 +3,7 @@ import { createNode } from './domain/node.js';
 import { WorkspaceController } from './controllers/workspace-controller.js';
 import { LinkController } from './controllers/link-controller.js';
 import { NodeController } from './controllers/node-controller.js';
+import { ZoomController } from './controllers/zoom-controller.js';
 
 const seedCards = [
   createNode({ type: 'project', title: 'BOONWAVE Core', description: 'Модульное ядро, камера, жесты и SVG-связи.', x: 120, y: 170, data: { status: 'preparation', address: 'Core Stage A/B' } }),
@@ -74,7 +75,15 @@ async function bootstrapPreview() {
     getViewportCenter: () => workspaceController.getViewportCenter(),
   });
 
+  const zoomController = new ZoomController({
+    range: document.getElementById('zoomRange'),
+    zoomOutButton: document.getElementById('zoomOutButton'),
+    zoomInButton: document.getElementById('zoomInButton'),
+    getCenter: () => ({ x: window.innerWidth / 2, y: window.innerHeight / 2 }),
+  });
+
   window.addEventListener('beforeunload', () => {
+    zoomController.destroy();
     nodeController.destroy();
     linkController.destroy();
     workspaceController.destroy();
