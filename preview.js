@@ -40,8 +40,7 @@ async function bootstrapPreview() {
 
   const workspaceController = new WorkspaceController({ canvas, world, initialSelectedCardId: 'project_demo' });
   const linkController = new LinkController({
-    connectButton: document.getElementById('connectButton'),
-    disconnectButton: document.getElementById('disconnectButton'),
+    linkButton: document.getElementById('linkButton'),
     hint,
     onStateChange: () => workspaceController.renderCards(),
   });
