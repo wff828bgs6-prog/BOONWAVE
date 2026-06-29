@@ -46,7 +46,7 @@
     .zoom-step { width: 40px; height: 40px; aspect-ratio: 1 / 1; min-width: 40px; min-height: 40px; border: 0; border-radius: 50%; background: transparent; color: var(--bw-icon-base); display: grid; place-items: center; padding: 0; transition: background var(--bw-motion-fast) ease, box-shadow var(--bw-motion-fast) ease, transform var(--bw-motion-fast) ease; }
     .zoom-step:active { transform: scale(.94); background: var(--bw-bg-control-active); box-shadow: 0 0 18px rgba(var(--bw-brand-cyan),.24); }
     .zoom-step .bw-icon { width: 18px; height: 18px; stroke: currentColor; }
-    #zoomRange { --zoom-progress: 27%; appearance: none; -webkit-appearance: none; width: 100%; height: 32px; margin: 0; background: transparent; outline: none; }
+    #zoomRange { --zoom-progress: 50%; appearance: none; -webkit-appearance: none; width: 100%; height: 32px; margin: 0; background: transparent; outline: none; }
     #zoomRange::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: linear-gradient(90deg, rgb(var(--bw-brand-violet)) 0, rgb(var(--bw-brand-cyan)) var(--zoom-progress), rgba(143,151,184,.24) var(--zoom-progress), rgba(143,151,184,.24) 100%); }
     #zoomRange::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px; border: 3px solid var(--bw-bg-control-active); border-radius: 50%; background: var(--bw-text-primary); box-shadow: 0 0 0 1px rgba(var(--bw-brand-cyan),.72), 0 0 16px rgba(var(--bw-brand-cyan),.42); transition: box-shadow var(--bw-motion-fast) ease, transform var(--bw-motion-fast) ease; }
     #zoomRange:active::-webkit-slider-thumb, #zoomRange:focus-visible::-webkit-slider-thumb { transform: scale(1.06); box-shadow: 0 0 0 2px rgba(var(--bw-brand-violet),.62), 0 0 24px rgba(var(--bw-brand-cyan),.62); }
@@ -84,7 +84,7 @@
 <body>
   <svg width="0" height="0" aria-hidden="true" focusable="false"><defs><linearGradient id="bwIconGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a14cff"/><stop offset="1" stop-color="#22bfff"/></linearGradient></defs></svg>
   <main class="preview-shell">
-    <header class="preview-header"><div class="preview-badge"><strong>BOONWAVE</strong><span>Core Stage I · Contextual Links</span></div></header>
+    <header class="preview-header"><div class="preview-badge"><strong>BOONWAVE</strong><span>Core Stage J · Working Zoom</span></div></header>
     <section id="canvas" aria-label="Тестовый холст BOONWAVE"><div id="world"></div></section>
     <div class="status-live" id="hint" role="status" aria-live="polite"></div>
     <nav class="mobile-dock" aria-label="Управление рабочим пространством">
@@ -92,7 +92,7 @@
         <button class="circle-button" id="editButton" type="button" aria-label="Редактировать карточку"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></button>
         <div class="zoom-control">
           <button class="zoom-step" id="zoomOutButton" type="button" aria-label="Уменьшить масштаб"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
-          <input id="zoomRange" type="range" min="0.25" max="3" step="0.01" value="1" aria-label="Масштаб рабочего пространства">
+          <input id="zoomRange" type="range" min="0.35" max="1.35" step="0.01" value="0.85" aria-label="Масштаб рабочего пространства">
           <button class="zoom-step" id="zoomInButton" type="button" aria-label="Увеличить масштаб"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
         </div>
         <button class="circle-button primary" id="addCardButton" type="button" aria-label="Создать карточку"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg></button>
