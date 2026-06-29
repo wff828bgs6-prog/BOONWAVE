@@ -1,4 +1,12 @@
-export const NODE_TYPES = Object.freeze(['project', 'process', 'person', 'idea', 'goal']);
+import {
+  NODE_SCHEMA_VERSION,
+  NODE_TYPES,
+  getNodeDataDefaults,
+  normalizeNodeData,
+  validateNode,
+} from './node-schemas.js';
+
+export { NODE_SCHEMA_VERSION, NODE_TYPES, validateNode };
 
 const DEFAULT_TITLES = Object.freeze({
   project: 'Новый проект',
@@ -8,24 +16,60 @@ const DEFAULT_TITLES = Object.freeze({
   goal: 'Новая цель',
 });
 
-export function createNode({ type, title, description = '', x = 0, y = 0 } = {}) {
+const finiteNumber = (value, fallback) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+};
+
+export function normalizeNode(raw = {}) {
+  if (!NODE_TYPES.includes(raw.type)) {
+    throw new TypeError(`Unsupported BOONWAVE node type: ${raw.type}`);
+  }
+
+  const now = new Date().toISOString();
+  const node = {
+    ...raw,
+    id: String(raw.id ?? '').trim(),
+    type: raw.type,
+    schemaVersion: NODE_SCHEMA_VERSION,
+    title: String(raw.title ?? '').trim() || DEFAULT_TITLES[raw.type],
+    description: String(raw.description ?? '').trim(),
+    x: Math.round(finiteNumber(raw.x, 0)),
+    y: Math.round(finiteNumber(raw.y, 0)),
+    width: Math.max(1, Math.round(finiteNumber(raw.width, 230))),
+    height: Math.max(1, Math.round(finiteNumber(raw.height, 138))),
+    data: normalizeNodeData(raw.type, raw.data),
+    createdAt: raw.createdAt || now,
+    updatedAt: raw.updatedAt || now,
+  };
+
+  const validation = validateNode(node);
+  if (!validation.valid) {
+    throw new TypeError(`Invalid BOONWAVE node: ${validation.errors.join(' ')}`);
+  }
+
+  return node;
+}
+
+export function createNode({ type, title, description = '', x = 0, y = 0, data } = {}) {
   if (!NODE_TYPES.includes(type)) {
     throw new TypeError(`Unsupported BOONWAVE node type: ${type}`);
   }
 
   const id = `${type}_${crypto.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
-  const cleanTitle = String(title ?? '').trim() || DEFAULT_TITLES[type];
+  const now = new Date().toISOString();
 
-  return {
+  return normalizeNode({
     id,
     type,
-    title: cleanTitle,
-    description: String(description ?? '').trim(),
-    x: Math.round(Number(x) || 0),
-    y: Math.round(Number(y) || 0),
+    title,
+    description,
+    x,
+    y,
     width: 230,
     height: 138,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+    data: data ?? getNodeDataDefaults(type),
+    createdAt: now,
+    updatedAt: now,
+  });
 }
