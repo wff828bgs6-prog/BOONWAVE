@@ -30,6 +30,18 @@ export class IndexedDBAdapter extends StorageAdapter {
     return db.deleteLink(id);
   }
 
+  async saveMedia(record, blob) {
+    return db.saveMedia(record, blob);
+  }
+
+  async loadMedia(id) {
+    return db.loadMedia(id);
+  }
+
+  async deleteMedia(id) {
+    return db.deleteMedia(id);
+  }
+
   async saveSetting(key, value) {
     return db.saveSetting(key, value);
   }
