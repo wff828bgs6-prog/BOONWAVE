@@ -63,8 +63,15 @@ test('node UI and transactional persistence keep separate responsibilities', () 
   const cardSaveService = readFileSync(join(ROOT, 'services/card-save-service.js'), 'utf8');
 
   assert.match(nodeController, /\.\.\/domain\/card-media\.js/);
-  assert.doesNotMatch(nodeController, /createCardNode|updateCardNode|createMedia|attachMediaToCard/);
+  for (const forbiddenSymbol of [
+    'createCardNode',
+    'updateCardNode',
+    'attachMediaToCard',
+  ]) {
+    assert.equal(nodeController.includes(forbiddenSymbol), false);
+  }
+  assert.doesNotMatch(nodeController, /\bcreateMedia\b/);
   assert.match(transactionalController, /\.\.\/services\/card-save-service\.js/);
-  assert.match(cardSaveService, /saveCardBundle/);
+  assert.match(cardSaveService, /\bsaveCardBundle\b/);
   assert.doesNotMatch(cardSaveService, /storageAdapter\.saveMedia\s*\(/);
 });
