@@ -101,6 +101,59 @@ class BoonwaveDatabase {
     });
   }
 
+  async saveMedia(record, blob) {
+    const db = await this.initDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['media', 'mediaBlobs'], 'readwrite');
+      transaction.objectStore('media').put(record);
+      if (blob !== undefined) {
+        transaction.objectStore('mediaBlobs').put({ id: record.id, blob });
+      }
+
+      transaction.oncomplete = () => resolve(record);
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(
+        transaction.error ?? new Error('IndexedDB media save transaction aborted.'),
+      );
+    });
+  }
+
+  async loadMedia(id) {
+    const db = await this.initDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['media', 'mediaBlobs'], 'readonly');
+      const recordRequest = transaction.objectStore('media').get(id);
+      const blobRequest = transaction.objectStore('mediaBlobs').get(id);
+
+      transaction.oncomplete = () => resolve({
+        record: recordRequest.result ?? null,
+        blob: blobRequest.result?.blob ?? null,
+      });
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(
+        transaction.error ?? new Error('IndexedDB media load transaction aborted.'),
+      );
+    });
+  }
+
+  async deleteMedia(id) {
+    const db = await this.initDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['media', 'mediaBlobs'], 'readwrite');
+      transaction.objectStore('media').delete(id);
+      transaction.objectStore('mediaBlobs').delete(id);
+
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(
+        transaction.error ?? new Error('IndexedDB media delete transaction aborted.'),
+      );
+    });
+  }
+
   async saveSetting(key, value) {
     const os = await this._getStore('settings', 'readwrite');
     return new Promise((resolve, reject) => {
