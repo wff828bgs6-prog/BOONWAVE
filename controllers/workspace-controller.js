@@ -8,6 +8,11 @@ import { updateCardNode } from '../services/node-service.js';
 import { cycleCardView } from '../services/card-view-service.js';
 import { loadMedia } from '../services/media-service.js';
 import { loadWorkspace, saveCamera } from '../services/workspace-service.js';
+import {
+  getCoverMediaId,
+  getCoverFallback,
+  getCardProgress,
+} from '../ui/card-presentation.js';
 
 const STATUS_LABELS = Object.freeze({
   preparation: 'Подготовка', planned: 'Запланировано', active: 'Активно', draft: 'Черновик',
@@ -21,8 +26,9 @@ function ensureViewStyles() {
   style.id = 'boonwave-card-view-styles';
   style.textContent = `
     .card { overflow:visible; padding-bottom:52px; }
-    .card-cover { display:none; overflow:hidden; background:rgba(var(--node-rgb),.12); }
-    .card-cover img { width:100%; height:100%; object-fit:cover; transform-origin:center; pointer-events:none; }
+    .card-cover { position:relative; display:none; overflow:hidden; border:0; box-shadow:none; background:rgba(var(--node-rgb),.12); }
+    .card-cover img { display:block; width:100%; height:100%; object-fit:cover; transform-origin:center; pointer-events:none; }
+    .card-cover-fallback { position:absolute; inset:0; display:none; place-items:center; font-size:38px; font-weight:800; color:rgba(255,255,255,.82); background:linear-gradient(145deg,rgba(var(--node-rgb),.34),rgba(var(--node-rgb),.12)); }
     .card-view-button { position:absolute; right:10px; bottom:10px; z-index:4; width:32px; height:32px; padding:0; border:1px solid rgba(var(--node-rgb),.35); border-radius:50%; background:rgba(9,12,25,.72); color:white; display:grid; place-items:center; }
     .card-view-button svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
     .card-full { display:none; margin-top:14px; padding-top:12px; border-top:1px solid rgba(var(--node-rgb),.22); color:var(--bw-text-secondary); font-size:11px; line-height:1.5; white-space:pre-wrap; }
@@ -33,10 +39,12 @@ function ensureViewStyles() {
     .card[data-view-mode="compact"] .card-head, .card[data-view-mode="compact"] p, .card[data-view-mode="compact"] .card-meta, .card[data-view-mode="compact"] .card-full, .card[data-view-mode="compact"] .card-progress { display:none; }
     .card[data-view-mode="compact"] h2 { margin:8px 2px 2px; font-size:14px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; }
     .card[data-view-mode="compact"] .card-view-button { right:8px; bottom:8px; }
-    .card[data-view-mode="standard"] .card-cover { display:block; width:100%; height:92px; margin:-18px -18px 14px; width:calc(100% + 36px); border-radius:var(--bw-radius-card) var(--bw-radius-card) 0 0; }
+    .card[data-view-mode="standard"][data-has-cover="true"] .card-cover { display:block; width:calc(100% + 36px); height:92px; margin:-18px -18px 14px; border-radius:var(--bw-radius-card) var(--bw-radius-card) 16px 16px; }
     .card[data-view-mode="full"] { width:330px; min-height:250px; }
-    .card[data-view-mode="full"] .card-cover { display:block; width:100%; height:150px; margin-bottom:14px; border-radius:18px; }
+    .card[data-view-mode="full"][data-has-cover="true"] .card-cover { display:block; width:100%; height:150px; margin-bottom:14px; border-radius:18px; }
     .card[data-view-mode="full"] .card-full { display:block; }
+    .card[data-has-cover="false"][data-view-mode="compact"] .card-cover-fallback { display:grid; }
+    .card[data-has-cover="false"] .card-cover img { display:none; }
     .card[data-cover-shape="rounded-square"] .card-cover { border-radius:24px; }
     .card[data-cover-shape="circle"] .card-cover { border-radius:50%; }
     .card[data-cover-shape="portrait"][data-view-mode="compact"] .card-cover { width:90px; height:116px; margin-inline:auto; border-radius:20px; }
@@ -55,15 +63,6 @@ function getNodeMeta(card) {
   if (card.type === 'person') return [data.role, data.organization].filter(Boolean);
   if (card.type === 'idea') return [STATUS_LABELS[data.status] ?? data.status, data.category].filter(Boolean);
   return [];
-}
-
-function getProgress(card) {
-  const value = Number(card.data?.progress);
-  return Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : null;
-}
-
-function getCoverMediaId(card) {
-  return card.type === 'person' ? card.data?.avatarMediaId : card.data?.coverMediaId;
 }
 
 function getCompactLabel(card, view) {
@@ -125,7 +124,7 @@ export class WorkspaceController {
   createCardElement() {
     const element = document.createElement('article');
     element.className = 'card';
-    element.innerHTML = '<button class="card-view-button" type="button" aria-label="Изменить вид карточки"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg></button><div class="card-cover"><img alt=""></div><div class="card-head"><div class="card-type"></div><div class="card-status"></div></div><h2></h2><p></p><div class="card-meta"></div><div class="card-full"></div><div class="card-progress"><span></span></div>';
+    element.innerHTML = '<button class="card-view-button" type="button" aria-label="Изменить вид карточки"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg></button><div class="card-cover"><img alt=""><div class="card-cover-fallback" aria-hidden="true"></div></div><div class="card-head"><div class="card-type"></div><div class="card-status"></div></div><h2></h2><p></p><div class="card-meta"></div><div class="card-full"></div><div class="card-progress"><span></span></div>';
     const button = element.querySelector('.card-view-button');
     button.addEventListener('pointerdown', (event) => event.stopPropagation());
     button.addEventListener('click', (event) => {
@@ -138,12 +137,18 @@ export class WorkspaceController {
 
   async applyCover(element, card, view) {
     const image = element.querySelector('.card-cover img');
+    const fallback = element.querySelector('.card-cover-fallback');
     const mediaId = getCoverMediaId(card);
     const frame = view.mode === 'compact' ? view.coverFrames.compact : view.coverFrames.working;
     image.style.transform = `scale(${frame.scale})`;
     image.style.objectPosition = `${frame.positionX}% ${frame.positionY}%`;
     element.dataset.coverShape = frame.shape;
-    if (!mediaId) { image.removeAttribute('src'); return; }
+    fallback.textContent = getCoverFallback(card);
+    element.dataset.hasCover = 'false';
+    image.removeAttribute('src');
+    image.alt = '';
+    if (!mediaId) return;
+
     let url = this.mediaUrls.get(mediaId);
     if (!url) {
       const loaded = await loadMedia(mediaId);
@@ -151,13 +156,16 @@ export class WorkspaceController {
       url = URL.createObjectURL(loaded.blob);
       this.mediaUrls.set(mediaId, url);
     }
-    if (element.dataset.cardId === card.id) image.src = url;
+    if (element.dataset.cardId !== card.id) return;
+    image.src = url;
+    image.alt = card.title ? `Обложка: ${card.title}` : 'Обложка карточки';
+    element.dataset.hasCover = 'true';
   }
 
   updateCardElement(element, card, state, linkSourceId) {
     const meta = getNodeMeta(card);
     const view = normalizeNodeView(card.view);
-    const progress = getProgress(card);
+    const progress = getCardProgress(card);
     element.dataset.nodeType = card.type;
     element.dataset.viewMode = view.mode;
     element.dataset.selected = String(state.selectedCardId === card.id);
