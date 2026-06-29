@@ -1,6 +1,7 @@
 export class StorageAdapter {
   async init() { throw new Error('StorageAdapter.init() is not implemented.'); }
   async loadWorkspace() { throw new Error('StorageAdapter.loadWorkspace() is not implemented.'); }
+  async importWorkspaceBundle() { throw new Error('StorageAdapter.importWorkspaceBundle() is not implemented.'); }
   async saveCard() { throw new Error('StorageAdapter.saveCard() is not implemented.'); }
   async saveCardBundle() { throw new Error('StorageAdapter.saveCardBundle() is not implemented.'); }
   async deleteCard() { throw new Error('StorageAdapter.deleteCard() is not implemented.'); }
