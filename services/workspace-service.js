@@ -1,5 +1,5 @@
 import store from '../state/store.js';
-import db from '../storage/database.js';
+import storage from '../storage/index.js';
 
 const DEFAULT_CAMERA = Object.freeze({ x: 0, y: 0, zoom: 0.82 });
 
@@ -14,10 +14,10 @@ export function isValidCamera(camera) {
 }
 
 export async function loadWorkspace() {
-  await db.initDB();
-  await db.loadAllData();
+  await storage.init();
+  await storage.loadWorkspace();
 
-  const savedCamera = await db.loadSetting('camera');
+  const savedCamera = await storage.loadSetting('camera');
   const camera = isValidCamera(savedCamera) ? savedCamera : { ...DEFAULT_CAMERA };
   store.setState({ camera });
 
@@ -29,7 +29,7 @@ export async function saveCamera(camera = store.getState().camera) {
     throw new TypeError('saveCamera expects a valid camera object.');
   }
 
-  await db.saveSetting('camera', camera);
+  await storage.saveSetting('camera', camera);
   return camera;
 }
 
