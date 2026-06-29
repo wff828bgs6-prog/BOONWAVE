@@ -1,6 +1,6 @@
 import storage from './storage/index.js';
 import { createNode } from './domain/node.js';
-import { WorkspaceController } from './controllers/workspace-controller.js';
+import { TypedWorkspaceController as WorkspaceController } from './controllers/typed-workspace-controller.js';
 import { LinkController } from './controllers/link-controller.js';
 import { TransactionalNodeController as NodeController } from './controllers/transactional-node-controller.js';
 import { ZoomController } from './controllers/zoom-controller.js';
