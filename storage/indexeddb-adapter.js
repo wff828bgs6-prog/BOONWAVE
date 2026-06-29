@@ -33,6 +33,51 @@ function detachOwnerInTransaction(mediaStore, blobStore, mediaId, ownerId) {
 export class IndexedDBAdapter extends StorageAdapter {
   async init() { return db.initDB(); }
   async loadWorkspace() { return db.loadAllData(); }
+
+  async importWorkspaceBundle({ cards = [], links = [], mediaEntries = [], marker = null } = {}) {
+    const database = await db.initDB();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(
+        ['cards', 'links', 'media', 'mediaBlobs', 'settings'],
+        'readwrite',
+      );
+      const cardStore = transaction.objectStore('cards');
+      const linkStore = transaction.objectStore('links');
+      const mediaStore = transaction.objectStore('media');
+      const blobStore = transaction.objectStore('mediaBlobs');
+      const settingsStore = transaction.objectStore('settings');
+
+      transaction.oncomplete = () => resolve({
+        cards: cards.length,
+        links: links.length,
+        media: mediaEntries.length,
+        marker,
+      });
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(
+        transaction.error ?? new Error('IndexedDB workspace import transaction aborted.'),
+      );
+
+      try {
+        for (const card of cards) cardStore.put(card);
+        for (const link of links) linkStore.put(link);
+        for (const entry of mediaEntries) {
+          mediaStore.put(entry.record);
+          blobStore.put({ id: entry.record.id, blob: entry.blob });
+        }
+        if (marker?.key) {
+          settingsStore.put({
+            key: marker.key,
+            value: marker.value,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      } catch (error) {
+        abortTransaction(transaction, error, reject);
+      }
+    });
+  }
+
   async saveCard(card) { return db.saveCard(card); }
 
   async saveCardBundle({ card, mediaEntries = [], removedMediaIds = [] }) {
