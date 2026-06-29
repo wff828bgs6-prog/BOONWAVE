@@ -10,6 +10,10 @@ function resolveDependencies(options = {}) {
   };
 }
 
+function definedEntries(object = {}) {
+  return Object.fromEntries(Object.entries(object).filter(([, value]) => value !== undefined));
+}
+
 export function getNextCardViewMode(mode) {
   const index = CARD_VIEW_MODES.indexOf(mode);
   return CARD_VIEW_MODES[(index + 1 + CARD_VIEW_MODES.length) % CARD_VIEW_MODES.length];
@@ -23,10 +27,10 @@ export async function updateCardView(cardId, patch = {}, options = {}) {
   const current = normalizeNodeView(card.view);
   const next = normalizeNodeView({
     ...current,
-    ...patch,
+    ...definedEntries(patch),
     cover: {
       ...current.cover,
-      ...(patch.cover ?? {}),
+      ...definedEntries(patch.cover),
     },
   });
 
@@ -45,6 +49,6 @@ export function setCoverFraming(cardId, { shape, scale, positionX, positionY } =
     throw new TypeError(`Unsupported cover shape: ${shape}`);
   }
   return updateCardView(cardId, {
-    cover: { shape, scale, positionX, positionY },
+    cover: definedEntries({ shape, scale, positionX, positionY }),
   }, options);
 }
