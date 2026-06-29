@@ -12,6 +12,7 @@
     html, body { margin: 0; min-height: 100%; background: var(--bw-bg-canvas); color: var(--bw-text-primary); overflow: hidden; }
     body { min-height: 100svh; }
     button, input, textarea, select { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
     .preview-shell { position: relative; min-height: 100svh; background: radial-gradient(circle at 50% -10%, rgba(var(--bw-brand-violet),.18), transparent 36%), var(--bw-bg-canvas); }
     .preview-header { position: fixed; inset: max(12px, env(safe-area-inset-top)) 14px auto; z-index: 20; pointer-events: none; }
     .preview-badge { padding: 9px 12px; border: 1px solid var(--bw-border-soft); border-radius: 15px; background: var(--bw-bg-control); backdrop-filter: blur(18px); box-shadow: var(--bw-shadow-control); }
@@ -33,26 +34,37 @@
     .card h2 { margin: 10px 0 8px; font-size: 22px; line-height: 1.05; }
     .card p { margin: 0; color: var(--bw-text-secondary); font-size: 13px; line-height: 1.45; }
     .card-meta { margin-top: 11px; color: var(--bw-text-muted); font-size: 11px; min-height: 14px; }
-    .hint { position: fixed; left: 50%; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 138px); transform: translateX(-50%); z-index: 20; padding: 9px 13px; border-radius: 999px; background: var(--bw-bg-control); color: var(--bw-text-secondary); border: 1px solid var(--bw-border-soft); font-size: 11px; white-space: nowrap; backdrop-filter: blur(16px); pointer-events: none; max-width: calc(100vw - 40px); overflow: hidden; text-overflow: ellipsis; }
-    .mobile-dock { position: fixed; left: 12px; right: 12px; bottom: max(10px, env(safe-area-inset-bottom)); z-index: 30; display: grid; gap: 10px; }
-    .zoom-row { display: grid; grid-template-columns: 58px minmax(0,1fr) 58px; align-items: center; gap: 10px; }
+
+    .status-live { position: fixed; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+    .mobile-dock { position: fixed; left: 14px; right: 14px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 30; display: grid; gap: 12px; }
+    .zoom-row { display: grid; grid-template-columns: 58px minmax(0,1fr) 58px; align-items: center; gap: 12px; }
     .bw-icon { width: 25px; height: 25px; fill: none; stroke: url(#bwIconGradient); stroke-width: var(--bw-control-stroke); stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
-    .bw-icon.neutral { stroke: currentColor; }
-    .dock-button, .action-button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; transition: transform var(--bw-motion-fast) ease, border-color var(--bw-motion-fast) ease, background var(--bw-motion-fast) ease, box-shadow var(--bw-motion-fast) ease; }
-    .dock-button { display: grid; place-items: center; min-width: 52px; min-height: 52px; padding: 0; border: 1px solid var(--bw-border-medium); border-radius: 50%; background: var(--bw-bg-control); color: var(--bw-icon-base); box-shadow: var(--bw-shadow-control); backdrop-filter: blur(14px); }
-    .dock-button.primary { background: var(--bw-control-gradient); color: white; }
-    .dock-button.primary .bw-icon { stroke: currentColor; }
-    .dock-button:active, .action-button:active { transform: scale(.96); }
-    .zoom-control { display: grid; grid-template-columns: 28px minmax(0,1fr) 28px; align-items: center; gap: 8px; min-height: 56px; padding: 0 12px; border: 1px solid var(--bw-border-soft); border-radius: 28px; background: var(--bw-bg-control); box-shadow: var(--bw-shadow-control); backdrop-filter: blur(16px); }
-    .zoom-step { display: grid; place-items: center; min-width: 28px; min-height: 44px; border: 0; background: transparent; color: var(--bw-icon-base); padding: 0; }
+    .circle-button { width: 58px; height: 58px; aspect-ratio: 1 / 1; min-width: 58px; min-height: 58px; padding: 0; border: 1px solid var(--bw-border-medium); border-radius: 50%; background: var(--bw-bg-control); color: var(--bw-icon-base); box-shadow: var(--bw-shadow-control); backdrop-filter: blur(14px); display: grid; place-items: center; transition: transform var(--bw-motion-fast) ease, border-color var(--bw-motion-fast) ease, box-shadow var(--bw-motion-fast) ease, background var(--bw-motion-fast) ease; }
+    .circle-button.primary { background: var(--bw-control-gradient); color: white; }
+    .circle-button.primary .bw-icon { stroke: currentColor; }
+    .circle-button:active, .circle-button[aria-pressed="true"] { transform: scale(.96); border-color: rgba(var(--bw-brand-cyan),.92); box-shadow: 0 0 0 1px rgba(var(--bw-brand-violet),.34), 0 0 24px rgba(var(--bw-brand-cyan),.30), var(--bw-shadow-control); }
+
+    .zoom-control { height: 58px; min-height: 58px; border: 1px solid var(--bw-border-medium); border-radius: 29px; background: var(--bw-bg-control); box-shadow: var(--bw-shadow-control); backdrop-filter: blur(16px); display: grid; grid-template-columns: 40px minmax(0,1fr) 40px; align-items: center; gap: 8px; padding: 0 10px; transition: border-color var(--bw-motion-fast) ease, box-shadow var(--bw-motion-fast) ease; }
+    .zoom-control:focus-within, .zoom-control:active { border-color: rgba(var(--bw-brand-cyan),.88); box-shadow: 0 0 0 1px rgba(var(--bw-brand-violet),.24), 0 0 26px rgba(var(--bw-brand-cyan),.24), var(--bw-shadow-control); }
+    .zoom-step { width: 40px; height: 40px; aspect-ratio: 1 / 1; min-width: 40px; min-height: 40px; border: 0; border-radius: 50%; background: transparent; color: var(--bw-icon-base); display: grid; place-items: center; padding: 0; transition: background var(--bw-motion-fast) ease, box-shadow var(--bw-motion-fast) ease, transform var(--bw-motion-fast) ease; }
+    .zoom-step:active { transform: scale(.94); background: var(--bw-bg-control-active); box-shadow: 0 0 18px rgba(var(--bw-brand-cyan),.24); }
     .zoom-step .bw-icon { width: 18px; height: 18px; stroke: currentColor; }
-    #zoomRange { width: 100%; accent-color: rgb(var(--bw-brand-cyan)); }
-    .action-row { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; padding: 10px; border: 1px solid var(--bw-border-soft); border-radius: 24px; background: var(--bw-bg-control); box-shadow: var(--bw-shadow-control); backdrop-filter: blur(16px); }
-    .action-button { display: grid; justify-items: center; align-content: center; min-height: 56px; padding: 6px 4px; border: 1px solid transparent; border-radius: 16px; background: transparent; color: var(--bw-icon-base); }
-    .action-button span { display: block; margin-top: 5px; color: var(--bw-text-secondary); font-size: 9px; line-height: 1.1; }
+    #zoomRange { --zoom-progress: 27%; appearance: none; -webkit-appearance: none; width: 100%; height: 32px; margin: 0; background: transparent; outline: none; }
+    #zoomRange::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: linear-gradient(90deg, rgb(var(--bw-brand-violet)) 0, rgb(var(--bw-brand-cyan)) var(--zoom-progress), rgba(143,151,184,.24) var(--zoom-progress), rgba(143,151,184,.24) 100%); }
+    #zoomRange::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; margin-top: -10px; border: 3px solid var(--bw-bg-control-active); border-radius: 50%; background: var(--bw-text-primary); box-shadow: 0 0 0 1px rgba(var(--bw-brand-cyan),.72), 0 0 16px rgba(var(--bw-brand-cyan),.42); transition: box-shadow var(--bw-motion-fast) ease, transform var(--bw-motion-fast) ease; }
+    #zoomRange:active::-webkit-slider-thumb, #zoomRange:focus-visible::-webkit-slider-thumb { transform: scale(1.06); box-shadow: 0 0 0 2px rgba(var(--bw-brand-violet),.62), 0 0 24px rgba(var(--bw-brand-cyan),.62); }
+    #zoomRange::-moz-range-track { height: 4px; border-radius: 999px; background: rgba(143,151,184,.24); }
+    #zoomRange::-moz-range-progress { height: 4px; border-radius: 999px; background: linear-gradient(90deg, rgb(var(--bw-brand-violet)), rgb(var(--bw-brand-cyan))); }
+    #zoomRange::-moz-range-thumb { width: 24px; height: 24px; border: 3px solid var(--bw-bg-control-active); border-radius: 50%; background: var(--bw-text-primary); box-shadow: 0 0 0 1px rgba(var(--bw-brand-cyan),.72), 0 0 16px rgba(var(--bw-brand-cyan),.42); }
+
+    .action-row { min-height: 86px; display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 6px; align-items: center; padding: 10px 8px; border: 1px solid var(--bw-border-soft); border-radius: 28px; background: var(--bw-bg-control); box-shadow: var(--bw-shadow-control); backdrop-filter: blur(16px); }
+    .action-slot { min-width: 0; display: grid; justify-items: center; gap: 5px; }
+    .action-button { width: 48px; height: 48px; aspect-ratio: 1 / 1; min-width: 48px; min-height: 48px; padding: 0; border: 1px solid transparent; border-radius: 50%; background: transparent; color: var(--bw-icon-base); display: grid; place-items: center; transition: transform var(--bw-motion-fast) ease, border-color var(--bw-motion-fast) ease, background var(--bw-motion-fast) ease, box-shadow var(--bw-motion-fast) ease; }
+    .action-label { color: var(--bw-text-secondary); font-size: 9px; line-height: 1; white-space: nowrap; }
     .action-button.danger .bw-icon { stroke: url(#bwDangerGradient); }
-    .action-button[aria-pressed="true"] { border-color: rgba(var(--bw-brand-violet),.30); background: var(--bw-bg-control-active); box-shadow: inset 0 0 18px rgba(var(--bw-brand-violet),.14); }
-    .action-button[disabled] { opacity: .38; }
+    .action-button:active, .action-button[aria-pressed="true"] { transform: scale(.94); border-color: rgba(var(--bw-brand-cyan),.72); background: var(--bw-bg-control-active); box-shadow: 0 0 18px rgba(var(--bw-brand-cyan),.26); }
+    .action-button[disabled] { opacity: .34; }
+
     .sheet[hidden] { display: none; }
     .sheet { position: fixed; inset: 0; z-index: 50; display: grid; align-items: end; background: rgba(3,4,10,.56); backdrop-filter: blur(8px); }
     .sheet-panel { max-height: min(82svh, 760px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); border-radius: 28px 28px 0 0; border: 1px solid var(--bw-border-soft); background: var(--bw-bg-surface-strong); box-shadow: 0 -20px 60px rgba(0,0,0,.44); }
@@ -71,7 +83,7 @@
     .field textarea { min-height: 74px; resize: none; }
     .submit-button { width: 100%; min-height: 48px; margin-top: 14px; padding: 14px; border: 0; border-radius: 16px; background: linear-gradient(135deg, rgb(var(--bw-brand-violet)), rgb(var(--bw-brand-blue))); color: white; font-weight: 700; }
     @media (prefers-color-scheme: light) { .preview-shell { background: radial-gradient(circle at 50% -10%, rgba(var(--bw-brand-magenta),.12), transparent 38%), var(--bw-bg-canvas); } .card { background: linear-gradient(145deg, rgba(255,255,255,.98), var(--bw-bg-surface)); } .sheet { background: rgba(23,29,50,.20); } }
-    @media (max-width: 390px) { .typed-fields { grid-template-columns: 1fr; } .action-button span { display: none; } }
+    @media (max-width: 390px) { .mobile-dock { left: 10px; right: 10px; } .zoom-row { grid-template-columns: 54px minmax(0,1fr) 54px; gap: 8px; } .circle-button { width: 54px; height: 54px; min-width: 54px; min-height: 54px; } .action-label { display: none; } .action-row { min-height: 68px; } .typed-fields { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -82,25 +94,25 @@
     </defs>
   </svg>
   <main class="preview-shell">
-    <header class="preview-header"><div class="preview-badge"><strong>BOONWAVE</strong><span>Core Stage G · Adaptive Controls</span></div></header>
+    <header class="preview-header"><div class="preview-badge"><strong>BOONWAVE</strong><span>Core Stage H · Precision Dock</span></div></header>
     <section id="canvas" aria-label="Тестовый холст BOONWAVE"><div id="world"></div></section>
-    <div class="hint" id="hint">Выбери карточку • редактировать • удалить</div>
+    <div class="status-live" id="hint" role="status" aria-live="polite"></div>
     <nav class="mobile-dock" aria-label="Управление рабочим пространством">
       <div class="zoom-row">
-        <button class="dock-button" id="editButton" type="button" aria-label="Редактировать карточку"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></button>
+        <button class="circle-button" id="editButton" type="button" aria-label="Редактировать карточку"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></button>
         <div class="zoom-control">
           <button class="zoom-step" id="zoomOutButton" type="button" aria-label="Уменьшить масштаб"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
           <input id="zoomRange" type="range" min="0.25" max="3" step="0.01" value="1" aria-label="Масштаб рабочего пространства">
           <button class="zoom-step" id="zoomInButton" type="button" aria-label="Увеличить масштаб"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
         </div>
-        <button class="dock-button primary" id="addCardButton" type="button" aria-label="Создать карточку"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="circle-button primary" id="addCardButton" type="button" aria-label="Создать карточку"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg></button>
       </div>
       <div class="action-row">
-        <button class="action-button" id="connectButton" type="button" aria-label="Создать связь" aria-pressed="false"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg><span>Связать</span></button>
-        <button class="action-button" id="disconnectButton" type="button" aria-label="Удалить связь" aria-pressed="false"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8 8 8M16 8l-8 8"/><path d="M10 13a5 5 0 0 0 7.1.1l2-2"/><path d="m4.9 12.9 2-2A5 5 0 0 1 12 9.7"/></svg><span>Разорвать</span></button>
-        <button class="action-button danger" id="deleteButton" type="button" aria-label="Удалить карточку"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg><span>Удалить</span></button>
-        <button class="action-button" type="button" aria-label="Человек" disabled><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Человек</span></button>
-        <button class="action-button" type="button" aria-label="Архив" disabled><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg><span>Архив</span></button>
+        <div class="action-slot"><button class="action-button" id="connectButton" type="button" aria-label="Создать связь" aria-pressed="false"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg></button><span class="action-label">Связать</span></div>
+        <div class="action-slot"><button class="action-button" id="disconnectButton" type="button" aria-label="Удалить связь" aria-pressed="false"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8 8 8M16 8l-8 8"/><path d="M10 13a5 5 0 0 0 7.1.1l2-2"/><path d="m4.9 12.9 2-2A5 5 0 0 1 12 9.7"/></svg></button><span class="action-label">Разорвать</span></div>
+        <div class="action-slot"><button class="action-button danger" id="deleteButton" type="button" aria-label="Удалить карточку"><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg></button><span class="action-label">Удалить</span></div>
+        <div class="action-slot"><button class="action-button" type="button" aria-label="Человек" disabled><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></button><span class="action-label">Человек</span></div>
+        <div class="action-slot"><button class="action-button" type="button" aria-label="Архив" disabled><svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg></button><span class="action-label">Архив</span></div>
       </div>
     </nav>
   </main>
