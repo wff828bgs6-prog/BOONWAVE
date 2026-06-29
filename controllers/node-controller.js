@@ -1,30 +1,8 @@
 import store from '../state/store.js';
 import { createCardNode, updateCardNode, deleteCardNode } from '../services/node-service.js';
+import { getNodeFormFields } from '../ui/node-form-schema.js';
 
 const DEFAULT_HINT = 'Выбери карточку • ✎ редактировать • ⌫ удалить';
-
-const TYPE_FIELDS = Object.freeze({
-  project: [
-    { key: 'status', label: 'Статус', type: 'select', options: [['preparation', 'Подготовка'], ['in_progress', 'В работе'], ['paused', 'На паузе'], ['completed', 'Завершено']] },
-    { key: 'address', label: 'Адрес', type: 'text', maxlength: 120 },
-  ],
-  process: [
-    { key: 'status', label: 'Статус', type: 'select', options: [['planned', 'Запланировано'], ['in_progress', 'В работе'], ['paused', 'На паузе'], ['completed', 'Завершено']] },
-    { key: 'progress', label: 'Прогресс, %', type: 'number', min: 0, max: 100, step: 1 },
-  ],
-  person: [
-    { key: 'role', label: 'Роль', type: 'text', maxlength: 80 },
-    { key: 'organization', label: 'Организация', type: 'text', maxlength: 100 },
-  ],
-  idea: [
-    { key: 'status', label: 'Статус', type: 'select', options: [['draft', 'Черновик'], ['active', 'Активно'], ['completed', 'Реализовано']] },
-    { key: 'category', label: 'Категория', type: 'text', maxlength: 80 },
-  ],
-  goal: [
-    { key: 'status', label: 'Статус', type: 'select', options: [['active', 'Активно'], ['paused', 'На паузе'], ['completed', 'Достигнута']] },
-    { key: 'progress', label: 'Прогресс, %', type: 'number', min: 0, max: 100, step: 1 },
-  ],
-});
 
 function createFieldElement(definition, value = '') {
   const label = document.createElement('label');
@@ -53,6 +31,8 @@ function createFieldElement(definition, value = '') {
   }
 
   control.dataset.nodeField = definition.key;
+  control.name = definition.key;
+  control.required = Boolean(definition.required);
   control.value = value ?? '';
   label.append(control);
   return label;
@@ -60,9 +40,7 @@ function createFieldElement(definition, value = '') {
 
 function readTypedData(container, type) {
   const data = {};
-  const definitions = TYPE_FIELDS[type] ?? [];
-
-  for (const definition of definitions) {
+  for (const definition of getNodeFormFields(type)) {
     const control = container.querySelector(`[data-node-field="${definition.key}"]`);
     if (!control) continue;
     if (definition.type === 'number') {
@@ -72,7 +50,6 @@ function readTypedData(container, type) {
       data[definition.key] = control.value.trim();
     }
   }
-
   return data;
 }
 
@@ -98,7 +75,7 @@ export class NodeController {
 
   renderTypeFields(container, type, data = {}) {
     if (!container) return;
-    container.replaceChildren(...(TYPE_FIELDS[type] ?? []).map((definition) => (
+    container.replaceChildren(...getNodeFormFields(type).map((definition) => (
       createFieldElement(definition, data[definition.key])
     )));
   }
@@ -185,32 +162,43 @@ export class NodeController {
 
   async submitCreate(event) {
     event.preventDefault();
-    const position = this.getViewportCenter();
-    await createCardNode({
-      type: this.selectedType,
-      title: this.elements.titleInput.value,
-      description: this.elements.descriptionInput.value,
-      x: position.x,
-      y: position.y,
-      data: readTypedData(this.elements.createTypeFields, this.selectedType),
-    });
-    this.closeCreate();
-    this.showFeedback('Карточка создана');
+    if (!this.elements.createForm.reportValidity()) return;
+
+    try {
+      const position = this.getViewportCenter();
+      await createCardNode({
+        type: this.selectedType,
+        title: this.elements.titleInput.value.trim(),
+        description: this.elements.descriptionInput.value.trim(),
+        x: position.x,
+        y: position.y,
+        data: readTypedData(this.elements.createTypeFields, this.selectedType),
+      });
+      this.closeCreate();
+      this.showFeedback('Карточка создана');
+    } catch (error) {
+      console.error('Card creation failed:', error);
+      this.showFeedback('Не удалось создать карточку');
+    }
   }
 
   async submitEdit(event) {
     event.preventDefault();
-    if (!this.editingCardId) return;
+    if (!this.editingCardId || !this.elements.editForm.reportValidity()) return;
 
-    const card = store.getState().cards[this.editingCardId];
-    await updateCardNode(this.editingCardId, {
-      title: this.elements.editTitleInput.value.trim(),
-      description: this.elements.editDescriptionInput.value.trim(),
-      data: readTypedData(this.elements.editTypeFields, card.type),
-    });
-
-    this.closeEdit();
-    this.showFeedback('Изменения сохранены');
+    try {
+      const card = store.getState().cards[this.editingCardId];
+      await updateCardNode(this.editingCardId, {
+        title: this.elements.editTitleInput.value.trim(),
+        description: this.elements.editDescriptionInput.value.trim(),
+        data: readTypedData(this.elements.editTypeFields, card.type),
+      });
+      this.closeEdit();
+      this.showFeedback('Изменения сохранены');
+    } catch (error) {
+      console.error('Card update failed:', error);
+      this.showFeedback('Не удалось сохранить изменения');
+    }
   }
 
   async deleteSelected() {
@@ -226,8 +214,13 @@ export class NodeController {
     const confirmed = window.confirm(`Удалить карточку «${card.title}» и все её связи?`);
     if (!confirmed) return;
 
-    await deleteCardNode(cardId);
-    this.showFeedback('Карточка и её связи удалены');
+    try {
+      await deleteCardNode(cardId);
+      this.showFeedback('Карточка и её связи удалены');
+    } catch (error) {
+      console.error('Card deletion failed:', error);
+      this.showFeedback('Не удалось удалить карточку');
+    }
   }
 
   destroy() {
