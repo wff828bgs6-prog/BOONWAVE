@@ -1,8 +1,28 @@
 import store from '../state/store.js';
 import { createCardNode, updateCardNode, deleteCardNode } from '../services/node-service.js';
+import { createMedia, deleteMediaIfUnreferenced } from '../services/media-service.js';
+import { attachMediaToCard, CARD_MEDIA_SLOTS } from '../services/card-media-service.js';
 import { getNodeFormFields } from '../ui/node-form-schema.js';
 
 const DEFAULT_HINT = 'Выбери карточку • ✎ редактировать • ⌫ удалить';
+
+const MEDIA_FIELD_LABELS = Object.freeze({
+  cover: 'Обложка',
+  avatar: 'Фото / аватар',
+  images: 'Изображения',
+  documents: 'Документы',
+  files: 'Другие файлы',
+  attachments: 'Вложения',
+});
+
+const MEDIA_ACCEPT = Object.freeze({
+  cover: 'image/*',
+  avatar: 'image/*',
+  images: 'image/*',
+  documents: 'application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt',
+  files: '*/*',
+  attachments: '*/*',
+});
 
 function createFieldElement(definition, value = '') {
   const label = document.createElement('label');
@@ -38,6 +58,23 @@ function createFieldElement(definition, value = '') {
   return label;
 }
 
+function createMediaField(slot, config) {
+  const label = document.createElement('label');
+  label.className = 'field media-field';
+
+  const caption = document.createElement('span');
+  caption.textContent = MEDIA_FIELD_LABELS[slot] ?? slot;
+
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.dataset.mediaSlot = slot;
+  input.accept = MEDIA_ACCEPT[slot] ?? '*/*';
+  input.multiple = config.mode === 'multiple';
+
+  label.append(caption, input);
+  return label;
+}
+
 function readTypedData(container, type) {
   const data = {};
   for (const definition of getNodeFormFields(type)) {
@@ -51,6 +88,12 @@ function readTypedData(container, type) {
     }
   }
   return data;
+}
+
+function collectPendingMedia(container) {
+  return [...container.querySelectorAll('[data-media-slot]')].flatMap((input) => (
+    [...(input.files ?? [])].map((file) => ({ slot: input.dataset.mediaSlot, file }))
+  ));
 }
 
 export class NodeController {
@@ -75,9 +118,12 @@ export class NodeController {
 
   renderTypeFields(container, type, data = {}) {
     if (!container) return;
-    container.replaceChildren(...getNodeFormFields(type).map((definition) => (
+    const typedFields = getNodeFormFields(type).map((definition) => (
       createFieldElement(definition, data[definition.key])
-    )));
+    ));
+    const mediaFields = Object.entries(CARD_MEDIA_SLOTS[type] ?? {})
+      .map(([slot, config]) => createMediaField(slot, config));
+    container.replaceChildren(...typedFields, ...mediaFields);
   }
 
   bindEvents() {
@@ -160,13 +206,31 @@ export class NodeController {
     this.elements.editTypeFields?.replaceChildren();
   }
 
+  async uploadPendingMedia(cardId, pendingMedia) {
+    for (const { slot, file } of pendingMedia) {
+      const record = await createMedia({
+        name: file.name,
+        mimeType: file.type,
+        size: file.size,
+      }, file);
+
+      try {
+        await attachMediaToCard(cardId, record.id, slot);
+      } catch (error) {
+        await deleteMediaIfUnreferenced(record.id).catch(() => {});
+        throw error;
+      }
+    }
+  }
+
   async submitCreate(event) {
     event.preventDefault();
     if (!this.elements.createForm.reportValidity()) return;
 
     try {
+      const pendingMedia = collectPendingMedia(this.elements.createTypeFields);
       const position = this.getViewportCenter();
-      await createCardNode({
+      const card = await createCardNode({
         type: this.selectedType,
         title: this.elements.titleInput.value.trim(),
         description: this.elements.descriptionInput.value.trim(),
@@ -174,11 +238,12 @@ export class NodeController {
         y: position.y,
         data: readTypedData(this.elements.createTypeFields, this.selectedType),
       });
+      await this.uploadPendingMedia(card.id, pendingMedia);
       this.closeCreate();
-      this.showFeedback('Карточка создана');
+      this.showFeedback(pendingMedia.length ? 'Карточка и файлы сохранены' : 'Карточка создана');
     } catch (error) {
       console.error('Card creation failed:', error);
-      this.showFeedback('Не удалось создать карточку');
+      this.showFeedback('Не удалось сохранить карточку или файлы');
     }
   }
 
@@ -187,17 +252,19 @@ export class NodeController {
     if (!this.editingCardId || !this.elements.editForm.reportValidity()) return;
 
     try {
+      const pendingMedia = collectPendingMedia(this.elements.editTypeFields);
       const card = store.getState().cards[this.editingCardId];
       await updateCardNode(this.editingCardId, {
         title: this.elements.editTitleInput.value.trim(),
         description: this.elements.editDescriptionInput.value.trim(),
         data: readTypedData(this.elements.editTypeFields, card.type),
       });
+      await this.uploadPendingMedia(this.editingCardId, pendingMedia);
       this.closeEdit();
-      this.showFeedback('Изменения сохранены');
+      this.showFeedback(pendingMedia.length ? 'Изменения и файлы сохранены' : 'Изменения сохранены');
     } catch (error) {
       console.error('Card update failed:', error);
-      this.showFeedback('Не удалось сохранить изменения');
+      this.showFeedback('Не удалось сохранить изменения или файлы');
     }
   }
 
