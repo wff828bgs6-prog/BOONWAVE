@@ -64,6 +64,25 @@ class BoonwaveDatabase {
     });
   }
 
+  async deleteCardWithLinks(cardId, linkIds = []) {
+    const db = await this.initDB();
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['cards', 'links'], 'readwrite');
+      const cardsStore = transaction.objectStore('cards');
+      const linksStore = transaction.objectStore('links');
+
+      cardsStore.delete(cardId);
+      for (const linkId of linkIds) linksStore.delete(linkId);
+
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(
+        transaction.error ?? new Error('IndexedDB delete transaction aborted.'),
+      );
+    });
+  }
+
   async saveLink(link) {
     const os = await this._getStore('links', 'readwrite');
     return new Promise((resolve, reject) => {
