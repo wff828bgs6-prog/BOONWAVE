@@ -18,6 +18,10 @@ export class IndexedDBAdapter extends StorageAdapter {
     return db.deleteCard(id);
   }
 
+  async deleteCardWithLinks(cardId, linkIds = []) {
+    return db.deleteCardWithLinks(cardId, linkIds);
+  }
+
   async saveLink(link) {
     return db.saveLink(link);
   }
