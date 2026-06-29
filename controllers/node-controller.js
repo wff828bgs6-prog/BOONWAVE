@@ -1,7 +1,7 @@
 import store from '../state/store.js';
-import { createCardNode, updateCardNode, deleteCardNode } from '../services/node-service.js';
-import { createMedia, deleteMediaIfUnreferenced, loadMedia } from '../services/media-service.js';
-import { attachMediaToCard, CARD_MEDIA_SLOTS } from '../services/card-media-service.js';
+import { deleteCardNode } from '../services/node-service.js';
+import { loadMedia } from '../services/media-service.js';
+import { CARD_MEDIA_SLOTS } from '../domain/card-media.js';
 import { normalizeNodeView } from '../domain/node.js';
 import { getNodeFormFields } from '../ui/node-form-schema.js';
 
@@ -41,6 +41,7 @@ function createFieldElement(definition, value = '') {
   const caption = document.createElement('span');
   caption.textContent = definition.label;
   label.append(caption);
+
   let control;
   if (definition.type === 'select') {
     control = document.createElement('select');
@@ -58,6 +59,7 @@ function createFieldElement(definition, value = '') {
     if (definition.max !== undefined) control.max = String(definition.max);
     if (definition.step !== undefined) control.step = String(definition.step);
   }
+
   control.dataset.nodeField = definition.key;
   control.name = definition.key;
   control.required = Boolean(definition.required);
@@ -77,6 +79,7 @@ function createMediaField(slot, config) {
   input.accept = MEDIA_ACCEPT[slot] ?? '*/*';
   input.multiple = config.mode === 'multiple';
   wrapper.append(caption, input);
+
   if (slot === 'cover' || slot === 'avatar') {
     const button = document.createElement('button');
     button.type = 'button';
@@ -86,6 +89,7 @@ function createMediaField(slot, config) {
     button.textContent = 'Настроить обложку';
     wrapper.append(button);
   }
+
   return wrapper;
 }
 
@@ -99,6 +103,7 @@ function createHiddenViewFields(view) {
     input.value = String(value ?? '');
     fields.push(input);
   };
+
   make('compactLabel', normalized.compactLabel);
   for (const mode of ['compact', 'working']) {
     const frame = normalized.coverFrames[mode];
@@ -108,19 +113,6 @@ function createHiddenViewFields(view) {
     make(`${mode}.positionY`, frame.positionY);
   }
   return fields;
-}
-
-function readTypedData(container, type) {
-  const data = {};
-  for (const definition of getNodeFormFields(type)) {
-    const control = container.querySelector(`[data-node-field="${definition.key}"]`);
-    if (!control) continue;
-    if (definition.type === 'number') {
-      const value = Number(control.value);
-      data[definition.key] = Number.isFinite(value) ? value : 0;
-    } else data[definition.key] = control.value.trim();
-  }
-  return data;
 }
 
 function readViewData(container, currentView = {}) {
@@ -146,20 +138,22 @@ function readViewData(container, currentView = {}) {
   });
 }
 
-function collectPendingMedia(container) {
-  return [...container.querySelectorAll('[data-media-slot]')].flatMap((input) => (
-    [...(input.files ?? [])].map((file) => ({ slot: input.dataset.mediaSlot, file }))
-  ));
-}
-
 export class NodeController {
   constructor({
     addButton, editButton, deleteButton, createSheet, closeCreateButton, createForm,
     typeGrid, titleInput, descriptionInput, createTypeFields, editSheet, closeEditButton,
     editForm, editTitleInput, editDescriptionInput, editTypeFields, hint, getViewportCenter,
   }) {
+    if (new.target === NodeController) {
+      throw new TypeError('NodeController is an abstract UI controller. Use TransactionalNodeController.');
+    }
+
     ensureCoverEditorStyles();
-    this.elements = { addButton, editButton, deleteButton, createSheet, closeCreateButton, createForm, typeGrid, titleInput, descriptionInput, createTypeFields, editSheet, closeEditButton, editForm, editTitleInput, editDescriptionInput, editTypeFields, hint };
+    this.elements = {
+      addButton, editButton, deleteButton, createSheet, closeCreateButton, createForm,
+      typeGrid, titleInput, descriptionInput, createTypeFields, editSheet, closeEditButton,
+      editForm, editTitleInput, editDescriptionInput, editTypeFields, hint,
+    };
     this.getViewportCenter = getViewportCenter;
     this.selectedType = 'project';
     this.editingCardId = null;
@@ -183,8 +177,10 @@ export class NodeController {
 
   renderTypeFields(container, type, data = {}, view = {}) {
     if (!container) return;
-    const typedFields = getNodeFormFields(type).map((definition) => createFieldElement(definition, data[definition.key]));
-    const mediaFields = Object.entries(CARD_MEDIA_SLOTS[type] ?? {}).map(([slot, config]) => createMediaField(slot, config));
+    const typedFields = getNodeFormFields(type)
+      .map((definition) => createFieldElement(definition, data[definition.key]));
+    const mediaFields = Object.entries(CARD_MEDIA_SLOTS[type] ?? {})
+      .map(([slot, config]) => createMediaField(slot, config));
     container.replaceChildren(...typedFields, ...mediaFields, ...createHiddenViewFields(view));
   }
 
@@ -196,34 +192,46 @@ export class NodeController {
     e.deleteButton.addEventListener('click', () => this.deleteSelected(), { signal });
     e.closeCreateButton.addEventListener('click', () => this.closeCreate(), { signal });
     e.closeEditButton.addEventListener('click', () => this.closeEdit(), { signal });
-    e.createSheet.addEventListener('click', (event) => { if (event.target === e.createSheet) this.closeCreate(); }, { signal });
-    e.editSheet.addEventListener('click', (event) => { if (event.target === e.editSheet) this.closeEdit(); }, { signal });
+    e.createSheet.addEventListener('click', (event) => {
+      if (event.target === e.createSheet) this.closeCreate();
+    }, { signal });
+    e.editSheet.addEventListener('click', (event) => {
+      if (event.target === e.editSheet) this.closeEdit();
+    }, { signal });
     e.typeGrid.addEventListener('click', (event) => {
       const button = event.target.closest('[data-node-type]');
       if (!button) return;
       this.selectedType = button.dataset.nodeType;
-      for (const item of e.typeGrid.querySelectorAll('[data-node-type]')) item.setAttribute('aria-pressed', String(item === button));
+      for (const item of e.typeGrid.querySelectorAll('[data-node-type]')) {
+        item.setAttribute('aria-pressed', String(item === button));
+      }
       this.renderTypeFields(e.createTypeFields, this.selectedType);
     }, { signal });
+
     for (const container of [e.createTypeFields, e.editTypeFields]) {
       container.addEventListener('click', (event) => {
         const button = event.target.closest('[data-open-cover-editor]');
         if (button) this.openCoverEditor(container, button.dataset.mediaSlotTarget);
       }, { signal });
     }
+
     e.createForm.addEventListener('submit', (event) => this.submitCreate(event), { signal });
     e.editForm.addEventListener('submit', (event) => this.submitEdit(event), { signal });
-
-    this.coverEditor.querySelector('.cover-editor-close').addEventListener('click', () => this.closeCoverEditor(), { signal });
-    this.coverEditor.addEventListener('click', (event) => { if (event.target === this.coverEditor) this.closeCoverEditor(); }, { signal });
+    this.coverEditor.querySelector('.cover-editor-close')
+      .addEventListener('click', () => this.closeCoverEditor(), { signal });
+    this.coverEditor.addEventListener('click', (event) => {
+      if (event.target === this.coverEditor) this.closeCoverEditor();
+    }, { signal });
     for (const button of this.coverEditor.querySelectorAll('[data-cover-mode]')) {
       button.addEventListener('click', () => this.setCoverEditorMode(button.dataset.coverMode), { signal });
     }
     for (const control of this.coverEditor.querySelectorAll('[data-cover-control]')) {
       control.addEventListener('input', () => this.updateCoverEditorFromControls(), { signal });
     }
-    this.coverEditor.querySelector('[data-cover-reset]').addEventListener('click', () => this.resetCoverEditorMode(), { signal });
-    this.coverEditor.querySelector('[data-cover-save]').addEventListener('click', () => this.saveCoverEditor(), { signal });
+    this.coverEditor.querySelector('[data-cover-reset]')
+      .addEventListener('click', () => this.resetCoverEditorMode(), { signal });
+    this.coverEditor.querySelector('[data-cover-save]')
+      .addEventListener('click', () => this.saveCoverEditor(), { signal });
     this.bindCoverPreviewDrag(signal);
   }
 
@@ -234,7 +242,12 @@ export class NodeController {
       if (!this.coverEditorState) return;
       preview.setPointerCapture(event.pointerId);
       const frame = this.coverEditorState.frames[this.coverEditorState.mode];
-      start = { x: event.clientX, y: event.clientY, positionX: frame.positionX, positionY: frame.positionY };
+      start = {
+        x: event.clientX,
+        y: event.clientY,
+        positionX: frame.positionX,
+        positionY: frame.positionY,
+      };
     }, { signal });
     preview.addEventListener('pointermove', (event) => {
       if (!start || !this.coverEditorState) return;
@@ -263,6 +276,7 @@ export class NodeController {
         if (loaded?.blob) url = URL.createObjectURL(loaded.blob);
       }
     }
+
     if (this.coverObjectUrl) URL.revokeObjectURL(this.coverObjectUrl);
     this.coverObjectUrl = url;
     this.coverEditorState = {
@@ -306,7 +320,9 @@ export class NodeController {
     const frame = this.coverEditorState.frames[this.coverEditorState.mode];
     const preview = this.coverEditor.querySelector('.cover-preview');
     const image = preview.querySelector('img');
-    preview.style.borderRadius = frame.shape === 'circle' ? '50%' : frame.shape === 'portrait' ? '20px' : '24px';
+    preview.style.borderRadius = frame.shape === 'circle'
+      ? '50%'
+      : frame.shape === 'portrait' ? '20px' : '24px';
     if (this.coverObjectUrl) image.src = this.coverObjectUrl;
     else image.removeAttribute('src');
     image.style.transform = `scale(${frame.scale})`;
@@ -342,22 +358,35 @@ export class NodeController {
   showFeedback(message, timeout = 1200) {
     clearTimeout(this.feedbackTimer);
     this.elements.hint.textContent = message;
-    if (timeout > 0) this.feedbackTimer = setTimeout(() => { this.elements.hint.textContent = DEFAULT_HINT; }, timeout);
+    if (timeout > 0) {
+      this.feedbackTimer = setTimeout(() => {
+        this.elements.hint.textContent = DEFAULT_HINT;
+      }, timeout);
+    }
   }
 
-  openCreate() { this.elements.createSheet.hidden = false; this.elements.titleInput.focus(); }
+  openCreate() {
+    this.elements.createSheet.hidden = false;
+    this.elements.titleInput.focus();
+  }
+
   closeCreate() {
     this.elements.createSheet.hidden = true;
     this.elements.createForm.reset();
     this.selectedType = 'project';
-    for (const item of this.elements.typeGrid.querySelectorAll('[data-node-type]')) item.setAttribute('aria-pressed', String(item.dataset.nodeType === 'project'));
+    for (const item of this.elements.typeGrid.querySelectorAll('[data-node-type]')) {
+      item.setAttribute('aria-pressed', String(item.dataset.nodeType === 'project'));
+    }
     this.renderTypeFields(this.elements.createTypeFields, this.selectedType);
   }
 
   openEdit() {
     const { selectedCardId, cards } = store.getState();
     const card = selectedCardId ? cards[selectedCardId] : null;
-    if (!card) { this.showFeedback('Сначала выбери карточку'); return; }
+    if (!card) {
+      this.showFeedback('Сначала выбери карточку');
+      return;
+    }
     this.editingCardId = card.id;
     this.elements.editTitleInput.value = card.title ?? '';
     this.elements.editDescriptionInput.value = card.description ?? '';
@@ -373,67 +402,22 @@ export class NodeController {
     this.elements.editTypeFields?.replaceChildren();
   }
 
-  async uploadPendingMedia(cardId, pendingMedia) {
-    for (const { slot, file } of pendingMedia) {
-      const record = await createMedia({ name: file.name, mimeType: file.type, size: file.size }, file);
-      try { await attachMediaToCard(cardId, record.id, slot); }
-      catch (error) { await deleteMediaIfUnreferenced(record.id).catch(() => {}); throw error; }
-    }
-  }
-
-  async submitCreate(event) {
-    event.preventDefault();
-    if (!this.elements.createForm.reportValidity()) return;
-    try {
-      const pendingMedia = collectPendingMedia(this.elements.createTypeFields);
-      const position = this.getViewportCenter();
-      const card = await createCardNode({
-        type: this.selectedType,
-        title: this.elements.titleInput.value.trim(),
-        description: this.elements.descriptionInput.value.trim(),
-        x: position.x,
-        y: position.y,
-        data: readTypedData(this.elements.createTypeFields, this.selectedType),
-        view: readViewData(this.elements.createTypeFields),
-      });
-      await this.uploadPendingMedia(card.id, pendingMedia);
-      this.closeCreate();
-      this.showFeedback(pendingMedia.length ? 'Карточка и файлы сохранены' : 'Карточка создана');
-    } catch (error) {
-      console.error('Card creation failed:', error);
-      this.showFeedback('Не удалось сохранить карточку или файлы');
-    }
-  }
-
-  async submitEdit(event) {
-    event.preventDefault();
-    if (!this.editingCardId || !this.elements.editForm.reportValidity()) return;
-    try {
-      const pendingMedia = collectPendingMedia(this.elements.editTypeFields);
-      const card = store.getState().cards[this.editingCardId];
-      await updateCardNode(this.editingCardId, {
-        title: this.elements.editTitleInput.value.trim(),
-        description: this.elements.editDescriptionInput.value.trim(),
-        data: readTypedData(this.elements.editTypeFields, card.type),
-        view: readViewData(this.elements.editTypeFields, card.view),
-      });
-      await this.uploadPendingMedia(this.editingCardId, pendingMedia);
-      this.closeEdit();
-      this.showFeedback(pendingMedia.length ? 'Изменения и файлы сохранены' : 'Изменения сохранены');
-    } catch (error) {
-      console.error('Card update failed:', error);
-      this.showFeedback('Не удалось сохранить изменения или файлы');
-    }
-  }
-
   async deleteSelected() {
     const state = store.getState();
     const cardId = state.selectedCardId;
     const card = cardId ? state.cards[cardId] : null;
-    if (!card) { this.showFeedback('Сначала выбери карточку'); return; }
+    if (!card) {
+      this.showFeedback('Сначала выбери карточку');
+      return;
+    }
     if (!window.confirm(`Удалить карточку «${card.title}» и все её связи?`)) return;
-    try { await deleteCardNode(cardId); this.showFeedback('Карточка и её связи удалены'); }
-    catch (error) { console.error('Card deletion failed:', error); this.showFeedback('Не удалось удалить карточку'); }
+    try {
+      await deleteCardNode(cardId);
+      this.showFeedback('Карточка и её связи удалены');
+    } catch (error) {
+      console.error('Card deletion failed:', error);
+      this.showFeedback('Не удалось удалить карточку');
+    }
   }
 
   destroy() {
