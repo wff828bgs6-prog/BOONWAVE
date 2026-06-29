@@ -3,13 +3,14 @@ import store from '../state/store.js';
 const DRAGGING = 'DRAGGING_CARD';
 
 export class CardController {
-  constructor(root, { onCommit } = {}) {
+  constructor(root, { onCommit, onTap } = {}) {
     if (!(root instanceof Element)) {
       throw new TypeError('CardController expects a DOM element.');
     }
 
     this.root = root;
     this.onCommit = typeof onCommit === 'function' ? onCommit : null;
+    this.onTap = typeof onTap === 'function' ? onTap : null;
     this.active = null;
 
     this.onPointerDown = this.onPointerDown.bind(this);
@@ -87,9 +88,18 @@ export class CardController {
     store.setState({ activeGesture: 'IDLE' });
 
     const card = store.getState().cards[drag.cardId];
-    if (drag.moved && card && this.onCommit) {
+    if (!card) return;
+
+    if (drag.moved && this.onCommit) {
       Promise.resolve(this.onCommit(card)).catch((error) => {
         console.error('Card position save failed:', error);
+      });
+      return;
+    }
+
+    if (!drag.moved && this.onTap) {
+      Promise.resolve(this.onTap(card)).catch((error) => {
+        console.error('Card tap action failed:', error);
       });
     }
   }
