@@ -14,9 +14,9 @@
     button, input, textarea, select { font: inherit; }
     .preview-shell { position: relative; min-height: 100svh; background: radial-gradient(circle at 50% -10%, rgba(var(--bw-brand-violet),.20), transparent 36%), var(--bw-bg-canvas); }
     .preview-header { position: fixed; inset: max(12px, env(safe-area-inset-top)) 14px auto; z-index: 20; pointer-events: none; }
-    .preview-badge { padding: 10px 14px; border: 1px solid var(--bw-border-soft); border-radius: 16px; background: rgba(14,16,30,.76); backdrop-filter: blur(18px); box-shadow: 0 12px 32px rgba(0,0,0,.28); }
-    .preview-badge strong { display: block; font-size: 14px; letter-spacing: .08em; }
-    .preview-badge span { display: block; margin-top: 3px; font-size: 11px; color: #aeb5d4; }
+    .preview-badge { padding: 9px 12px; border: 1px solid var(--bw-border-soft); border-radius: 15px; background: rgba(14,16,30,.72); backdrop-filter: blur(18px); box-shadow: 0 12px 32px rgba(0,0,0,.24); }
+    .preview-badge strong { display: block; font-size: 13px; letter-spacing: .08em; }
+    .preview-badge span { display: block; margin-top: 2px; font-size: 10px; color: #aeb5d4; }
     #canvas { position: absolute; inset: 0; overflow: hidden; touch-action: none; }
     #world { position: absolute; inset: 0; transform-origin: 0 0; }
     .card { --node-rgb: var(--bw-type-project); position: absolute; width: 230px; min-height: 138px; padding: 18px; border-radius: var(--bw-radius-card); border: 1px solid rgba(var(--node-rgb), .42); background: linear-gradient(145deg, rgba(34,38,64,.92), var(--bw-bg-surface)); box-shadow: inset 0 0 0 1px rgba(var(--node-rgb), .10), 0 0 18px rgba(var(--node-rgb), .10), var(--bw-shadow-card), inset 0 1px 0 rgba(255,255,255,.06); z-index: 2; transition: border-color var(--bw-motion-fast) ease, box-shadow var(--bw-motion-fast) ease; }
@@ -33,12 +33,19 @@
     .card h2 { margin: 10px 0 8px; font-size: 22px; line-height: 1.05; }
     .card p { margin: 0; color: var(--bw-text-secondary); font-size: 13px; line-height: 1.45; }
     .card-meta { margin-top: 11px; color: #8f97b8; font-size: 11px; min-height: 14px; }
-    .hint { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20; padding: 10px 14px; border-radius: 999px; background: rgba(14,16,30,.78); color: var(--bw-text-secondary); border: 1px solid var(--bw-border-soft); font-size: 12px; white-space: nowrap; backdrop-filter: blur(16px); pointer-events: none; max-width: calc(100vw - 120px); overflow: hidden; text-overflow: ellipsis; }
-    .toolbar { position: fixed; right: 18px; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 58px); z-index: 30; display: grid; gap: 10px; }
-    .tool-button { width: 52px; height: 52px; min-width: 44px; min-height: 44px; border: 1px solid var(--bw-border-medium); border-radius: 50%; background: var(--bw-bg-control); color: white; font-size: 21px; box-shadow: var(--bw-shadow-control); backdrop-filter: blur(14px); }
-    .tool-button.primary { background: linear-gradient(145deg, rgb(var(--bw-brand-violet)), rgb(var(--bw-brand-blue))); font-size: 30px; }
-    .tool-button.danger { color: #ff9ca9; }
-    .tool-button[aria-pressed="true"] { border-color: rgba(var(--bw-brand-violet),.85); box-shadow: 0 0 0 2px rgba(var(--bw-brand-violet),.22), 0 0 26px rgba(var(--bw-brand-violet),.38); }
+    .hint { position: fixed; left: 50%; bottom: calc(max(12px, env(safe-area-inset-bottom)) + 138px); transform: translateX(-50%); z-index: 20; padding: 9px 13px; border-radius: 999px; background: rgba(14,16,30,.76); color: var(--bw-text-secondary); border: 1px solid var(--bw-border-soft); font-size: 11px; white-space: nowrap; backdrop-filter: blur(16px); pointer-events: none; max-width: calc(100vw - 40px); overflow: hidden; text-overflow: ellipsis; }
+    .mobile-dock { position: fixed; left: 12px; right: 12px; bottom: max(10px, env(safe-area-inset-bottom)); z-index: 30; display: grid; gap: 10px; }
+    .zoom-row { display: grid; grid-template-columns: 58px minmax(0,1fr) 58px; align-items: center; gap: 10px; }
+    .dock-button { min-width: 52px; min-height: 52px; border: 1px solid var(--bw-border-medium); border-radius: 50%; background: var(--bw-bg-control); color: white; font-size: 21px; box-shadow: var(--bw-shadow-control); backdrop-filter: blur(14px); }
+    .dock-button.primary { background: linear-gradient(145deg, rgb(var(--bw-brand-violet)), rgb(var(--bw-brand-blue))); font-size: 30px; }
+    .zoom-control { display: grid; grid-template-columns: 28px minmax(0,1fr) 28px; align-items: center; gap: 8px; min-height: 56px; padding: 0 12px; border: 1px solid var(--bw-border-soft); border-radius: 28px; background: rgba(17,20,37,.90); box-shadow: var(--bw-shadow-control); backdrop-filter: blur(16px); }
+    .zoom-step { min-width: 28px; min-height: 44px; border: 0; background: transparent; color: #c9cee2; font-size: 25px; }
+    #zoomRange { width: 100%; accent-color: rgb(var(--bw-brand-cyan)); }
+    .action-row { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; padding: 10px; border: 1px solid var(--bw-border-soft); border-radius: 24px; background: rgba(17,20,37,.90); box-shadow: var(--bw-shadow-control); backdrop-filter: blur(16px); }
+    .action-button { min-height: 52px; border: 0; border-radius: 16px; background: transparent; color: #aeb5ca; font-size: 19px; }
+    .action-button span { display: block; margin-top: 4px; font-size: 9px; }
+    .action-button.danger { color: #ff9ca9; }
+    .action-button[aria-pressed="true"] { background: rgba(var(--bw-brand-violet),.14); color: white; }
     .sheet[hidden] { display: none; }
     .sheet { position: fixed; inset: 0; z-index: 50; display: grid; align-items: end; background: rgba(3,4,10,.56); backdrop-filter: blur(8px); }
     .sheet-panel { max-height: min(82svh, 760px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); border-radius: 28px 28px 0 0; border: 1px solid var(--bw-border-soft); background: var(--bw-bg-surface-strong); box-shadow: 0 -20px 60px rgba(0,0,0,.44); }
@@ -56,21 +63,34 @@
     .field input:focus-visible, .field textarea:focus-visible, .field select:focus-visible, button:focus-visible { outline: 2px solid rgba(var(--bw-brand-cyan),.90); outline-offset: 2px; }
     .field textarea { min-height: 74px; resize: none; }
     .submit-button { width: 100%; min-height: 48px; margin-top: 14px; padding: 14px; border: 0; border-radius: 16px; background: linear-gradient(135deg, rgb(var(--bw-brand-violet)), rgb(var(--bw-brand-blue))); color: white; font-weight: 700; }
-    @media (max-width: 390px) { .typed-fields { grid-template-columns: 1fr; } }
+    @media (max-width: 390px) { .typed-fields { grid-template-columns: 1fr; } .action-button span { display: none; } }
   </style>
 </head>
 <body>
   <main class="preview-shell">
-    <header class="preview-header"><div class="preview-badge"><strong>BOONWAVE</strong><span>Core Stage D · Typed Forms</span></div></header>
+    <header class="preview-header"><div class="preview-badge"><strong>BOONWAVE</strong><span>Core Stage F · Mobile Dock</span></div></header>
     <section id="canvas" aria-label="Тестовый холст BOONWAVE"><div id="world"></div></section>
-    <div class="toolbar">
-      <button class="tool-button" id="editButton" type="button" aria-label="Редактировать карточку">✎</button>
-      <button class="tool-button danger" id="deleteButton" type="button" aria-label="Удалить карточку">⌫</button>
-      <button class="tool-button" id="connectButton" type="button" aria-label="Создать связь" aria-pressed="false">↗</button>
-      <button class="tool-button" id="disconnectButton" type="button" aria-label="Удалить связь" aria-pressed="false">×</button>
-      <button class="tool-button primary" id="addCardButton" type="button" aria-label="Создать карточку">+</button>
-    </div>
+
     <div class="hint" id="hint">Выбери карточку • ✎ редактировать • ⌫ удалить</div>
+
+    <nav class="mobile-dock" aria-label="Управление рабочим пространством">
+      <div class="zoom-row">
+        <button class="dock-button" id="editButton" type="button" aria-label="Редактировать карточку">✎</button>
+        <div class="zoom-control">
+          <button class="zoom-step" id="zoomOutButton" type="button" aria-label="Уменьшить масштаб">−</button>
+          <input id="zoomRange" type="range" min="0.25" max="3" step="0.01" value="1" aria-label="Масштаб рабочего пространства">
+          <button class="zoom-step" id="zoomInButton" type="button" aria-label="Увеличить масштаб">+</button>
+        </div>
+        <button class="dock-button primary" id="addCardButton" type="button" aria-label="Создать карточку">+</button>
+      </div>
+      <div class="action-row">
+        <button class="action-button" id="connectButton" type="button" aria-label="Создать связь" aria-pressed="false">↗<span>Связать</span></button>
+        <button class="action-button" id="disconnectButton" type="button" aria-label="Удалить связь" aria-pressed="false">×<span>Разорвать</span></button>
+        <button class="action-button danger" id="deleteButton" type="button" aria-label="Удалить карточку">⌫<span>Удалить</span></button>
+        <button class="action-button" type="button" aria-label="Человек">♙<span>Человек</span></button>
+        <button class="action-button" type="button" aria-label="Архив">▣<span>Архив</span></button>
+      </div>
+    </nav>
   </main>
 
   <section class="sheet" id="createSheet" hidden>
@@ -83,7 +103,7 @@
         <button class="type-button" type="button" data-node-type="idea" aria-pressed="false">Идея</button>
         <button class="type-button" type="button" data-node-type="goal" aria-pressed="false">Цель</button>
       </div>
-      <label class="field"><span>Название</span><input id="cardTitle" name="title" maxlength="80" autocomplete="off"></label>
+      <label class="field"><span>Название</span><input id="cardTitle" name="title" maxlength="80" autocomplete="off" required></label>
       <label class="field"><span>Описание</span><textarea id="cardDescription" name="description" maxlength="240"></textarea></label>
       <div class="typed-fields" id="createTypeFields"></div>
       <button class="submit-button" type="submit">Создать карточку</button>
@@ -93,7 +113,7 @@
   <section class="sheet" id="editSheet" hidden>
     <form class="sheet-panel" id="editCardForm">
       <div class="sheet-head"><h2>Редактирование</h2><button class="close-button" id="closeEditSheetButton" type="button" aria-label="Закрыть">×</button></div>
-      <label class="field"><span>Название</span><input id="editCardTitle" maxlength="80" autocomplete="off"></label>
+      <label class="field"><span>Название</span><input id="editCardTitle" maxlength="80" autocomplete="off" required></label>
       <label class="field"><span>Описание</span><textarea id="editCardDescription" maxlength="240"></textarea></label>
       <div class="typed-fields" id="editTypeFields"></div>
       <button class="submit-button" type="submit">Сохранить изменения</button>
