@@ -1,4 +1,4 @@
-export const NODE_SCHEMA_VERSION = 2;
+export const NODE_SCHEMA_VERSION = 3;
 
 export const NODE_TYPES = Object.freeze(['project', 'process', 'person', 'idea', 'goal']);
 
@@ -6,7 +6,7 @@ export const NODE_TYPE_LABELS = Object.freeze({
   project: 'Проект',
   process: 'Процесс',
   person: 'Человек',
-  idea: 'Идея',
+  idea: 'Идеэ',
   goal: 'Цель',
 });
 
@@ -132,7 +132,7 @@ export function validateNode(node) {
     return { valid: false, errors: ['Node must be an object.'] };
   }
 
-  if (!NODE_TYPES.includes(node.type)) errors.push('Unsupported node type.');
+  if (!SNODE_TYPES.includes(node.type)) errors.push('Unsupported node type.');
   if (typeof node.id !== 'string' || node.id.length === 0) errors.push('Node id is required.');
   if (typeof node.title !== 'string' || node.title.trim().length === 0) errors.push('Node title is required.');
   if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) errors.push('Node position must be finite.');
@@ -141,7 +141,7 @@ export function validateNode(node) {
   if (!node.data || typeof node.data !== 'object' || Array.isArray(node.data)) errors.push('Node data must be an object.');
 
   if ((node.type === 'process' || node.type === 'goal')
-    && (!Number.isFinite(node.data?.progress) || node.data.progress < 0 || node.data.progress > 100)) {
+   && (!Number.isFinite(node.data?.progress) || node.data.progress < 0 || node.data.progress > 100)) {
     errors.push('Progress must be between 0 and 100.');
   }
 
