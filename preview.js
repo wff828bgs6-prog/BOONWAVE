@@ -1,37 +1,7 @@
-import store from './state/store.js';
-import db from './storage/database.js';
-import { GestureMachine } from './canvas/gesture-machine.js';
-import { CardController } from './canvas/card-controller.js';
-import { createLinksRenderer } from './canvas/links.js';
-import { createCardNode, updateCardNode, deleteCardNode } from './services/node-service.js';
-import { createLink, deleteLinksBetween } from './services/link-service.js';
-import { loadWorkspace, saveCamera } from './services/workspace-service.js';
-
-const canvas = document.getElementById('canvas');
-const world = document.getElementById('world');
-const addCardButton = document.getElementById('addCardButton');
-const editButton = document.getElementById('editButton');
-const deleteButton = document.getElementById('deleteButton');
-const connectButton = document.getElementById('connectButton');
-const disconnectButton = document.getElementById('disconnectButton');
-const hint = document.getElementById('hint');
-const createSheet = document.getElementById('createSheet');
-const closeSheetButton = document.getElementById('closeSheetButton');
-const createCardForm = document.getElementById('createCardForm');
-const typeGrid = document.getElementById('typeGrid');
-const cardTitle = document.getElementById('cardTitle');
-const cardDescription = document.getElementById('cardDescription');
-const editSheet = document.getElementById('editSheet');
-const editCardForm = document.getElementById('editCardForm');
-const closeEditSheetButton = document.getElementById('closeEditSheetButton');
-const editCardTitle = document.getElementById('editCardTitle');
-const editCardDescription = document.getElementById('editCardDescription');
-
-let selectedNodeType = 'project';
-let cameraSaveTimer = null;
-let linkMode = null;
-let linkSourceId = null;
-let editingCardId = null;
+import storage from './storage/index.js';
+import { WorkspaceController } from './controllers/workspace-controller.js';
+import { LinkController } from './controllers/link-controller.js';
+import { NodeController } from './controllers/node-controller.js';
 
 const seedCards = {
   project_demo: { id: 'project_demo', type: 'project', title: 'BOONWAVE Core', description: 'Модульное ядро, камера, жесты и SVG-связи.', x: 120, y: 170, width: 230, height: 138 },
@@ -44,274 +14,66 @@ const seedLinks = [
   { id: 'link_person_process', sourceId: 'person_demo', targetId: 'process_demo' },
 ];
 
-function createCardElement(card) {
-  const element = document.createElement('article');
-  element.className = 'card';
-  element.dataset.cardId = card.id;
-  element.innerHTML = '<div class="card-type"></div><h2></h2><p></p>';
-  return element;
+async function seedPreview() {
+  await Promise.all([
+    ...Object.values(seedCards).map((card) => storage.saveCard(card)),
+    ...seedLinks.map((link) => storage.saveLink(link)),
+  ]);
 }
 
-function reconcileCards() {
-  const state = store.getState();
-  const existing = new Map([...world.querySelectorAll('[data-card-id]')].map((element) => [element.dataset.cardId, element]));
+async function bootstrapPreview() {
+  const canvas = document.getElementById('canvas');
+  const world = document.getElementById('world');
+  const hint = document.getElementById('hint');
 
-  for (const card of Object.values(state.cards)) {
-    let element = existing.get(card.id);
-    if (!element) {
-      element = createCardElement(card);
-      world.append(element);
-    }
-    existing.delete(card.id);
-    element.dataset.selected = String(state.selectedCardId === card.id);
-    element.dataset.linkSource = String(linkSourceId === card.id);
-    element.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
-    element.querySelector('.card-type').textContent = card.type;
-    element.querySelector('h2').textContent = card.title;
-    element.querySelector('p').textContent = card.description;
-  }
-
-  for (const element of existing.values()) element.remove();
-}
-
-function applyCamera() {
-  const { camera } = store.getState();
-  world.style.transform = `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`;
-}
-
-function scheduleCameraSave(camera) {
-  clearTimeout(cameraSaveTimer);
-  cameraSaveTimer = setTimeout(() => {
-    saveCamera(camera).catch((error) => {
-      console.error('Camera save failed:', error);
-    });
-  }, 180);
-}
-
-function viewportCenterInWorld() {
-  const { camera } = store.getState();
-  return {
-    x: (window.innerWidth / 2 - camera.x) / camera.zoom - 115,
-    y: (window.innerHeight / 2 - camera.y) / camera.zoom - 69,
-  };
-}
-
-function openCreateSheet() {
-  createSheet.hidden = false;
-  cardTitle.focus();
-}
-
-function closeCreateSheet() {
-  createSheet.hidden = true;
-  createCardForm.reset();
-}
-
-function openEditSheet() {
-  const { selectedCardId, cards } = store.getState();
-  const card = selectedCardId ? cards[selectedCardId] : null;
-  if (!card) {
-    hint.textContent = 'Сначала выбери карточку';
-    return;
-  }
-
-  editingCardId = card.id;
-  editCardTitle.value = card.title ?? '';
-  editCardDescription.value = card.description ?? '';
-  editSheet.hidden = false;
-  editCardTitle.focus();
-}
-
-function closeEditSheet() {
-  editSheet.hidden = true;
-  editingCardId = null;
-  editCardForm.reset();
-}
-
-function setLinkMode(mode) {
-  linkMode = linkMode === mode ? null : mode;
-  linkSourceId = null;
-  connectButton.setAttribute('aria-pressed', String(linkMode === 'connect'));
-  disconnectButton.setAttribute('aria-pressed', String(linkMode === 'disconnect'));
-
-  if (linkMode === 'connect') {
-    hint.textContent = 'Связь: выбери исходную карточку';
-  } else if (linkMode === 'disconnect') {
-    hint.textContent = 'Удаление связи: выбери первую карточку';
-  } else {
-    hint.textContent = 'Выбери карточку • ✎ редактировать • ⌫ удалить';
-  }
-
-  reconcileCards();
-}
-
-async function handleCardTap(card) {
-  store.setState({ selectedCardId: card.id });
-
-  if (!linkMode) return;
-
-  if (!linkSourceId) {
-    linkSourceId = card.id;
-    hint.textContent = linkMode === 'connect'
-      ? 'Теперь выбери карточку, к которой идёт связь'
-      : 'Теперь выбери вторую карточку связи';
-    reconcileCards();
-    return;
-  }
-
-  if (linkSourceId === card.id) {
-    hint.textContent = 'Нужно выбрать другую карточку';
-    return;
-  }
-
-  if (linkMode === 'connect') {
-    const previousCount = store.getState().links.length;
-    await createLink(linkSourceId, card.id);
-    hint.textContent = store.getState().links.length > previousCount
-      ? 'Связь создана'
-      : 'Такая связь уже существует';
-  }
-
-  if (linkMode === 'disconnect') {
-    const deleted = await deleteLinksBetween(linkSourceId, card.id);
-    hint.textContent = deleted.length > 0
-      ? 'Связь удалена'
-      : 'Между этими карточками связи нет';
-  }
-
-  linkMode = null;
-  linkSourceId = null;
-  connectButton.setAttribute('aria-pressed', 'false');
-  disconnectButton.setAttribute('aria-pressed', 'false');
-  reconcileCards();
-
-  setTimeout(() => {
-    if (!linkMode) hint.textContent = 'Выбери карточку • ✎ редактировать • ⌫ удалить';
-  }, 1200);
-}
-
-async function deleteSelectedCard() {
-  const state = store.getState();
-  const cardId = state.selectedCardId;
-  const card = cardId ? state.cards[cardId] : null;
-
-  if (!card) {
-    hint.textContent = 'Сначала выбери карточку';
-    return;
-  }
-
-  const confirmed = window.confirm(`Удалить карточку «${card.title}» и все её связи?`);
-  if (!confirmed) return;
-
-  await deleteCardNode(cardId);
-  hint.textContent = 'Карточка и её связи удалены';
-  setTimeout(() => {
-    hint.textContent = 'Выбери карточку • ✎ редактировать • ⌫ удалить';
-  }, 1200);
-}
-
-async function seedDatabase() {
-  await Promise.all([...Object.values(seedCards).map((card) => db.saveCard(card)), ...seedLinks.map((link) => db.saveLink(link))]);
-}
-
-async function bootstrap() {
-  await loadWorkspace();
-
-  if (Object.keys(store.getState().cards).length === 0) {
-    await seedDatabase();
-    await loadWorkspace();
-  }
-
-  store.setState({ selectedCardId: store.getState().cards.project_demo ? 'project_demo' : null });
-  reconcileCards();
-  applyCamera();
-
-  const gestureMachine = new GestureMachine(canvas);
-  const cardController = new CardController(world, {
-    onCommit: (card) => updateCardNode(card.id, { x: card.x, y: card.y }),
-    onTap: handleCardTap,
-  });
-  const linksRenderer = createLinksRenderer(world);
-
-  const unsubscribe = store.subscribe((next, previous) => {
-    if (next.cards !== previous.cards || next.selectedCardId !== previous.selectedCardId) reconcileCards();
-    if (next.camera !== previous.camera) {
-      applyCamera();
-      scheduleCameraSave(next.camera);
-    }
+  const workspaceController = new WorkspaceController({
+    canvas,
+    world,
+    initialSelectedCardId: 'project_demo',
   });
 
-  canvas.addEventListener('click', (event) => {
-    if (!event.target.closest('[data-card-id]')) {
-      store.setState({ selectedCardId: null });
-      if (linkMode) setLinkMode(null);
-    }
+  const linkController = new LinkController({
+    connectButton: document.getElementById('connectButton'),
+    disconnectButton: document.getElementById('disconnectButton'),
+    hint,
+    onStateChange: () => workspaceController.renderCards(),
   });
 
-  addCardButton.addEventListener('click', openCreateSheet);
-  editButton.addEventListener('click', openEditSheet);
-  deleteButton.addEventListener('click', deleteSelectedCard);
-  connectButton.addEventListener('click', () => setLinkMode('connect'));
-  disconnectButton.addEventListener('click', () => setLinkMode('disconnect'));
-  closeSheetButton.addEventListener('click', closeCreateSheet);
-  closeEditSheetButton.addEventListener('click', closeEditSheet);
-
-  createSheet.addEventListener('click', (event) => {
-    if (event.target === createSheet) closeCreateSheet();
+  workspaceController.setLinkSourceProvider(() => linkController.getSourceId());
+  workspaceController.setCardTapHandler((card) => linkController.handleCardTap(card));
+  workspaceController.setBackgroundTapHandler(() => {
+    if (linkController.isActive()) linkController.cancel();
   });
 
-  editSheet.addEventListener('click', (event) => {
-    if (event.target === editSheet) closeEditSheet();
-  });
+  await workspaceController.init({ onEmpty: seedPreview });
 
-  typeGrid.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-node-type]');
-    if (!button) return;
-    selectedNodeType = button.dataset.nodeType;
-    for (const item of typeGrid.querySelectorAll('[data-node-type]')) {
-      item.setAttribute('aria-pressed', String(item === button));
-    }
-  });
-
-  createCardForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const position = viewportCenterInWorld();
-    await createCardNode({
-      type: selectedNodeType,
-      title: cardTitle.value,
-      description: cardDescription.value,
-      x: position.x,
-      y: position.y,
-    });
-    closeCreateSheet();
-  });
-
-  editCardForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    if (!editingCardId) return;
-
-    await updateCardNode(editingCardId, {
-      title: editCardTitle.value.trim(),
-      description: editCardDescription.value.trim(),
-    });
-
-    closeEditSheet();
-    hint.textContent = 'Изменения сохранены';
-    setTimeout(() => {
-      hint.textContent = 'Выбери карточку • ✎ редактировать • ⌫ удалить';
-    }, 1200);
+  const nodeController = new NodeController({
+    addButton: document.getElementById('addCardButton'),
+    editButton: document.getElementById('editButton'),
+    deleteButton: document.getElementById('deleteButton'),
+    createSheet: document.getElementById('createSheet'),
+    closeCreateButton: document.getElementById('closeSheetButton'),
+    createForm: document.getElementById('createCardForm'),
+    typeGrid: document.getElementById('typeGrid'),
+    titleInput: document.getElementById('cardTitle'),
+    descriptionInput: document.getElementById('cardDescription'),
+    editSheet: document.getElementById('editSheet'),
+    closeEditButton: document.getElementById('closeEditSheetButton'),
+    editForm: document.getElementById('editCardForm'),
+    editTitleInput: document.getElementById('editCardTitle'),
+    editDescriptionInput: document.getElementById('editCardDescription'),
+    hint,
+    getViewportCenter: () => workspaceController.getViewportCenter(),
   });
 
   window.addEventListener('beforeunload', () => {
-    clearTimeout(cameraSaveTimer);
-    saveCamera().catch(() => {});
-    unsubscribe();
-    linksRenderer.destroy();
-    cardController.destroy();
-    gestureMachine.destroy();
+    nodeController.destroy();
+    linkController.destroy();
+    workspaceController.destroy();
   }, { once: true });
 }
 
-bootstrap().catch((error) => {
+bootstrapPreview().catch((error) => {
   console.error('BOONWAVE preview bootstrap failed:', error);
-  hint.textContent = 'Ошибка запуска preview — открой консоль браузера';
+  document.getElementById('hint').textContent = 'Ошибка запуска preview — открой консоль браузера';
 });
