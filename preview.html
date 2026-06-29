@@ -10,6 +10,7 @@
     * { box-sizing: border-box; }
     html, body { margin: 0; min-height: 100%; background: #070913; color: #f6f7ff; overflow: hidden; }
     body { min-height: 100svh; }
+    button, input, textarea { font: inherit; }
     .preview-shell { position: relative; min-height: 100svh; background: radial-gradient(circle at 50% -10%, rgba(91,78,255,.22), transparent 36%), #070913; }
     .preview-header { position: fixed; inset: max(12px, env(safe-area-inset-top)) 14px auto; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; pointer-events: none; }
     .preview-badge { padding: 10px 14px; border: 1px solid rgba(255,255,255,.12); border-radius: 16px; background: rgba(14,16,30,.76); backdrop-filter: blur(18px); box-shadow: 0 12px 32px rgba(0,0,0,.28); }
@@ -23,6 +24,21 @@
     .card h2 { margin: 10px 0 8px; font-size: 22px; line-height: 1.05; }
     .card p { margin: 0; color: #b7bdd7; font-size: 13px; line-height: 1.45; }
     .hint { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20; padding: 10px 14px; border-radius: 999px; background: rgba(14,16,30,.78); color: #b7bdd7; border: 1px solid rgba(255,255,255,.1); font-size: 12px; white-space: nowrap; backdrop-filter: blur(16px); pointer-events: none; }
+    .add-button { position: fixed; right: 18px; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 58px); z-index: 30; width: 56px; height: 56px; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; background: linear-gradient(145deg, #7868ff, #5b4adf); color: white; font-size: 32px; line-height: 1; box-shadow: 0 14px 34px rgba(72,50,210,.38); }
+    .sheet[hidden] { display: none; }
+    .sheet { position: fixed; inset: 0; z-index: 50; display: grid; align-items: end; background: rgba(3,4,10,.56); backdrop-filter: blur(8px); }
+    .sheet-panel { padding: 18px 18px calc(18px + env(safe-area-inset-bottom)); border-radius: 28px 28px 0 0; border: 1px solid rgba(255,255,255,.12); background: #111426; box-shadow: 0 -20px 60px rgba(0,0,0,.44); }
+    .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .sheet-head h2 { margin: 0; font-size: 20px; }
+    .close-button { border: 0; background: transparent; color: #c5c9dd; font-size: 24px; }
+    .type-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; margin-bottom: 12px; }
+    .type-button { min-height: 54px; padding: 8px 5px; border-radius: 14px; border: 1px solid rgba(255,255,255,.11); background: #1a1e34; color: #c4c9df; font-size: 11px; }
+    .type-button[aria-pressed="true"] { border-color: #8f80ff; color: white; box-shadow: 0 0 20px rgba(116,94,255,.25); }
+    .field { display: block; margin-top: 10px; }
+    .field span { display: block; margin-bottom: 6px; font-size: 12px; color: #979fbd; }
+    .field input, .field textarea { width: 100%; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: #0c0f1d; color: white; padding: 12px 14px; outline: none; }
+    .field textarea { min-height: 74px; resize: none; }
+    .create-button { width: 100%; margin-top: 14px; padding: 14px; border: 0; border-radius: 16px; background: linear-gradient(135deg, #7d6eff, #5948db); color: white; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -38,8 +54,28 @@
       <div id="world"></div>
     </section>
 
-    <div class="hint">Перетаскивай фон • масштабируй двумя пальцами</div>
+    <button class="add-button" id="addCardButton" type="button" aria-label="Создать карточку">+</button>
+    <div class="hint">Карточки двигаются отдельно • + создаёт новую</div>
   </main>
+
+  <section class="sheet" id="createSheet" hidden>
+    <form class="sheet-panel" id="createCardForm">
+      <div class="sheet-head">
+        <h2>Новая карточка</h2>
+        <button class="close-button" id="closeSheetButton" type="button" aria-label="Закрыть">×</button>
+      </div>
+      <div class="type-grid" id="typeGrid">
+        <button class="type-button" type="button" data-node-type="project" aria-pressed="true">Проект</button>
+        <button class="type-button" type="button" data-node-type="process" aria-pressed="false">Процесс</button>
+        <button class="type-button" type="button" data-node-type="person" aria-pressed="false">Человек</button>
+        <button class="type-button" type="button" data-node-type="idea" aria-pressed="false">Идея</button>
+        <button class="type-button" type="button" data-node-type="goal" aria-pressed="false">Цель</button>
+      </div>
+      <label class="field"><span>Название</span><input id="cardTitle" name="title" maxlength="80" autocomplete="off"></label>
+      <label class="field"><span>Описание</span><textarea id="cardDescription" name="description" maxlength="240"></textarea></label>
+      <button class="create-button" type="submit">Создать карточку</button>
+    </form>
+  </section>
 
   <script type="module" src="./preview.js"></script>
 </body>
