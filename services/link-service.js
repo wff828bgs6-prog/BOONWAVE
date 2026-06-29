@@ -1,5 +1,5 @@
 import store from '../state/store.js';
-import db from '../storage/database.js';
+import storage from '../storage/index.js';
 
 const makeId = (sourceId, targetId) =>
   `link_${sourceId}_${targetId}_${crypto.randomUUID?.() ?? Date.now()}`;
@@ -26,7 +26,7 @@ export async function createLink(sourceId, targetId) {
     createdAt: new Date().toISOString(),
   };
 
-  await db.saveLink(link);
+  await storage.saveLink(link);
   store.setState({ links: [...state.links, link], selectedCardId: targetId });
   return link;
 }
@@ -37,7 +37,7 @@ export async function deleteLinksBetween(firstId, secondId) {
     (link.sourceId === firstId && link.targetId === secondId)
     || (link.sourceId === secondId && link.targetId === firstId));
 
-  await Promise.all(matches.map((link) => db.deleteLink(link.id)));
+  await Promise.all(matches.map((link) => storage.deleteLink(link.id)));
   const deletedIds = new Set(matches.map((link) => link.id));
   store.setState({
     links: state.links.filter((link) => !deletedIds.has(link.id)),
