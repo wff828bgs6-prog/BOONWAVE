@@ -1,11 +1,12 @@
 import store from '../state/store.js';
 
-const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 3;
+export const MIN_ZOOM = 0.35;
+export const BASE_ZOOM = 0.85;
+export const MAX_ZOOM = 1.35;
 const DEFAULT_PADDING = 48;
 
-const clamp = (value, min, max) =>
-  Math.min(max, Math.max(min, value));
+export const clampZoom = (value) =>
+  Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
 
 const getCamera = () => {
   const { camera = {} } = store.getState();
@@ -13,7 +14,7 @@ const getCamera = () => {
   return {
     x: Number.isFinite(camera.x) ? camera.x : 0,
     y: Number.isFinite(camera.y) ? camera.y : 0,
-    zoom: Number.isFinite(camera.zoom) ? camera.zoom : 1,
+    zoom: clampZoom(Number.isFinite(camera.zoom) ? camera.zoom : BASE_ZOOM),
   };
 };
 
@@ -21,7 +22,7 @@ const updateCamera = (x, y, zoom) => {
   const camera = {
     x,
     y,
-    zoom: clamp(zoom, MIN_ZOOM, MAX_ZOOM),
+    zoom: clampZoom(zoom),
   };
 
   store.setState({ camera });
@@ -40,11 +41,7 @@ export function pan(dx, dy) {
 
 export function zoomAt(clientX, clientY, factor) {
   const camera = getCamera();
-  const nextZoom = clamp(
-    camera.zoom * factor,
-    MIN_ZOOM,
-    MAX_ZOOM,
-  );
+  const nextZoom = clampZoom(camera.zoom * factor);
 
   const worldX = (clientX - camera.x) / camera.zoom;
   const worldY = (clientY - camera.y) / camera.zoom;
@@ -72,13 +69,11 @@ export function fitToScreen(bounds) {
   const availableWidth = Math.max(viewportWidth - padding * 2, 1);
   const availableHeight = Math.max(viewportHeight - padding * 2, 1);
 
-  const zoom = clamp(
+  const zoom = clampZoom(
     Math.min(
       availableWidth / contentWidth,
       availableHeight / contentHeight,
     ),
-    MIN_ZOOM,
-    MAX_ZOOM,
   );
 
   const centerX = (minX + maxX) / 2;
@@ -95,4 +90,5 @@ export default {
   pan,
   zoomAt,
   fitToScreen,
+  clampZoom,
 };
