@@ -3,8 +3,12 @@ import storage from '../storage/index.js';
 import StorageAdapter from '../storage/storage-adapter.js';
 import { createNode, normalizeNode } from '../domain/node.js';
 import { mergeNodeData } from '../domain/node-schemas.js';
-import { CARD_MEDIA_SLOTS, getCardMediaIds } from '../domain/card-media.js';
+import { getCardMediaIds } from '../domain/card-media.js';
 import { createMediaRecord } from '../domain/media-record.js';
+import {
+  validatePendingMediaBundle,
+  normalizeStorageError,
+} from '../domain/media-policy.js';
 
 function resolveDependencies(options = {}) {
   return {
@@ -22,12 +26,6 @@ function clone(value) {
   return typeof structuredClone === 'function'
     ? structuredClone(value)
     : JSON.parse(JSON.stringify(value));
-}
-
-function getSlotConfig(type, slot) {
-  const config = CARD_MEDIA_SLOTS[type]?.[slot];
-  if (!config) throw new TypeError(`Unsupported media slot "${slot}" for card type "${type}".`);
-  return config;
 }
 
 function assertFileLike(file) {
@@ -51,23 +49,20 @@ export function buildUpdatedCard(current, patch = {}) {
 }
 
 export function stageCardMedia(card, pendingMedia = []) {
+  const { items } = validatePendingMediaBundle(card.type, pendingMedia);
   const data = clone(card.data);
   const mediaEntries = [];
 
-  for (const pending of pendingMedia) {
-    const config = getSlotConfig(card.type, pending.slot);
+  for (const pending of items) {
     assertFileLike(pending.file);
-
+    const { config, kind, size } = pending;
     const record = createMediaRecord({
       name: pending.file.name || 'Без названия',
       mimeType: pending.file.type || '',
-      size: pending.file.size || 0,
+      size,
+      kind,
       ownerIds: [card.id],
     });
-
-    if (!config.kinds.includes(record.kind)) {
-      throw new TypeError(`Media kind "${record.kind}" is not allowed for slot "${pending.slot}".`);
-    }
 
     const currentValue = data[config.field];
     data[config.field] = config.mode === 'single'
@@ -83,22 +78,27 @@ export function stageCardMedia(card, pendingMedia = []) {
     updatedAt: new Date().toISOString(),
   });
   const activeIds = new Set(getCardMediaIds(stagedCard));
-  const removedMediaIds = getCardMediaIds(card).filter((mediaId) => !activeIds.has(mediaId));
+  const removedMediaIds = getCardMediaIds(card)
+    .filter((mediaId) => !activeIds.has(mediaId));
 
   return { card: stagedCard, mediaEntries, removedMediaIds };
 }
 
 async function persistStagedCard(staged, storageAdapter) {
-  const hasMediaChanges = staged.mediaEntries.length > 0 || staged.removedMediaIds.length > 0;
-  if (!hasMediaChanges) {
-    await storageAdapter.saveCard(staged.card);
+  try {
+    const hasMediaChanges = staged.mediaEntries.length > 0 || staged.removedMediaIds.length > 0;
+    if (!hasMediaChanges) {
+      await storageAdapter.saveCard(staged.card);
+      return staged;
+    }
+    if (!supportsAtomicBundleSave(storageAdapter)) {
+      throw new Error('Atomic card and media save is not implemented for this storage adapter.');
+    }
+    await storageAdapter.saveCardBundle(staged);
     return staged;
+  } catch (error) {
+    throw normalizeStorageError(error);
   }
-  if (!supportsAtomicBundleSave(storageAdapter)) {
-    throw new Error('Atomic card and media save is not implemented for this storage adapter.');
-  }
-  await storageAdapter.saveCardBundle(staged);
-  return staged;
 }
 
 function commitCardToStore(stateStore, card) {
@@ -123,8 +123,9 @@ export async function updateCardWithMedia(cardId, patch = {}, pendingMedia = [],
   if (!current) throw new Error(`Card not found: ${cardId}`);
 
   const staged = stageCardMedia(buildUpdatedCard(current, patch), pendingMedia);
+  const activeIds = new Set(getCardMediaIds(staged.card));
   staged.removedMediaIds = getCardMediaIds(current)
-    .filter((mediaId) => !new Set(getCardMediaIds(staged.card)).has(mediaId));
+    .filter((mediaId) => !activeIds.has(mediaId));
 
   await persistStagedCard(staged, storageAdapter);
   commitCardToStore(stateStore, staged.card);
