@@ -11,12 +11,13 @@ const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const midpoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 
 export class GestureMachine {
-  constructor(element) {
+  constructor(element, { interactiveSelector = '[data-card-id]' } = {}) {
     if (!(element instanceof Element)) {
       throw new TypeError('GestureMachine expects a DOM element.');
     }
 
     this.element = element;
+    this.interactiveSelector = interactiveSelector;
     this.pointers = new Map();
     this.state = STATES.IDLE;
     this.lastPanPoint = null;
@@ -41,6 +42,9 @@ export class GestureMachine {
   }
 
   onPointerDown(event) {
+    const startedOnInteractive = Boolean(event.target.closest?.(this.interactiveSelector));
+    if (startedOnInteractive && this.pointers.size === 0) return;
+
     this.element.setPointerCapture?.(event.pointerId);
     this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
@@ -87,6 +91,8 @@ export class GestureMachine {
   }
 
   onPointerUp(event) {
+    if (!this.pointers.has(event.pointerId)) return;
+
     this.pointers.delete(event.pointerId);
     this.element.releasePointerCapture?.(event.pointerId);
 
