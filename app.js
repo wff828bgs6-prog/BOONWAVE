@@ -1,74 +1,58 @@
-// app.js
-import store from './state/store.js';
-import db from './storage/database.js';
-import { GestureMachine } from './canvas/gesture-machine.js';
-import { createLinksRenderer } from './canvas/links.js';
+import { bootstrapBoonwave } from './bootstrap/boonwave-bootstrap.js';
 
 class BoonwaveApp {
   constructor() {
-    this.gestureMachine = null;
-    this.linksRenderer = null;
-    this.canvasObserver = null;
+    this.runtime = null;
+    this.mounting = null;
+    this.observer = null;
+  }
+
+  findElements() {
+    const canvas = document.getElementById('canvas') || document.querySelector('[data-boonwave-canvas]');
+    const world = document.getElementById('world') || canvas?.querySelector('[data-boonwave-world]');
+    return { canvas, world };
   }
 
   async init() {
-    console.log('Инициализация ядра BOONWAVE...');
+    const { canvas, world } = this.findElements();
 
-    try {
-      await db.initDB();
-      console.log('База данных IndexedDB успешно подключена.');
-
-      await db.loadAllData();
-      this.mountCanvasCore();
-
-      const currentState = store.getState();
-      console.log('Ядро успешно запущено. Текущее состояние:', currentState);
-
-      this.bindGlobalEvents();
-    } catch (error) {
-      console.error('Критическая ошибка при старте приложения BOONWAVE:', error);
-    }
-  }
-
-  findCanvasElement() {
-    return document.getElementById('canvas') || document.querySelector('[data-boonwave-canvas]');
-  }
-
-  mountCanvasCore() {
-    const canvasElement = this.findCanvasElement();
-
-    if (canvasElement) {
-      if (!this.gestureMachine) {
-        this.gestureMachine = new GestureMachine(canvasElement);
+    if (!canvas || !world) {
+      if (!this.observer) {
+        this.observer = new MutationObserver(() => {
+          this.init().catch((error) => console.error('BOONWAVE mount failed:', error));
+        });
+        this.observer.observe(document.body, { childList: true, subtree: true });
       }
-
-      if (!this.linksRenderer) {
-        this.linksRenderer = createLinksRenderer(canvasElement);
-      }
-
-      if (this.canvasObserver) {
-        this.canvasObserver.disconnect();
-        this.canvasObserver = null;
-      }
-      return;
+      return null;
     }
 
-    if (this.canvasObserver) return;
+    if (!this.runtime && !this.mounting) {
+      this.mounting = bootstrapBoonwave({ canvas, world })
+        .then((runtime) => {
+          this.runtime = runtime;
+          return runtime;
+        })
+        .finally(() => {
+          this.mounting = null;
+        });
+    }
 
-    this.canvasObserver = new MutationObserver(() => this.mountCanvasCore());
-    this.canvasObserver.observe(document.body, { childList: true, subtree: true });
+    const runtime = await this.mounting;
+    this.observer?.disconnect();
+    this.observer = null;
+    return runtime;
   }
 
-  bindGlobalEvents() {
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        this.linksRenderer?.scheduleRender();
-      }
-    });
+  destroy() {
+    this.observer?.disconnect();
+    this.runtime?.destroy();
+    this.runtime = null;
   }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   const app = new BoonwaveApp();
-  app.init();
-});
+  app.init().catch((error) => console.error('BOONWAVE startup failed:', error));
+}, { once: true });
+
+export { BoonwaveApp };
