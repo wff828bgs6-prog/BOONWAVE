@@ -6,11 +6,11 @@ const LAYER_ID = 'boonwave-links-layer';
 const asFinite = (value, fallback = 0) =>
   Number.isFinite(Number(value)) ? Number(value) : fallback;
 
-const getCardRect = (card = {}) => {
+export const resolveCardRect = (card = {}, measuredSize = {}) => {
   const x = asFinite(card.x ?? card.position?.x);
   const y = asFinite(card.y ?? card.position?.y);
-  const width = Math.max(asFinite(card.width ?? card.size?.width, 220), 1);
-  const height = Math.max(asFinite(card.height ?? card.size?.height, 140), 1);
+  const width = Math.max(asFinite(measuredSize.width, asFinite(card.width ?? card.size?.width, 220)), 1);
+  const height = Math.max(asFinite(measuredSize.height, asFinite(card.height ?? card.size?.height, 140)), 1);
 
   return { x, y, width, height };
 };
@@ -23,7 +23,7 @@ const getEndpointId = (link, side) => {
   return candidates.find((value) => typeof value === 'string' && value.length > 0) ?? null;
 };
 
-const getAnchor = (fromRect, toRect) => {
+export const getAnchor = (fromRect, toRect) => {
   const fromCenter = {
     x: fromRect.x + fromRect.width / 2,
     y: fromRect.y + fromRect.height / 2,
@@ -51,7 +51,7 @@ const getAnchor = (fromRect, toRect) => {
   };
 };
 
-const createPathData = (start, end) => {
+export const createPathData = (start, end) => {
   const dx = end.x - start.x;
   const curve = Math.max(48, Math.abs(dx) * 0.45);
   const direction = dx >= 0 ? 1 : -1;
@@ -85,12 +85,29 @@ export class LinksRenderer {
     this.frameId = null;
     this.pendingFullRender = false;
     this.pendingCardIds = new Set();
+    this.observedCards = new Map();
     this.unsubscribe = store.subscribe((next, previous) => this.handleStoreChange(next, previous));
-    this.resizeObserver = typeof ResizeObserver === 'function'
+    this.cardResizeObserver = typeof ResizeObserver === 'function'
+      ? new ResizeObserver((entries) => {
+        const cardIds = entries
+          .map((entry) => entry.target.dataset.cardId)
+          .filter(Boolean);
+        if (cardIds.length > 0) this.scheduleRender({ cardIds });
+      })
+      : null;
+    this.canvasResizeObserver = typeof ResizeObserver === 'function'
       ? new ResizeObserver(() => this.scheduleRender({ full: true }))
       : null;
+    this.mutationObserver = typeof MutationObserver === 'function'
+      ? new MutationObserver(() => {
+        this.syncObservedCards();
+        this.scheduleRender({ full: true });
+      })
+      : null;
 
-    this.resizeObserver?.observe(this.canvasElement);
+    this.canvasResizeObserver?.observe(this.canvasElement);
+    this.mutationObserver?.observe(this.canvasElement, { childList: true, subtree: true });
+    this.syncObservedCards();
     this.scheduleRender({ full: true });
   }
 
@@ -121,6 +138,26 @@ export class LinksRenderer {
 
     this.canvasElement.prepend(svg);
     return svg;
+  }
+
+  syncObservedCards() {
+    const current = new Map(
+      [...this.canvasElement.querySelectorAll('[data-card-id]')]
+        .map((element) => [element.dataset.cardId, element])
+        .filter(([id]) => Boolean(id)),
+    );
+
+    for (const [id, element] of this.observedCards) {
+      if (current.get(id) === element) continue;
+      this.cardResizeObserver?.unobserve(element);
+      this.observedCards.delete(id);
+    }
+
+    for (const [id, element] of current) {
+      if (this.observedCards.get(id) === element) continue;
+      this.observedCards.set(id, element);
+      this.cardResizeObserver?.observe(element);
+    }
   }
 
   handleStoreChange(next, previous) {
@@ -159,12 +196,22 @@ export class LinksRenderer {
       const changedCardIds = new Set(this.pendingCardIds);
       this.pendingFullRender = false;
       this.pendingCardIds.clear();
+      this.syncObservedCards();
       this.render({ full: renderFull, cardIds: changedCardIds });
     });
   }
 
   getPath(linkId) {
     return this.svg.querySelector(`[data-link-id="${CSS.escape(linkId)}"]`);
+  }
+
+  getMeasuredRect(cardId, card) {
+    const element = this.observedCards.get(cardId)
+      ?? this.canvasElement.querySelector(`[data-card-id="${CSS.escape(cardId)}"]`);
+    return resolveCardRect(card, {
+      width: element?.offsetWidth,
+      height: element?.offsetHeight,
+    });
   }
 
   renderLink(link, cardMap, selectedCardId) {
@@ -182,8 +229,8 @@ export class LinksRenderer {
       return linkId;
     }
 
-    const sourceRect = getCardRect(sourceCard);
-    const targetRect = getCardRect(targetCard);
+    const sourceRect = this.getMeasuredRect(sourceId, sourceCard);
+    const targetRect = this.getMeasuredRect(targetId, targetCard);
     const start = getAnchor(sourceRect, targetRect);
     const end = getAnchor(targetRect, sourceRect);
     const isActive = Boolean(
@@ -243,7 +290,10 @@ export class LinksRenderer {
   destroy() {
     if (this.frameId !== null) cancelAnimationFrame(this.frameId);
     this.unsubscribe?.();
-    this.resizeObserver?.disconnect();
+    this.cardResizeObserver?.disconnect();
+    this.canvasResizeObserver?.disconnect();
+    this.mutationObserver?.disconnect();
+    this.observedCards.clear();
     this.svg?.remove();
   }
 }
