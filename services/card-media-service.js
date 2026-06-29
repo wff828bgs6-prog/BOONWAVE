@@ -68,7 +68,10 @@ export async function attachMediaToCard(cardId, mediaId, slot, options = {}) {
     throw new TypeError(`Media kind "${loaded.record.kind}" is not allowed for slot "${slot}".`);
   }
 
-  await attachMediaOwner(mediaId, cardId, { storageAdapter });
+  const wasAlreadyOwned = loaded.record.ownerIds.includes(cardId);
+  if (!wasAlreadyOwned) {
+    await attachMediaOwner(mediaId, cardId, { storageAdapter });
+  }
 
   const currentValue = card.data?.[config.field];
   const previousMediaId = config.mode === 'single' ? currentValue : null;
@@ -90,7 +93,9 @@ export async function attachMediaToCard(cardId, mediaId, slot, options = {}) {
 
     return updatedCard;
   } catch (error) {
-    await detachMediaOwner(mediaId, cardId, { storageAdapter }).catch(() => {});
+    if (!wasAlreadyOwned) {
+      await detachMediaOwner(mediaId, cardId, { storageAdapter }).catch(() => {});
+    }
     throw error;
   }
 }
