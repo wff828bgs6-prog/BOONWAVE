@@ -64,6 +64,57 @@ test('IndexedDB saves card, new cover, and old-cover removal in one transaction'
   assert.equal(await newMedia.blob.text(), 'new');
 });
 
+test('cover replacement preserves an old blob that still has another owner', async () => {
+  resetIndexedDB();
+  const { IndexedDBAdapter } = await import('../storage/indexeddb-adapter.js');
+  const adapter = new IndexedDBAdapter();
+  await adapter.init();
+
+  const original = createNode({
+    type: 'goal',
+    title: 'Shared cover owner',
+    data: { coverMediaId: 'shared-old-cover' },
+  });
+  const other = createNode({ type: 'project', title: 'Other owner' });
+  const sharedRecord = createMediaRecord({
+    name: 'shared-old.png',
+    mimeType: 'image/png',
+    size: 10,
+    ownerIds: [original.id, other.id],
+  });
+  sharedRecord.id = 'shared-old-cover';
+
+  await adapter.saveCard(original);
+  await adapter.saveCard(other);
+  await adapter.saveMedia(sharedRecord, new Blob(['shared-old']));
+
+  const replacement = createMediaRecord({
+    name: 'replacement.png',
+    mimeType: 'image/png',
+    size: 11,
+    ownerIds: [original.id],
+  });
+  const updated = normalizeNode({
+    ...original,
+    data: { ...original.data, coverMediaId: replacement.id },
+    updatedAt: new Date().toISOString(),
+  });
+
+  await adapter.saveCardBundle({
+    card: updated,
+    mediaEntries: [{ record: replacement, blob: new Blob(['replacement']) }],
+    removedMediaIds: [sharedRecord.id],
+  });
+
+  const oldMedia = await adapter.loadMedia(sharedRecord.id);
+  assert.deepEqual(oldMedia.record.ownerIds, [other.id]);
+  assert.equal(await oldMedia.blob.text(), 'shared-old');
+
+  const newMedia = await adapter.loadMedia(replacement.id);
+  assert.deepEqual(newMedia.record.ownerIds, [original.id]);
+  assert.equal(await newMedia.blob.text(), 'replacement');
+});
+
 test('failed IndexedDB bundle write rolls back the card update', async () => {
   resetIndexedDB();
   const { IndexedDBAdapter } = await import('../storage/indexeddb-adapter.js');
