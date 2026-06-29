@@ -22,21 +22,19 @@ function createContainer({ fields = {}, views = {}, mediaInputs = [] } = {}) {
   };
 }
 
-test('typed form extraction preserves strings and numeric values', () => {
+test('typed form extraction preserves active schema strings and numeric values', () => {
   const container = createContainer({
     fields: {
       status: { value: 'active' },
-      priority: { value: 'high' },
       progress: { value: '64' },
-      targetDate: { value: '2026-12-31' },
     },
   });
 
   const data = readTypedFormData(container, 'goal');
-  assert.equal(data.status, 'active');
-  assert.equal(data.priority, 'high');
-  assert.equal(data.progress, 64);
-  assert.equal(data.targetDate, '2026-12-31');
+  assert.deepEqual(data, {
+    status: 'active',
+    progress: 64,
+  });
 });
 
 test('view form extraction keeps independent compact and working frames', () => {
