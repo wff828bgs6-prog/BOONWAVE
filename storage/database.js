@@ -1,10 +1,11 @@
 // storage/database.js
 import store from '../state/store.js';
+import { DATABASE_VERSION, runSchemaMigrations } from './migrations.js';
 
 class BoonwaveDatabase {
   constructor() {
     this.dbName = 'boonwave_db';
-    this.version = 2;
+    this.version = DATABASE_VERSION;
     this.db = null;
   }
 
@@ -16,25 +17,25 @@ class BoonwaveDatabase {
 
       request.onupgradeneeded = (event) => {
         const db = event.target.result;
-        if (!db.objectStoreNames.contains('cards')) {
-          db.createObjectStore('cards', { keyPath: 'id' });
-        }
-        if (!db.objectStoreNames.contains('links')) {
-          db.createObjectStore('links', { keyPath: 'id' });
-        }
-        if (!db.objectStoreNames.contains('settings')) {
-          db.createObjectStore('settings', { keyPath: 'key' });
-        }
+        runSchemaMigrations(db, event.oldVersion);
       };
 
       request.onsuccess = (event) => {
         this.db = event.target.result;
+        this.db.onversionchange = () => {
+          this.db?.close();
+          this.db = null;
+        };
         resolve(this.db);
       };
 
       request.onerror = (event) => {
         console.error('IndexedDB open error:', event.target.error);
         reject(event.target.error);
+      };
+
+      request.onblocked = () => {
+        console.warn('IndexedDB upgrade is blocked by another open BOONWAVE tab.');
       };
     });
   }
