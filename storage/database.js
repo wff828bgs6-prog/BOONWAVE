@@ -79,31 +79,36 @@ class BoonwaveDatabase {
   }
 
   async loadAllData() {
-    const cardsStore = await this._getStore('cards', 'readonly');
-    const linksStore = await this._getStore('links', 'readonly');
+    const db = await this.initDB();
 
-    const getAll = (store) => new Promise((resolve, reject) => {
-      const req = store.getAll();
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = (e) => reject(e.target.error);
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['cards', 'links'], 'readonly');
+      const cardsRequest = transaction.objectStore('cards').getAll();
+      const linksRequest = transaction.objectStore('links').getAll();
+
+      transaction.oncomplete = () => {
+        const cardsObj = {};
+        for (const card of cardsRequest.result ?? []) {
+          cardsObj[card.id] = card;
+        }
+
+        store.setState({
+          cards: cardsObj,
+          links: linksRequest.result ?? [],
+        });
+
+        resolve({ cards: cardsObj, links: linksRequest.result ?? [] });
+      };
+
+      transaction.onerror = () => {
+        console.error('Ошибка загрузки данных из БД:', transaction.error);
+        reject(transaction.error);
+      };
+
+      transaction.onabort = () => {
+        reject(transaction.error ?? new Error('IndexedDB transaction aborted.'));
+      };
     });
-
-    try {
-      const cardsList = await getAll(cardsStore);
-      const linksList = await getAll(linksStore);
-
-      const cardsObj = {};
-      cardsList.forEach(card => { cardsObj[card.id] = card; });
-
-      store.setState({
-        cards: cardsObj,
-        links: linksList
-      });
-      
-      console.log('Данные успешно загружены из IndexedDB в Store');
-    } catch (error) {
-      console.error('Ошибка загрузки данных из БД:', error);
-    }
   }
 
   async runMigrationFromV6(legacyData) {
