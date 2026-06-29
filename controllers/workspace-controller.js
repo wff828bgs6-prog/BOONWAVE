@@ -10,15 +10,9 @@ import { loadMedia } from '../services/media-service.js';
 import { loadWorkspace, saveCamera } from '../services/workspace-service.js';
 
 const STATUS_LABELS = Object.freeze({
-  preparation: 'Подготовка',
-  planned: 'Запланировано',
-  active: 'Активно',
-  draft: 'Черновик',
-  in_progress: 'В работе',
-  paused: 'На паузе',
-  completed: 'Завершено',
+  preparation: 'Подготовка', planned: 'Запланировано', active: 'Активно', draft: 'Черновик',
+  in_progress: 'В работе', paused: 'На паузе', completed: 'Завершено',
 });
-
 const VIEW_LABELS = Object.freeze({ compact: 'Компактно', standard: 'Стандартно', full: 'Полностью' });
 
 function ensureViewStyles() {
@@ -26,18 +20,20 @@ function ensureViewStyles() {
   const style = document.createElement('style');
   style.id = 'boonwave-card-view-styles';
   style.textContent = `
-    .card { overflow: visible; }
+    .card { overflow:visible; padding-bottom:52px; }
     .card-cover { display:none; overflow:hidden; background:rgba(var(--node-rgb),.12); }
     .card-cover img { width:100%; height:100%; object-fit:cover; transform-origin:center; pointer-events:none; }
-    .card-view-button { position:absolute; top:8px; right:8px; z-index:4; width:32px; height:32px; padding:0; border:1px solid rgba(var(--node-rgb),.35); border-radius:50%; background:rgba(9,12,25,.72); color:white; display:grid; place-items:center; }
+    .card-view-button { position:absolute; right:10px; bottom:10px; z-index:4; width:32px; height:32px; padding:0; border:1px solid rgba(var(--node-rgb),.35); border-radius:50%; background:rgba(9,12,25,.72); color:white; display:grid; place-items:center; }
     .card-view-button svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
     .card-full { display:none; margin-top:14px; padding-top:12px; border-top:1px solid rgba(var(--node-rgb),.22); color:var(--bw-text-secondary); font-size:11px; line-height:1.5; white-space:pre-wrap; }
-    .card[data-view-mode="compact"] { width:132px; min-height:156px; padding:8px; border-radius:26px; }
+    .card-progress { position:absolute; left:16px; right:52px; bottom:18px; height:5px; border-radius:999px; background:rgba(143,151,184,.18); overflow:hidden; }
+    .card-progress > span { display:block; height:100%; width:0; border-radius:inherit; background:linear-gradient(90deg,rgb(var(--bw-brand-violet)),rgb(var(--bw-brand-cyan))); }
+    .card[data-view-mode="compact"] { width:132px; min-height:156px; padding:8px 8px 42px; border-radius:26px; }
     .card[data-view-mode="compact"] .card-cover { display:block; width:116px; height:116px; }
-    .card[data-view-mode="compact"] .card-head, .card[data-view-mode="compact"] p, .card[data-view-mode="compact"] .card-meta, .card[data-view-mode="compact"] .card-full { display:none; }
+    .card[data-view-mode="compact"] .card-head, .card[data-view-mode="compact"] p, .card[data-view-mode="compact"] .card-meta, .card[data-view-mode="compact"] .card-full, .card[data-view-mode="compact"] .card-progress { display:none; }
     .card[data-view-mode="compact"] h2 { margin:8px 2px 2px; font-size:14px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; }
-    .card[data-view-mode="compact"] .card-view-button { top:4px; right:4px; }
-    .card[data-view-mode="standard"] .card-cover { display:none; }
+    .card[data-view-mode="compact"] .card-view-button { right:8px; bottom:8px; }
+    .card[data-view-mode="standard"] .card-cover { display:block; width:100%; height:92px; margin:-18px -18px 14px; width:calc(100% + 36px); border-radius:var(--bw-radius-card) var(--bw-radius-card) 0 0; }
     .card[data-view-mode="full"] { width:330px; min-height:250px; }
     .card[data-view-mode="full"] .card-cover { display:block; width:100%; height:150px; margin-bottom:14px; border-radius:18px; }
     .card[data-view-mode="full"] .card-full { display:block; }
@@ -59,6 +55,11 @@ function getNodeMeta(card) {
   if (card.type === 'person') return [data.role, data.organization].filter(Boolean);
   if (card.type === 'idea') return [STATUS_LABELS[data.status] ?? data.status, data.category].filter(Boolean);
   return [];
+}
+
+function getProgress(card) {
+  const value = Number(card.data?.progress);
+  return Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : null;
 }
 
 function getCoverMediaId(card) {
@@ -124,7 +125,7 @@ export class WorkspaceController {
   createCardElement() {
     const element = document.createElement('article');
     element.className = 'card';
-    element.innerHTML = '<button class="card-view-button" type="button" aria-label="Изменить вид карточки"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg></button><div class="card-cover"><img alt=""></div><div class="card-head"><div class="card-type"></div><div class="card-status"></div></div><h2></h2><p></p><div class="card-meta"></div><div class="card-full"></div>';
+    element.innerHTML = '<button class="card-view-button" type="button" aria-label="Изменить вид карточки"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg></button><div class="card-cover"><img alt=""></div><div class="card-head"><div class="card-type"></div><div class="card-status"></div></div><h2></h2><p></p><div class="card-meta"></div><div class="card-full"></div><div class="card-progress"><span></span></div>';
     const button = element.querySelector('.card-view-button');
     button.addEventListener('pointerdown', (event) => event.stopPropagation());
     button.addEventListener('click', (event) => {
@@ -138,8 +139,10 @@ export class WorkspaceController {
   async applyCover(element, card, view) {
     const image = element.querySelector('.card-cover img');
     const mediaId = getCoverMediaId(card);
-    image.style.transform = `scale(${view.cover.scale})`;
-    image.style.objectPosition = `${view.cover.positionX}% ${view.cover.positionY}%`;
+    const frame = view.mode === 'compact' ? view.coverFrames.compact : view.coverFrames.working;
+    image.style.transform = `scale(${frame.scale})`;
+    image.style.objectPosition = `${frame.positionX}% ${frame.positionY}%`;
+    element.dataset.coverShape = frame.shape;
     if (!mediaId) { image.removeAttribute('src'); return; }
     let url = this.mediaUrls.get(mediaId);
     if (!url) {
@@ -154,9 +157,9 @@ export class WorkspaceController {
   updateCardElement(element, card, state, linkSourceId) {
     const meta = getNodeMeta(card);
     const view = normalizeNodeView(card.view);
+    const progress = getProgress(card);
     element.dataset.nodeType = card.type;
     element.dataset.viewMode = view.mode;
-    element.dataset.coverShape = view.cover.shape;
     element.dataset.selected = String(state.selectedCardId === card.id);
     element.dataset.linkSource = String(linkSourceId === card.id);
     element.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
@@ -167,6 +170,9 @@ export class WorkspaceController {
     element.querySelector('.card-meta').textContent = meta.slice(1).join(' • ');
     element.querySelector('.card-full').textContent = formatFullData(card) || 'Дополнительная информация пока не заполнена';
     element.querySelector('.card-view-button').title = `${VIEW_LABELS[view.mode]}. Нажми для следующего режима`;
+    const progressElement = element.querySelector('.card-progress');
+    progressElement.hidden = progress === null;
+    progressElement.querySelector('span').style.width = `${progress ?? 0}%`;
     this.applyCover(element, card, view).catch((error) => console.error('Cover render failed:', error));
   }
 
