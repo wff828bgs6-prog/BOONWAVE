@@ -10,9 +10,11 @@ import { loadMedia } from '../services/media-service.js';
 import { loadWorkspace, saveCamera } from '../services/workspace-service.js';
 import {
   getCoverMediaId,
+  collectActiveCoverMediaIds,
   getCoverFallback,
   getCardProgress,
 } from '../ui/card-presentation.js';
+import { CoverLoadCoordinator } from '../ui/cover-load-coordinator.js';
 
 const STATUS_LABELS = Object.freeze({
   preparation: 'Подготовка', planned: 'Запланировано', active: 'Активно', draft: 'Черновик',
@@ -97,6 +99,7 @@ export class WorkspaceController {
     this.linksRenderer = null;
     this.unsubscribe = null;
     this.mediaUrls = new Map();
+    this.coverLoads = new CoverLoadCoordinator();
     this.abortController = new AbortController();
   }
 
@@ -139,6 +142,7 @@ export class WorkspaceController {
     const image = element.querySelector('.card-cover img');
     const fallback = element.querySelector('.card-cover-fallback');
     const mediaId = getCoverMediaId(card);
+    const request = this.coverLoads.begin(card.id, mediaId);
     const frame = view.mode === 'compact' ? view.coverFrames.compact : view.coverFrames.working;
     image.style.transform = `scale(${frame.scale})`;
     image.style.objectPosition = `${frame.positionX}% ${frame.positionY}%`;
@@ -152,14 +156,30 @@ export class WorkspaceController {
     let url = this.mediaUrls.get(mediaId);
     if (!url) {
       const loaded = await loadMedia(mediaId);
-      if (!loaded?.blob) return;
+      if (!loaded?.blob || !this.coverLoads.isCurrent(request)) return;
       url = URL.createObjectURL(loaded.blob);
       this.mediaUrls.set(mediaId, url);
     }
-    if (element.dataset.cardId !== card.id) return;
+
+    const currentCard = store.getState().cards[card.id];
+    if (
+      !this.coverLoads.isCurrent(request)
+      || element.dataset.cardId !== card.id
+      || getCoverMediaId(currentCard) !== mediaId
+    ) return;
+
     image.src = url;
     image.alt = card.title ? `Обложка: ${card.title}` : 'Обложка карточки';
     element.dataset.hasCover = 'true';
+  }
+
+  cleanupUnusedMediaUrls(cards = store.getState().cards) {
+    const activeIds = collectActiveCoverMediaIds(cards);
+    for (const [mediaId, url] of this.mediaUrls) {
+      if (activeIds.has(mediaId)) continue;
+      URL.revokeObjectURL(url);
+      this.mediaUrls.delete(mediaId);
+    }
   }
 
   updateCardElement(element, card, state, linkSourceId) {
@@ -195,16 +215,25 @@ export class WorkspaceController {
         existing.delete(card.id);
         this.updateCardElement(element, card, state, linkSourceId);
       }
-      for (const element of existing.values()) element.remove();
+      for (const element of existing.values()) {
+        this.coverLoads.delete(element.dataset.cardId);
+        element.remove();
+      }
+      this.cleanupUnusedMediaUrls(state.cards);
       return;
     }
     for (const id of [...new Set(cardIds.filter(Boolean))]) {
       const card = state.cards[id];
       let element = this.world.querySelector(`[data-card-id="${CSS.escape(id)}"]`);
-      if (!card) { element?.remove(); continue; }
+      if (!card) {
+        this.coverLoads.delete(id);
+        element?.remove();
+        continue;
+      }
       if (!element) { element = this.createCardElement(); element.dataset.cardId = card.id; this.world.append(element); }
       this.updateCardElement(element, card, state, linkSourceId);
     }
+    this.cleanupUnusedMediaUrls(state.cards);
   }
 
   applyCamera() { const { camera } = store.getState(); this.world.style.transform = `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`; }
@@ -251,6 +280,7 @@ export class WorkspaceController {
     this.gestureMachine?.destroy();
     for (const url of this.mediaUrls.values()) URL.revokeObjectURL(url);
     this.mediaUrls.clear();
+    this.coverLoads.clear();
   }
 }
 
