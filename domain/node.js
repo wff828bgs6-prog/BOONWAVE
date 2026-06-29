@@ -8,6 +8,9 @@ import {
 
 export { NODE_SCHEMA_VERSION, NODE_TYPES, validateNode };
 
+export const CARD_VIEW_MODES = Object.freeze(['compact', 'standard', 'full']);
+export const COVER_SHAPES = Object.freeze(['rounded-square', 'circle', 'portrait', 'landscape']);
+
 const DEFAULT_TITLES = Object.freeze({
   project: 'Новый проект',
   process: 'Новый процесс',
@@ -20,6 +23,21 @@ const finiteNumber = (value, fallback) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
 };
+
+const clamp = (value, min, max, fallback) => Math.min(max, Math.max(min, finiteNumber(value, fallback)));
+
+export function normalizeNodeView(raw = {}) {
+  return {
+    mode: CARD_VIEW_MODES.includes(raw.mode) ? raw.mode : 'standard',
+    compactLabel: String(raw.compactLabel ?? '').trim(),
+    cover: {
+      shape: COVER_SHAPES.includes(raw.cover?.shape) ? raw.cover.shape : 'rounded-square',
+      scale: clamp(raw.cover?.scale, 1, 3, 1),
+      positionX: clamp(raw.cover?.positionX, 0, 100, 50),
+      positionY: clamp(raw.cover?.positionY, 0, 100, 50),
+    },
+  };
+}
 
 export function normalizeNode(raw = {}) {
   if (!NODE_TYPES.includes(raw.type)) {
@@ -39,6 +57,7 @@ export function normalizeNode(raw = {}) {
     width: Math.max(1, Math.round(finiteNumber(raw.width, 230))),
     height: Math.max(1, Math.round(finiteNumber(raw.height, 138))),
     data: normalizeNodeData(raw.type, raw.data),
+    view: normalizeNodeView(raw.view),
     createdAt: raw.createdAt || now,
     updatedAt: raw.updatedAt || now,
   };
@@ -51,7 +70,7 @@ export function normalizeNode(raw = {}) {
   return node;
 }
 
-export function createNode({ type, title, description = '', x = 0, y = 0, data } = {}) {
+export function createNode({ type, title, description = '', x = 0, y = 0, data, view } = {}) {
   if (!NODE_TYPES.includes(type)) {
     throw new TypeError(`Unsupported BOONWAVE node type: ${type}`);
   }
@@ -69,6 +88,7 @@ export function createNode({ type, title, description = '', x = 0, y = 0, data }
     width: 230,
     height: 138,
     data: data ?? getNodeDataDefaults(type),
+    view,
     createdAt: now,
     updatedAt: now,
   });
