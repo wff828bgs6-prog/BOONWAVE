@@ -3,7 +3,10 @@ import { GestureMachine } from '../canvas/gesture-machine.js';
 import { CardController } from '../canvas/card-controller.js';
 import { createLinksRenderer } from '../canvas/links.js';
 import { NODE_TYPE_LABELS } from '../domain/node-schemas.js';
+import { normalizeNodeView } from '../domain/node.js';
 import { updateCardNode } from '../services/node-service.js';
+import { cycleCardView } from '../services/card-view-service.js';
+import { loadMedia } from '../services/media-service.js';
 import { loadWorkspace, saveCamera } from '../services/workspace-service.js';
 
 const STATUS_LABELS = Object.freeze({
@@ -16,27 +19,61 @@ const STATUS_LABELS = Object.freeze({
   completed: 'Завершено',
 });
 
+const VIEW_LABELS = Object.freeze({ compact: 'Компактно', standard: 'Стандартно', full: 'Полностью' });
+
+function ensureViewStyles() {
+  if (document.getElementById('boonwave-card-view-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'boonwave-card-view-styles';
+  style.textContent = `
+    .card { overflow: visible; }
+    .card-cover { display:none; overflow:hidden; background:rgba(var(--node-rgb),.12); }
+    .card-cover img { width:100%; height:100%; object-fit:cover; transform-origin:center; pointer-events:none; }
+    .card-view-button { position:absolute; top:8px; right:8px; z-index:4; width:32px; height:32px; padding:0; border:1px solid rgba(var(--node-rgb),.35); border-radius:50%; background:rgba(9,12,25,.72); color:white; display:grid; place-items:center; }
+    .card-view-button svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+    .card-full { display:none; margin-top:14px; padding-top:12px; border-top:1px solid rgba(var(--node-rgb),.22); color:var(--bw-text-secondary); font-size:11px; line-height:1.5; white-space:pre-wrap; }
+    .card[data-view-mode="compact"] { width:132px; min-height:156px; padding:8px; border-radius:26px; }
+    .card[data-view-mode="compact"] .card-cover { display:block; width:116px; height:116px; }
+    .card[data-view-mode="compact"] .card-head, .card[data-view-mode="compact"] p, .card[data-view-mode="compact"] .card-meta, .card[data-view-mode="compact"] .card-full { display:none; }
+    .card[data-view-mode="compact"] h2 { margin:8px 2px 2px; font-size:14px; line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; }
+    .card[data-view-mode="compact"] .card-view-button { top:4px; right:4px; }
+    .card[data-view-mode="standard"] .card-cover { display:none; }
+    .card[data-view-mode="full"] { width:330px; min-height:250px; }
+    .card[data-view-mode="full"] .card-cover { display:block; width:100%; height:150px; margin-bottom:14px; border-radius:18px; }
+    .card[data-view-mode="full"] .card-full { display:block; }
+    .card[data-cover-shape="rounded-square"] .card-cover { border-radius:24px; }
+    .card[data-cover-shape="circle"] .card-cover { border-radius:50%; }
+    .card[data-cover-shape="portrait"][data-view-mode="compact"] .card-cover { width:90px; height:116px; margin-inline:auto; border-radius:20px; }
+    .card[data-cover-shape="landscape"][data-view-mode="compact"] .card-cover { width:116px; height:82px; margin:17px 0; border-radius:18px; }
+  `;
+  document.head.append(style);
+}
+
 function getNodeMeta(card) {
   const data = card.data ?? {};
-
-  if (card.type === 'project') {
-    return [STATUS_LABELS[data.status] ?? data.status, data.address].filter(Boolean);
-  }
-
+  if (card.type === 'project') return [STATUS_LABELS[data.status] ?? data.status, data.address].filter(Boolean);
   if (card.type === 'process' || card.type === 'goal') {
     const progress = Number.isFinite(data.progress) ? `${Math.round(data.progress)}%` : null;
     return [STATUS_LABELS[data.status] ?? data.status, progress].filter(Boolean);
   }
-
-  if (card.type === 'person') {
-    return [data.role, data.organization].filter(Boolean);
-  }
-
-  if (card.type === 'idea') {
-    return [STATUS_LABELS[data.status] ?? data.status, data.category].filter(Boolean);
-  }
-
+  if (card.type === 'person') return [data.role, data.organization].filter(Boolean);
+  if (card.type === 'idea') return [STATUS_LABELS[data.status] ?? data.status, data.category].filter(Boolean);
   return [];
+}
+
+function getCoverMediaId(card) {
+  return card.type === 'person' ? card.data?.avatarMediaId : card.data?.coverMediaId;
+}
+
+function getCompactLabel(card, view) {
+  return view.compactLabel || String(card.title ?? '').trim().split(/\s+/)[0] || NODE_TYPE_LABELS[card.type];
+}
+
+function formatFullData(card) {
+  const entries = Object.entries(card.data ?? {})
+    .filter(([, value]) => value !== '' && value !== null && value !== undefined)
+    .filter(([key]) => !['coverMediaId', 'avatarMediaId', 'images', 'documents', 'files', 'attachments'].includes(key));
+  return entries.map(([key, value]) => `${key}: ${typeof value === 'object' ? JSON.stringify(value) : value}`).join('\n');
 }
 
 function collectChangedCardIds(nextCards = {}, previousCards = {}) {
@@ -46,10 +83,8 @@ function collectChangedCardIds(nextCards = {}, previousCards = {}) {
 
 export class WorkspaceController {
   constructor({ canvas, world, initialSelectedCardId = null }) {
-    if (!(canvas instanceof Element) || !(world instanceof Element)) {
-      throw new TypeError('WorkspaceController expects canvas and world elements.');
-    }
-
+    if (!(canvas instanceof Element) || !(world instanceof Element)) throw new TypeError('WorkspaceController expects canvas and world elements.');
+    ensureViewStyles();
     this.canvas = canvas;
     this.world = world;
     this.initialSelectedCardId = initialSelectedCardId;
@@ -61,35 +96,23 @@ export class WorkspaceController {
     this.cardController = null;
     this.linksRenderer = null;
     this.unsubscribe = null;
+    this.mediaUrls = new Map();
     this.abortController = new AbortController();
   }
 
-  setCardTapHandler(handler) {
-    this.cardTapHandler = typeof handler === 'function' ? handler : null;
-  }
-
-  setBackgroundTapHandler(handler) {
-    this.backgroundTapHandler = typeof handler === 'function' ? handler : null;
-  }
-
-  setLinkSourceProvider(provider) {
-    this.linkSourceProvider = typeof provider === 'function' ? provider : null;
-  }
+  setCardTapHandler(handler) { this.cardTapHandler = typeof handler === 'function' ? handler : null; }
+  setBackgroundTapHandler(handler) { this.backgroundTapHandler = typeof handler === 'function' ? handler : null; }
+  setLinkSourceProvider(provider) { this.linkSourceProvider = typeof provider === 'function' ? provider : null; }
 
   async init({ onEmpty } = {}) {
     await loadWorkspace();
-
     if (Object.keys(store.getState().cards).length === 0 && typeof onEmpty === 'function') {
       await onEmpty();
       await loadWorkspace();
     }
-
     const cards = store.getState().cards;
-    const selectedCardId = this.initialSelectedCardId && cards[this.initialSelectedCardId]
-      ? this.initialSelectedCardId
-      : null;
+    const selectedCardId = this.initialSelectedCardId && cards[this.initialSelectedCardId] ? this.initialSelectedCardId : null;
     store.setState({ selectedCardId });
-
     this.renderCards();
     this.applyCamera();
     this.mountCore();
@@ -101,89 +124,78 @@ export class WorkspaceController {
   createCardElement() {
     const element = document.createElement('article');
     element.className = 'card';
-    element.innerHTML = '<div class="card-head"><div class="card-type"></div><div class="card-status"></div></div><h2></h2><p></p><div class="card-meta"></div>';
+    element.innerHTML = '<button class="card-view-button" type="button" aria-label="Изменить вид карточки"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/></svg></button><div class="card-cover"><img alt=""></div><div class="card-head"><div class="card-type"></div><div class="card-status"></div></div><h2></h2><p></p><div class="card-meta"></div><div class="card-full"></div>';
+    const button = element.querySelector('.card-view-button');
+    button.addEventListener('pointerdown', (event) => event.stopPropagation());
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const cardId = element.dataset.cardId;
+      if (cardId) cycleCardView(cardId).catch((error) => console.error('Card view change failed:', error));
+    });
     return element;
+  }
+
+  async applyCover(element, card, view) {
+    const image = element.querySelector('.card-cover img');
+    const mediaId = getCoverMediaId(card);
+    image.style.transform = `scale(${view.cover.scale})`;
+    image.style.objectPosition = `${view.cover.positionX}% ${view.cover.positionY}%`;
+    if (!mediaId) { image.removeAttribute('src'); return; }
+    let url = this.mediaUrls.get(mediaId);
+    if (!url) {
+      const loaded = await loadMedia(mediaId);
+      if (!loaded?.blob) return;
+      url = URL.createObjectURL(loaded.blob);
+      this.mediaUrls.set(mediaId, url);
+    }
+    if (element.dataset.cardId === card.id) image.src = url;
   }
 
   updateCardElement(element, card, state, linkSourceId) {
     const meta = getNodeMeta(card);
+    const view = normalizeNodeView(card.view);
     element.dataset.nodeType = card.type;
+    element.dataset.viewMode = view.mode;
+    element.dataset.coverShape = view.cover.shape;
     element.dataset.selected = String(state.selectedCardId === card.id);
     element.dataset.linkSource = String(linkSourceId === card.id);
     element.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
     element.querySelector('.card-type').textContent = NODE_TYPE_LABELS[card.type] ?? card.type;
     element.querySelector('.card-status').textContent = meta[0] ?? '';
-    element.querySelector('h2').textContent = card.title;
+    element.querySelector('h2').textContent = view.mode === 'compact' ? getCompactLabel(card, view) : card.title;
     element.querySelector('p').textContent = card.description;
     element.querySelector('.card-meta').textContent = meta.slice(1).join(' • ');
+    element.querySelector('.card-full').textContent = formatFullData(card) || 'Дополнительная информация пока не заполнена';
+    element.querySelector('.card-view-button').title = `${VIEW_LABELS[view.mode]}. Нажми для следующего режима`;
+    this.applyCover(element, card, view).catch((error) => console.error('Cover render failed:', error));
   }
 
   renderCards(cardIds = null) {
     const state = store.getState();
     const linkSourceId = this.linkSourceProvider?.() ?? null;
-
     if (cardIds === null) {
-      const existing = new Map(
-        [...this.world.querySelectorAll('[data-card-id]')]
-          .map((element) => [element.dataset.cardId, element]),
-      );
-
+      const existing = new Map([...this.world.querySelectorAll('[data-card-id]')].map((element) => [element.dataset.cardId, element]));
       for (const card of Object.values(state.cards)) {
         let element = existing.get(card.id);
-        if (!element) {
-          element = this.createCardElement();
-          element.dataset.cardId = card.id;
-          this.world.append(element);
-        }
+        if (!element) { element = this.createCardElement(); element.dataset.cardId = card.id; this.world.append(element); }
         existing.delete(card.id);
         this.updateCardElement(element, card, state, linkSourceId);
       }
-
       for (const element of existing.values()) element.remove();
       return;
     }
-
-    const ids = [...new Set(cardIds.filter(Boolean))];
-    for (const id of ids) {
+    for (const id of [...new Set(cardIds.filter(Boolean))]) {
       const card = state.cards[id];
       let element = this.world.querySelector(`[data-card-id="${CSS.escape(id)}"]`);
-
-      if (!card) {
-        element?.remove();
-        continue;
-      }
-
-      if (!element) {
-        element = this.createCardElement();
-        element.dataset.cardId = card.id;
-        this.world.append(element);
-      }
-
+      if (!card) { element?.remove(); continue; }
+      if (!element) { element = this.createCardElement(); element.dataset.cardId = card.id; this.world.append(element); }
       this.updateCardElement(element, card, state, linkSourceId);
     }
   }
 
-  applyCamera() {
-    const { camera } = store.getState();
-    this.world.style.transform = `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`;
-  }
-
-  scheduleCameraSave(camera) {
-    clearTimeout(this.cameraSaveTimer);
-    this.cameraSaveTimer = setTimeout(() => {
-      saveCamera(camera).catch((error) => {
-        console.error('Camera save failed:', error);
-      });
-    }, 180);
-  }
-
-  getViewportCenter() {
-    const { camera } = store.getState();
-    return {
-      x: (window.innerWidth / 2 - camera.x) / camera.zoom - 115,
-      y: (window.innerHeight / 2 - camera.y) / camera.zoom - 69,
-    };
-  }
+  applyCamera() { const { camera } = store.getState(); this.world.style.transform = `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`; }
+  scheduleCameraSave(camera) { clearTimeout(this.cameraSaveTimer); this.cameraSaveTimer = setTimeout(() => saveCamera(camera).catch((error) => console.error('Camera save failed:', error)), 180); }
+  getViewportCenter() { const { camera } = store.getState(); return { x: (window.innerWidth / 2 - camera.x) / camera.zoom - 115, y: (window.innerHeight / 2 - camera.y) / camera.zoom - 69 }; }
 
   mountCore() {
     this.gestureMachine = new GestureMachine(this.canvas);
@@ -197,22 +209,13 @@ export class WorkspaceController {
   bindStore() {
     this.unsubscribe = store.subscribe((next, previous) => {
       const changedIds = new Set();
-
-      if (next.cards !== previous.cards) {
-        for (const id of collectChangedCardIds(next.cards, previous.cards)) changedIds.add(id);
-      }
-
+      if (next.cards !== previous.cards) for (const id of collectChangedCardIds(next.cards, previous.cards)) changedIds.add(id);
       if (next.selectedCardId !== previous.selectedCardId) {
         if (previous.selectedCardId) changedIds.add(previous.selectedCardId);
         if (next.selectedCardId) changedIds.add(next.selectedCardId);
       }
-
       if (changedIds.size > 0) this.renderCards([...changedIds]);
-
-      if (next.camera !== previous.camera) {
-        this.applyCamera();
-        this.scheduleCameraSave(next.camera);
-      }
+      if (next.camera !== previous.camera) { this.applyCamera(); this.scheduleCameraSave(next.camera); }
     });
   }
 
@@ -232,6 +235,8 @@ export class WorkspaceController {
     this.linksRenderer?.destroy();
     this.cardController?.destroy();
     this.gestureMachine?.destroy();
+    for (const url of this.mediaUrls.values()) URL.revokeObjectURL(url);
+    this.mediaUrls.clear();
   }
 }
 
