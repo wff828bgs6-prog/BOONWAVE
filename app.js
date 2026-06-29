@@ -67,12 +67,20 @@ async function registerServiceWorker() {
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function startBoonwave() {
+  if (window.__boonwaveApp) return window.__boonwaveApp;
   const app = new BoonwaveApp();
   window.__boonwaveApp = app;
   app.init().catch((error) => app.showStartupError(error));
   registerServiceWorker();
   window.addEventListener('beforeunload', () => app.destroy(), { once: true });
-}, { once: true });
+  return app;
+}
 
-export { BoonwaveApp };
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startBoonwave, { once: true });
+} else {
+  startBoonwave();
+}
+
+export { BoonwaveApp, startBoonwave };
