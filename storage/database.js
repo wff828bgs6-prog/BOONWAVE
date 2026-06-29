@@ -162,11 +162,6 @@ class BoonwaveDatabase {
       );
     });
   }
-
-  async runMigrationFromV6(legacyData) {
-    console.log('Запуск миграции v6...', legacyData);
-    return true;
-  }
 }
 
 const db = new BoonwaveDatabase();
