@@ -8,6 +8,8 @@ import { createLinksRenderer } from './canvas/links.js';
 const canvas = document.getElementById('canvas');
 const world = document.getElementById('world');
 const addCardButton = document.getElementById('addCardButton');
+const editButton = document.getElementById('editButton');
+const deleteButton = document.getElementById('deleteButton');
 const connectButton = document.getElementById('connectButton');
 const disconnectButton = document.getElementById('disconnectButton');
 const hint = document.getElementById('hint');
@@ -17,11 +19,17 @@ const createCardForm = document.getElementById('createCardForm');
 const typeGrid = document.getElementById('typeGrid');
 const cardTitle = document.getElementById('cardTitle');
 const cardDescription = document.getElementById('cardDescription');
+const editSheet = document.getElementById('editSheet');
+const editCardForm = document.getElementById('editCardForm');
+const closeEditSheetButton = document.getElementById('closeEditSheetButton');
+const editCardTitle = document.getElementById('editCardTitle');
+const editCardDescription = document.getElementById('editCardDescription');
 
 let selectedNodeType = 'project';
 let cameraSaveTimer = null;
 let linkMode = null;
 let linkSourceId = null;
+let editingCardId = null;
 
 const seedCards = {
   project_demo: { id: 'project_demo', type: 'project', title: 'BOONWAVE Core', description: 'Модульное ядро, камера, жесты и SVG-связи.', x: 120, y: 170, width: 230, height: 138 },
@@ -104,6 +112,27 @@ function closeCreateSheet() {
   createCardForm.reset();
 }
 
+function openEditSheet() {
+  const { selectedCardId, cards } = store.getState();
+  const card = selectedCardId ? cards[selectedCardId] : null;
+  if (!card) {
+    hint.textContent = 'Сначала выбери карточку';
+    return;
+  }
+
+  editingCardId = card.id;
+  editCardTitle.value = card.title ?? '';
+  editCardDescription.value = card.description ?? '';
+  editSheet.hidden = false;
+  editCardTitle.focus();
+}
+
+function closeEditSheet() {
+  editSheet.hidden = true;
+  editingCardId = null;
+  editCardForm.reset();
+}
+
 function setLinkMode(mode) {
   linkMode = linkMode === mode ? null : mode;
   linkSourceId = null;
@@ -115,7 +144,7 @@ function setLinkMode(mode) {
   } else if (linkMode === 'disconnect') {
     hint.textContent = 'Удаление связи: выбери первую карточку';
   } else {
-    hint.textContent = 'Карточки двигаются отдельно • ↗ создаёт связь';
+    hint.textContent = 'Выбери карточку • ✎ редактировать • ⌫ удалить';
   }
 
   reconcileCards();
@@ -185,7 +214,42 @@ async function handleCardTap(card) {
   reconcileCards();
 
   setTimeout(() => {
-    if (!linkMode) hint.textContent = 'Карточки двигаются отдельно • ↗ создаёт связь';
+    if (!linkMode) hint.textContent = 'Выбери карточку • ✎ редактировать • ⌫ удалить';
+  }, 1200);
+}
+
+async function deleteSelectedCard() {
+  const state = store.getState();
+  const cardId = state.selectedCardId;
+  const card = cardId ? state.cards[cardId] : null;
+
+  if (!card) {
+    hint.textContent = 'Сначала выбери карточку';
+    return;
+  }
+
+  const confirmed = window.confirm(`Удалить карточку «${card.title}» и все её связи?`);
+  if (!confirmed) return;
+
+  const relatedLinks = state.links.filter((link) => link.sourceId === cardId || link.targetId === cardId);
+  await Promise.all([
+    db.deleteCard(cardId),
+    ...relatedLinks.map((link) => db.deleteLink(link.id)),
+  ]);
+
+  const nextCards = { ...state.cards };
+  delete nextCards[cardId];
+  const relatedIds = new Set(relatedLinks.map((link) => link.id));
+
+  store.setState({
+    cards: nextCards,
+    links: state.links.filter((link) => !relatedIds.has(link.id)),
+    selectedCardId: null,
+  });
+
+  hint.textContent = 'Карточка и её связи удалены';
+  setTimeout(() => {
+    hint.textContent = 'Выбери карточку • ✎ редактировать • ⌫ удалить';
   }, 1200);
 }
 
@@ -234,11 +298,19 @@ async function bootstrap() {
   });
 
   addCardButton.addEventListener('click', openCreateSheet);
+  editButton.addEventListener('click', openEditSheet);
+  deleteButton.addEventListener('click', deleteSelectedCard);
   connectButton.addEventListener('click', () => setLinkMode('connect'));
   disconnectButton.addEventListener('click', () => setLinkMode('disconnect'));
   closeSheetButton.addEventListener('click', closeCreateSheet);
+  closeEditSheetButton.addEventListener('click', closeEditSheet);
+
   createSheet.addEventListener('click', (event) => {
     if (event.target === createSheet) closeCreateSheet();
+  });
+
+  editSheet.addEventListener('click', (event) => {
+    if (event.target === editSheet) closeEditSheet();
   });
 
   typeGrid.addEventListener('click', (event) => {
@@ -265,6 +337,37 @@ async function bootstrap() {
     const state = store.getState();
     store.setState({ cards: { ...state.cards, [node.id]: node }, selectedCardId: node.id });
     closeCreateSheet();
+  });
+
+  editCardForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!editingCardId) return;
+
+    const state = store.getState();
+    const card = state.cards[editingCardId];
+    if (!card) {
+      closeEditSheet();
+      return;
+    }
+
+    const updatedCard = {
+      ...card,
+      title: editCardTitle.value.trim() || card.title,
+      description: editCardDescription.value.trim(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    await db.saveCard(updatedCard);
+    store.setState({
+      cards: { ...state.cards, [updatedCard.id]: updatedCard },
+      selectedCardId: updatedCard.id,
+    });
+
+    closeEditSheet();
+    hint.textContent = 'Изменения сохранены';
+    setTimeout(() => {
+      hint.textContent = 'Выбери карточку • ✎ редактировать • ⌫ удалить';
+    }, 1200);
   });
 
   window.addEventListener('beforeunload', () => {
