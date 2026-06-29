@@ -8,14 +8,20 @@ import { createLinksRenderer } from './canvas/links.js';
 const canvas = document.getElementById('canvas');
 const world = document.getElementById('world');
 const addCardButton = document.getElementById('addCardButton');
+const connectButton = document.getElementById('connectButton');
+const disconnectButton = document.getElementById('disconnectButton');
+const hint = document.getElementById('hint');
 const createSheet = document.getElementById('createSheet');
 const closeSheetButton = document.getElementById('closeSheetButton');
 const createCardForm = document.getElementById('createCardForm');
 const typeGrid = document.getElementById('typeGrid');
 const cardTitle = document.getElementById('cardTitle');
 const cardDescription = document.getElementById('cardDescription');
+
 let selectedNodeType = 'project';
 let cameraSaveTimer = null;
+let linkMode = null;
+let linkSourceId = null;
 
 const seedCards = {
   project_demo: { id: 'project_demo', type: 'project', title: 'BOONWAVE Core', description: 'Модульное ядро, камера, жесты и SVG-связи.', x: 120, y: 170, width: 230, height: 138 },
@@ -48,6 +54,7 @@ function reconcileCards() {
     }
     existing.delete(card.id);
     element.dataset.selected = String(state.selectedCardId === card.id);
+    element.dataset.linkSource = String(linkSourceId === card.id);
     element.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
     element.querySelector('.card-type').textContent = card.type;
     element.querySelector('h2').textContent = card.title;
@@ -97,6 +104,91 @@ function closeCreateSheet() {
   createCardForm.reset();
 }
 
+function setLinkMode(mode) {
+  linkMode = linkMode === mode ? null : mode;
+  linkSourceId = null;
+  connectButton.setAttribute('aria-pressed', String(linkMode === 'connect'));
+  disconnectButton.setAttribute('aria-pressed', String(linkMode === 'disconnect'));
+
+  if (linkMode === 'connect') {
+    hint.textContent = 'Связь: выбери исходную карточку';
+  } else if (linkMode === 'disconnect') {
+    hint.textContent = 'Удаление связи: выбери первую карточку';
+  } else {
+    hint.textContent = 'Карточки двигаются отдельно • ↗ создаёт связь';
+  }
+
+  reconcileCards();
+}
+
+function createLinkId(sourceId, targetId) {
+  return `link_${sourceId}_${targetId}_${crypto.randomUUID?.() ?? Date.now()}`;
+}
+
+async function handleCardTap(card) {
+  store.setState({ selectedCardId: card.id });
+
+  if (!linkMode) return;
+
+  if (!linkSourceId) {
+    linkSourceId = card.id;
+    hint.textContent = linkMode === 'connect'
+      ? 'Теперь выбери карточку, к которой идёт связь'
+      : 'Теперь выбери вторую карточку связи';
+    reconcileCards();
+    return;
+  }
+
+  if (linkSourceId === card.id) {
+    hint.textContent = 'Нужно выбрать другую карточку';
+    return;
+  }
+
+  const state = store.getState();
+
+  if (linkMode === 'connect') {
+    const duplicate = state.links.some((link) => link.sourceId === linkSourceId && link.targetId === card.id);
+    if (!duplicate) {
+      const link = {
+        id: createLinkId(linkSourceId, card.id),
+        sourceId: linkSourceId,
+        targetId: card.id,
+        createdAt: new Date().toISOString(),
+      };
+      await db.saveLink(link);
+      store.setState({ links: [...state.links, link], selectedCardId: card.id });
+      hint.textContent = 'Связь создана';
+    } else {
+      hint.textContent = 'Такая связь уже существует';
+    }
+  }
+
+  if (linkMode === 'disconnect') {
+    const matches = state.links.filter((link) =>
+      (link.sourceId === linkSourceId && link.targetId === card.id)
+      || (link.sourceId === card.id && link.targetId === linkSourceId));
+
+    if (matches.length > 0) {
+      await Promise.all(matches.map((link) => db.deleteLink(link.id)));
+      const deletedIds = new Set(matches.map((link) => link.id));
+      store.setState({ links: state.links.filter((link) => !deletedIds.has(link.id)), selectedCardId: card.id });
+      hint.textContent = 'Связь удалена';
+    } else {
+      hint.textContent = 'Между этими карточками связи нет';
+    }
+  }
+
+  linkMode = null;
+  linkSourceId = null;
+  connectButton.setAttribute('aria-pressed', 'false');
+  disconnectButton.setAttribute('aria-pressed', 'false');
+  reconcileCards();
+
+  setTimeout(() => {
+    if (!linkMode) hint.textContent = 'Карточки двигаются отдельно • ↗ создаёт связь';
+  }, 1200);
+}
+
 async function seedDatabase() {
   await Promise.all([...Object.values(seedCards).map((card) => db.saveCard(card)), ...seedLinks.map((link) => db.saveLink(link))]);
 }
@@ -120,7 +212,10 @@ async function bootstrap() {
   applyCamera();
 
   const gestureMachine = new GestureMachine(canvas);
-  const cardController = new CardController(world, { onCommit: (card) => db.saveCard({ ...card, updatedAt: new Date().toISOString() }) });
+  const cardController = new CardController(world, {
+    onCommit: (card) => db.saveCard({ ...card, updatedAt: new Date().toISOString() }),
+    onTap: handleCardTap,
+  });
   const linksRenderer = createLinksRenderer(world);
 
   const unsubscribe = store.subscribe((next, previous) => {
@@ -132,10 +227,15 @@ async function bootstrap() {
   });
 
   canvas.addEventListener('click', (event) => {
-    if (!event.target.closest('[data-card-id]')) store.setState({ selectedCardId: null });
+    if (!event.target.closest('[data-card-id]')) {
+      store.setState({ selectedCardId: null });
+      if (linkMode) setLinkMode(null);
+    }
   });
 
   addCardButton.addEventListener('click', openCreateSheet);
+  connectButton.addEventListener('click', () => setLinkMode('connect'));
+  disconnectButton.addEventListener('click', () => setLinkMode('disconnect'));
   closeSheetButton.addEventListener('click', closeCreateSheet);
   createSheet.addEventListener('click', (event) => {
     if (event.target === createSheet) closeCreateSheet();
@@ -179,5 +279,5 @@ async function bootstrap() {
 
 bootstrap().catch((error) => {
   console.error('BOONWAVE preview bootstrap failed:', error);
-  document.querySelector('.hint').textContent = 'Ошибка запуска preview — открой консоль браузера';
+  hint.textContent = 'Ошибка запуска preview — открой консоль браузера';
 });
