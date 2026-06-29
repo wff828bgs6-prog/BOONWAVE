@@ -24,20 +24,33 @@ function normalizeCamera(camera) {
   };
 }
 
-export async function loadWorkspace() {
-  await storage.init();
-  await storage.loadWorkspace();
-  await migrateStoredNodes();
+export function normalizeWorkspaceSnapshot(snapshot = {}) {
+  const cards = snapshot.cards && typeof snapshot.cards === 'object'
+    ? snapshot.cards
+    : {};
+  const links = Array.isArray(snapshot.links) ? snapshot.links : [];
+  return { cards, links };
+}
 
-  const savedCamera = await storage.loadSetting('camera');
+export async function loadWorkspace(options = {}) {
+  const stateStore = options.stateStore ?? store;
+  const storageAdapter = options.storageAdapter ?? storage;
+  const migrate = options.migrate ?? migrateStoredNodes;
+
+  await storageAdapter.init();
+  const workspace = normalizeWorkspaceSnapshot(await storageAdapter.loadWorkspace());
+  stateStore.setState(workspace);
+  await migrate();
+
+  const savedCamera = await storageAdapter.loadSetting('camera');
   const camera = normalizeCamera(savedCamera);
-  store.setState({ camera });
+  stateStore.setState({ camera });
 
   if (!savedCamera || savedCamera.zoom !== camera.zoom) {
-    await storage.saveSetting('camera', camera);
+    await storageAdapter.saveSetting('camera', camera);
   }
 
-  return store.getState();
+  return stateStore.getState();
 }
 
 export async function saveCamera(camera = store.getState().camera) {
