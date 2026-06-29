@@ -19,7 +19,7 @@ class BoonwaveApp {
     if (!canvas || !world) {
       if (!this.observer) {
         this.observer = new MutationObserver(() => {
-          this.init().catch((error) => console.error('BOONWAVE mount failed:', error));
+          this.init().catch((error) => this.showStartupError(error));
         });
         this.observer.observe(document.body, { childList: true, subtree: true });
       }
@@ -43,6 +43,14 @@ class BoonwaveApp {
     return runtime;
   }
 
+  showStartupError(error) {
+    console.error('BOONWAVE startup failed:', error);
+    const hint = document.getElementById('hint');
+    if (hint) hint.textContent = 'Ошибка запуска. Старая версия доступна по ссылке Legacy v8.';
+    const fallback = document.getElementById('legacyFallback');
+    if (fallback) fallback.hidden = false;
+  }
+
   destroy() {
     this.observer?.disconnect();
     this.runtime?.destroy();
@@ -50,9 +58,21 @@ class BoonwaveApp {
   }
 }
 
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    await navigator.serviceWorker.register('./sw.js');
+  } catch (error) {
+    console.warn('BOONWAVE service worker registration failed:', error);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const app = new BoonwaveApp();
-  app.init().catch((error) => console.error('BOONWAVE startup failed:', error));
+  window.__boonwaveApp = app;
+  app.init().catch((error) => app.showStartupError(error));
+  registerServiceWorker();
+  window.addEventListener('beforeunload', () => app.destroy(), { once: true });
 }, { once: true });
 
 export { BoonwaveApp };
