@@ -40,7 +40,12 @@ export class ZoomController {
 
   sync(zoom) {
     if (!Number.isFinite(zoom)) return;
+    const min = Number(this.range.min) || 0.25;
+    const max = Number(this.range.max) || 3;
+    const progress = ((zoom - min) / Math.max(max - min, Number.EPSILON)) * 100;
+
     this.range.value = String(zoom);
+    this.range.style.setProperty('--zoom-progress', `${Math.min(100, Math.max(0, progress))}%`);
     this.range.setAttribute('aria-valuenow', zoom.toFixed(2));
   }
 
