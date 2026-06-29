@@ -1,9 +1,9 @@
 import store from '../state/store.js';
 import storage from '../storage/index.js';
 import { createNode, normalizeNode } from '../domain/node.js';
+import { mergeNodeData } from '../domain/node-schemas.js';
 import { createMediaRecord } from '../domain/media-record.js';
 import { CARD_MEDIA_SLOTS, getCardMediaIds } from '../domain/card-media.js';
-import { prepareUpdatedCard } from './node-service.js';
 
 function resolveDependencies(options = {}) {
   return {
@@ -24,6 +24,20 @@ function createRecord(cardId, file) {
     mimeType: file.type,
     size: file.size,
     ownerIds: [cardId],
+  });
+}
+
+function prepareUpdatedCard(card, patch = {}) {
+  return normalizeNode({
+    ...card,
+    ...patch,
+    id: card.id,
+    type: card.type,
+    data: patch.data === undefined
+      ? card.data
+      : mergeNodeData(card.type, card.data, patch.data),
+    createdAt: card.createdAt,
+    updatedAt: new Date().toISOString(),
   });
 }
 
