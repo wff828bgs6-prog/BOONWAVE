@@ -1,4 +1,4 @@
-export const NODE_SCHEMA_VERSION = 1;
+export const NODE_SCHEMA_VERSION = 2;
 
 export const NODE_TYPES = Object.freeze(['project', 'process', 'person', 'idea', 'goal']);
 
@@ -36,6 +36,7 @@ const TYPE_DEFAULTS = Object.freeze({
     dueDate: null,
     tasks: [],
     notes: '',
+    attachments: [],
   },
   person: {
     fullName: '',
@@ -45,6 +46,7 @@ const TYPE_DEFAULTS = Object.freeze({
     role: '',
     notes: '',
     avatarMediaId: null,
+    attachments: [],
     messengers: [],
     websites: [],
   },
