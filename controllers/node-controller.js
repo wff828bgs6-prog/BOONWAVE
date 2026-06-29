@@ -3,48 +3,104 @@ import { createCardNode, updateCardNode, deleteCardNode } from '../services/node
 
 const DEFAULT_HINT = 'Выбери карточку • ✎ редактировать • ⌫ удалить';
 
+const TYPE_FIELDS = Object.freeze({
+  project: [
+    { key: 'status', label: 'Статус', type: 'select', options: [['preparation', 'Подготовка'], ['in_progress', 'В работе'], ['paused', 'На паузе'], ['completed', 'Завершено']] },
+    { key: 'address', label: 'Адрес', type: 'text', maxlength: 120 },
+  ],
+  process: [
+    { key: 'status', label: 'Статус', type: 'select', options: [['planned', 'Запланировано'], ['in_progress', 'В работе'], ['paused', 'На паузе'], ['completed', 'Завершено']] },
+    { key: 'progress', label: 'Прогресс, %', type: 'number', min: 0, max: 100, step: 1 },
+  ],
+  person: [
+    { key: 'role', label: 'Роль', type: 'text', maxlength: 80 },
+    { key: 'organization', label: 'Организация', type: 'text', maxlength: 100 },
+  ],
+  idea: [
+    { key: 'status', label: 'Статус', type: 'select', options: [['draft', 'Черновик'], ['active', 'Активно'], ['completed', 'Реализовано']] },
+    { key: 'category', label: 'Категория', type: 'text', maxlength: 80 },
+  ],
+  goal: [
+    { key: 'status', label: 'Статус', type: 'select', options: [['active', 'Активно'], ['paused', 'На паузе'], ['completed', 'Достигнута']] },
+    { key: 'progress', label: 'Прогресс, %', type: 'number', min: 0, max: 100, step: 1 },
+  ],
+});
+
+function createFieldElement(definition, value = '') {
+  const label = document.createElement('label');
+  label.className = 'field';
+
+  const caption = document.createElement('span');
+  caption.textContent = definition.label;
+  label.append(caption);
+
+  let control;
+  if (definition.type === 'select') {
+    control = document.createElement('select');
+    for (const [optionValue, optionLabel] of definition.options) {
+      const option = document.createElement('option');
+      option.value = optionValue;
+      option.textContent = optionLabel;
+      control.append(option);
+    }
+  } else {
+    control = document.createElement('input');
+    control.type = definition.type;
+    if (definition.maxlength) control.maxLength = definition.maxlength;
+    if (definition.min !== undefined) control.min = String(definition.min);
+    if (definition.max !== undefined) control.max = String(definition.max);
+    if (definition.step !== undefined) control.step = String(definition.step);
+  }
+
+  control.dataset.nodeField = definition.key;
+  control.value = value ?? '';
+  label.append(control);
+  return label;
+}
+
+function readTypedData(container, type) {
+  const data = {};
+  const definitions = TYPE_FIELDS[type] ?? [];
+
+  for (const definition of definitions) {
+    const control = container.querySelector(`[data-node-field="${definition.key}"]`);
+    if (!control) continue;
+    if (definition.type === 'number') {
+      const value = Number(control.value);
+      data[definition.key] = Number.isFinite(value) ? value : 0;
+    } else {
+      data[definition.key] = control.value.trim();
+    }
+  }
+
+  return data;
+}
+
 export class NodeController {
   constructor({
-    addButton,
-    editButton,
-    deleteButton,
-    createSheet,
-    closeCreateButton,
-    createForm,
-    typeGrid,
-    titleInput,
-    descriptionInput,
-    editSheet,
-    closeEditButton,
-    editForm,
-    editTitleInput,
-    editDescriptionInput,
-    hint,
-    getViewportCenter,
+    addButton, editButton, deleteButton, createSheet, closeCreateButton, createForm,
+    typeGrid, titleInput, descriptionInput, createTypeFields, editSheet, closeEditButton,
+    editForm, editTitleInput, editDescriptionInput, editTypeFields, hint, getViewportCenter,
   }) {
     this.elements = {
-      addButton,
-      editButton,
-      deleteButton,
-      createSheet,
-      closeCreateButton,
-      createForm,
-      typeGrid,
-      titleInput,
-      descriptionInput,
-      editSheet,
-      closeEditButton,
-      editForm,
-      editTitleInput,
-      editDescriptionInput,
-      hint,
+      addButton, editButton, deleteButton, createSheet, closeCreateButton, createForm,
+      typeGrid, titleInput, descriptionInput, createTypeFields, editSheet, closeEditButton,
+      editForm, editTitleInput, editDescriptionInput, editTypeFields, hint,
     };
     this.getViewportCenter = getViewportCenter;
     this.selectedType = 'project';
     this.editingCardId = null;
     this.feedbackTimer = null;
     this.abortController = new AbortController();
+    this.renderTypeFields(this.elements.createTypeFields, this.selectedType);
     this.bindEvents();
+  }
+
+  renderTypeFields(container, type, data = {}) {
+    if (!container) return;
+    container.replaceChildren(...(TYPE_FIELDS[type] ?? []).map((definition) => (
+      createFieldElement(definition, data[definition.key])
+    )));
   }
 
   bindEvents() {
@@ -72,6 +128,7 @@ export class NodeController {
       for (const item of e.typeGrid.querySelectorAll('[data-node-type]')) {
         item.setAttribute('aria-pressed', String(item === button));
       }
+      this.renderTypeFields(e.createTypeFields, this.selectedType);
     }, { signal });
 
     e.createForm.addEventListener('submit', (event) => this.submitCreate(event), { signal });
@@ -96,6 +153,11 @@ export class NodeController {
   closeCreate() {
     this.elements.createSheet.hidden = true;
     this.elements.createForm.reset();
+    this.selectedType = 'project';
+    for (const item of this.elements.typeGrid.querySelectorAll('[data-node-type]')) {
+      item.setAttribute('aria-pressed', String(item.dataset.nodeType === 'project'));
+    }
+    this.renderTypeFields(this.elements.createTypeFields, this.selectedType);
   }
 
   openEdit() {
@@ -109,6 +171,7 @@ export class NodeController {
     this.editingCardId = card.id;
     this.elements.editTitleInput.value = card.title ?? '';
     this.elements.editDescriptionInput.value = card.description ?? '';
+    this.renderTypeFields(this.elements.editTypeFields, card.type, card.data ?? {});
     this.elements.editSheet.hidden = false;
     this.elements.editTitleInput.focus();
   }
@@ -117,6 +180,7 @@ export class NodeController {
     this.elements.editSheet.hidden = true;
     this.editingCardId = null;
     this.elements.editForm.reset();
+    this.elements.editTypeFields?.replaceChildren();
   }
 
   async submitCreate(event) {
@@ -128,17 +192,21 @@ export class NodeController {
       description: this.elements.descriptionInput.value,
       x: position.x,
       y: position.y,
+      data: readTypedData(this.elements.createTypeFields, this.selectedType),
     });
     this.closeCreate();
+    this.showFeedback('Карточка создана');
   }
 
   async submitEdit(event) {
     event.preventDefault();
     if (!this.editingCardId) return;
 
+    const card = store.getState().cards[this.editingCardId];
     await updateCardNode(this.editingCardId, {
       title: this.elements.editTitleInput.value.trim(),
       description: this.elements.editDescriptionInput.value.trim(),
+      data: readTypedData(this.elements.editTypeFields, card.type),
     });
 
     this.closeEdit();
