@@ -2,8 +2,42 @@ import store from '../state/store.js';
 import { GestureMachine } from '../canvas/gesture-machine.js';
 import { CardController } from '../canvas/card-controller.js';
 import { createLinksRenderer } from '../canvas/links.js';
+import { NODE_TYPE_LABELS } from '../domain/node-schemas.js';
 import { updateCardNode } from '../services/node-service.js';
 import { loadWorkspace, saveCamera } from '../services/workspace-service.js';
+
+const STATUS_LABELS = Object.freeze({
+  preparation: 'Подготовка',
+  planned: 'Запланировано',
+  active: 'Активно',
+  draft: 'Черновик',
+  in_progress: 'В работе',
+  paused: 'На паузе',
+  completed: 'Завершено',
+});
+
+function getNodeMeta(card) {
+  const data = card.data ?? {};
+
+  if (card.type === 'project') {
+    return [STATUS_LABELS[data.status] ?? data.status, data.address].filter(Boolean);
+  }
+
+  if (card.type === 'process' || card.type === 'goal') {
+    const progress = Number.isFinite(data.progress) ? `${Math.round(data.progress)}%` : null;
+    return [STATUS_LABELS[data.status] ?? data.status, progress].filter(Boolean);
+  }
+
+  if (card.type === 'person') {
+    return [data.role, data.organization].filter(Boolean);
+  }
+
+  if (card.type === 'idea') {
+    return [STATUS_LABELS[data.status] ?? data.status, data.category].filter(Boolean);
+  }
+
+  return [];
+}
 
 export class WorkspaceController {
   constructor({ canvas, world, initialSelectedCardId = null }) {
@@ -59,11 +93,10 @@ export class WorkspaceController {
     return this;
   }
 
-  createCardElement(card) {
+  createCardElement() {
     const element = document.createElement('article');
     element.className = 'card';
-    element.dataset.cardId = card.id;
-    element.innerHTML = '<div class="card-type"></div><h2></h2><p></p>';
+    element.innerHTML = '<div class="card-head"><div class="card-type"></div><div class="card-status"></div></div><h2></h2><p></p><div class="card-meta"></div>';
     return element;
   }
 
@@ -78,17 +111,22 @@ export class WorkspaceController {
     for (const card of Object.values(state.cards)) {
       let element = existing.get(card.id);
       if (!element) {
-        element = this.createCardElement(card);
+        element = this.createCardElement();
+        element.dataset.cardId = card.id;
         this.world.append(element);
       }
 
+      const meta = getNodeMeta(card);
       existing.delete(card.id);
+      element.dataset.nodeType = card.type;
       element.dataset.selected = String(state.selectedCardId === card.id);
       element.dataset.linkSource = String(linkSourceId === card.id);
       element.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
-      element.querySelector('.card-type').textContent = card.type;
+      element.querySelector('.card-type').textContent = NODE_TYPE_LABELS[card.type] ?? card.type;
+      element.querySelector('.card-status').textContent = meta[0] ?? '';
       element.querySelector('h2').textContent = card.title;
       element.querySelector('p').textContent = card.description;
+      element.querySelector('.card-meta').textContent = meta.slice(1).join(' • ');
     }
 
     for (const element of existing.values()) element.remove();
