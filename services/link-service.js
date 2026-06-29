@@ -4,12 +4,20 @@ import storage from '../storage/index.js';
 const makeId = (sourceId, targetId) =>
   `link_${sourceId}_${targetId}_${crypto.randomUUID?.() ?? Date.now()}`;
 
-export async function createLink(sourceId, targetId) {
+function resolveDependencies(options = {}) {
+  return {
+    stateStore: options.stateStore ?? store,
+    storageAdapter: options.storageAdapter ?? storage,
+  };
+}
+
+export async function createLink(sourceId, targetId, options = {}) {
   if (!sourceId || !targetId || sourceId === targetId) {
     throw new TypeError('createLink expects two different card ids.');
   }
 
-  const state = store.getState();
+  const { stateStore, storageAdapter } = resolveDependencies(options);
+  const state = stateStore.getState();
   if (!state.cards[sourceId] || !state.cards[targetId]) {
     throw new Error('Cannot create a link for missing cards.');
   }
@@ -26,20 +34,21 @@ export async function createLink(sourceId, targetId) {
     createdAt: new Date().toISOString(),
   };
 
-  await storage.saveLink(link);
-  store.setState({ links: [...state.links, link], selectedCardId: targetId });
+  await storageAdapter.saveLink(link);
+  stateStore.setState({ links: [...state.links, link], selectedCardId: targetId });
   return link;
 }
 
-export async function deleteLinksBetween(firstId, secondId) {
-  const state = store.getState();
+export async function deleteLinksBetween(firstId, secondId, options = {}) {
+  const { stateStore, storageAdapter } = resolveDependencies(options);
+  const state = stateStore.getState();
   const matches = state.links.filter((link) =>
     (link.sourceId === firstId && link.targetId === secondId)
     || (link.sourceId === secondId && link.targetId === firstId));
 
-  await Promise.all(matches.map((link) => storage.deleteLink(link.id)));
+  await Promise.all(matches.map((link) => storageAdapter.deleteLink(link.id)));
   const deletedIds = new Set(matches.map((link) => link.id));
-  store.setState({
+  stateStore.setState({
     links: state.links.filter((link) => !deletedIds.has(link.id)),
     selectedCardId: secondId,
   });
