@@ -39,6 +39,11 @@ function getNodeMeta(card) {
   return [];
 }
 
+function collectChangedCardIds(nextCards = {}, previousCards = {}) {
+  const ids = new Set([...Object.keys(nextCards), ...Object.keys(previousCards)]);
+  return [...ids].filter((id) => nextCards[id] !== previousCards[id]);
+}
+
 export class WorkspaceController {
   constructor({ canvas, world, initialSelectedCardId = null }) {
     if (!(canvas instanceof Element) || !(world instanceof Element)) {
@@ -100,36 +105,62 @@ export class WorkspaceController {
     return element;
   }
 
-  renderCards() {
+  updateCardElement(element, card, state, linkSourceId) {
+    const meta = getNodeMeta(card);
+    element.dataset.nodeType = card.type;
+    element.dataset.selected = String(state.selectedCardId === card.id);
+    element.dataset.linkSource = String(linkSourceId === card.id);
+    element.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
+    element.querySelector('.card-type').textContent = NODE_TYPE_LABELS[card.type] ?? card.type;
+    element.querySelector('.card-status').textContent = meta[0] ?? '';
+    element.querySelector('h2').textContent = card.title;
+    element.querySelector('p').textContent = card.description;
+    element.querySelector('.card-meta').textContent = meta.slice(1).join(' • ');
+  }
+
+  renderCards(cardIds = null) {
     const state = store.getState();
     const linkSourceId = this.linkSourceProvider?.() ?? null;
-    const existing = new Map(
-      [...this.world.querySelectorAll('[data-card-id]')]
-        .map((element) => [element.dataset.cardId, element]),
-    );
 
-    for (const card of Object.values(state.cards)) {
-      let element = existing.get(card.id);
+    if (cardIds === null) {
+      const existing = new Map(
+        [...this.world.querySelectorAll('[data-card-id]')]
+          .map((element) => [element.dataset.cardId, element]),
+      );
+
+      for (const card of Object.values(state.cards)) {
+        let element = existing.get(card.id);
+        if (!element) {
+          element = this.createCardElement();
+          element.dataset.cardId = card.id;
+          this.world.append(element);
+        }
+        existing.delete(card.id);
+        this.updateCardElement(element, card, state, linkSourceId);
+      }
+
+      for (const element of existing.values()) element.remove();
+      return;
+    }
+
+    const ids = [...new Set(cardIds.filter(Boolean))];
+    for (const id of ids) {
+      const card = state.cards[id];
+      let element = this.world.querySelector(`[data-card-id="${CSS.escape(id)}"]`);
+
+      if (!card) {
+        element?.remove();
+        continue;
+      }
+
       if (!element) {
         element = this.createCardElement();
         element.dataset.cardId = card.id;
         this.world.append(element);
       }
 
-      const meta = getNodeMeta(card);
-      existing.delete(card.id);
-      element.dataset.nodeType = card.type;
-      element.dataset.selected = String(state.selectedCardId === card.id);
-      element.dataset.linkSource = String(linkSourceId === card.id);
-      element.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
-      element.querySelector('.card-type').textContent = NODE_TYPE_LABELS[card.type] ?? card.type;
-      element.querySelector('.card-status').textContent = meta[0] ?? '';
-      element.querySelector('h2').textContent = card.title;
-      element.querySelector('p').textContent = card.description;
-      element.querySelector('.card-meta').textContent = meta.slice(1).join(' • ');
+      this.updateCardElement(element, card, state, linkSourceId);
     }
-
-    for (const element of existing.values()) element.remove();
   }
 
   applyCamera() {
@@ -165,9 +196,19 @@ export class WorkspaceController {
 
   bindStore() {
     this.unsubscribe = store.subscribe((next, previous) => {
-      if (next.cards !== previous.cards || next.selectedCardId !== previous.selectedCardId) {
-        this.renderCards();
+      const changedIds = new Set();
+
+      if (next.cards !== previous.cards) {
+        for (const id of collectChangedCardIds(next.cards, previous.cards)) changedIds.add(id);
       }
+
+      if (next.selectedCardId !== previous.selectedCardId) {
+        if (previous.selectedCardId) changedIds.add(previous.selectedCardId);
+        if (next.selectedCardId) changedIds.add(next.selectedCardId);
+      }
+
+      if (changedIds.size > 0) this.renderCards([...changedIds]);
+
       if (next.camera !== previous.camera) {
         this.applyCamera();
         this.scheduleCameraSave(next.camera);
