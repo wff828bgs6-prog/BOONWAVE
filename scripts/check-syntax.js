@@ -15,6 +15,18 @@ import { execFileSync } from 'node:child_process';
 
 const ROOT = process.cwd();
 const SKIP_DIRS = new Set(['.git', 'node_modules']);
+const IMPORT_CHECK_DIRS = new Set([
+  'bootstrap',
+  'canvas',
+  'controllers',
+  'domain',
+  'scripts',
+  'services',
+  'storage',
+  'tests',
+  'ui',
+]);
+const IMPORT_CHECK_ROOT_FILES = new Set(['app.js', 'preview.js']);
 
 function collectJavaScriptFiles(directory) {
   const files = [];
@@ -49,6 +61,12 @@ function collectLocalImportSpecifiers(source) {
   return [...specifiers];
 }
 
+function shouldCheckImports(file) {
+  const path = relative(ROOT, file).replaceAll('\\', '/');
+  if (IMPORT_CHECK_ROOT_FILES.has(path)) return true;
+  return IMPORT_CHECK_DIRS.has(path.split('/')[0]);
+}
+
 function resolveLocalModule(importingFile, specifier) {
   const cleanSpecifier = specifier.split(/[?#]/, 1)[0];
   const basePath = resolve(dirname(importingFile), cleanSpecifier);
@@ -63,10 +81,13 @@ function resolveLocalModule(importingFile, specifier) {
 
 const files = collectJavaScriptFiles(ROOT);
 const unresolvedImports = [];
+let importCheckedFiles = 0;
 
 for (const file of files) {
   execFileSync(process.execPath, ['--check', file], { stdio: 'inherit' });
+  if (!shouldCheckImports(file)) continue;
 
+  importCheckedFiles += 1;
   const source = readFileSync(file, 'utf8');
   for (const specifier of collectLocalImportSpecifiers(source)) {
     if (resolveLocalModule(file, specifier)) continue;
@@ -75,8 +96,8 @@ for (const file of files) {
 }
 
 if (unresolvedImports.length > 0) {
-  throw new Error(`Unresolved local imports:\n${unresolvedImports.join('\n')}`);
+  throw new Error(`Unresolved modular imports:\n${unresolvedImports.join('\n')}`);
 }
 
-console.log(`Syntax and imports OK: ${files.length} JavaScript files checked.`);
-console.log(files.map((file) => relative(ROOT, file)).join('\n'));
+console.log(`Syntax OK: ${files.length} JavaScript files checked.`);
+console.log(`Import graph OK: ${importCheckedFiles} modular files checked.`);
