@@ -19,11 +19,19 @@
     #canvas { position: absolute; inset: 0; overflow: hidden; touch-action: none; }
     #world { position: absolute; inset: 0; transform-origin: 0 0; }
     .card { position: absolute; width: 230px; min-height: 138px; padding: 18px; border-radius: 26px; border: 1px solid rgba(255,255,255,.13); background: linear-gradient(145deg, rgba(34,38,64,.92), rgba(17,20,37,.94)); box-shadow: 0 18px 50px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.07); z-index: 2; }
+    .card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; border-radius: 26px 0 0 26px; background: rgba(138,125,255,.9); opacity: .8; }
+    .card[data-node-type="process"]::before { background: rgba(101,183,255,.95); }
+    .card[data-node-type="person"]::before { background: rgba(83,224,180,.95); }
+    .card[data-node-type="idea"]::before { background: rgba(255,190,82,.95); }
+    .card[data-node-type="goal"]::before { background: rgba(255,111,174,.95); }
     .card[data-selected="true"] { border-color: rgba(157,140,255,.9); box-shadow: 0 0 0 1px rgba(157,140,255,.35), 0 0 38px rgba(111,92,255,.30), 0 18px 50px rgba(0,0,0,.34); }
     .card[data-link-source="true"]::after { content: "Источник"; position: absolute; top: -28px; left: 50%; transform: translateX(-50%); padding: 5px 9px; border-radius: 999px; background: #7766ff; color: white; font-size: 10px; white-space: nowrap; }
+    .card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .card-type { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: #9199bd; }
+    .card-status { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; color: #d5d8e9; }
     .card h2 { margin: 10px 0 8px; font-size: 22px; line-height: 1.05; }
     .card p { margin: 0; color: #b7bdd7; font-size: 13px; line-height: 1.45; }
+    .card-meta { margin-top: 11px; color: #8f97b8; font-size: 11px; min-height: 14px; }
     .hint { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 20; padding: 10px 14px; border-radius: 999px; background: rgba(14,16,30,.78); color: #b7bdd7; border: 1px solid rgba(255,255,255,.1); font-size: 12px; white-space: nowrap; backdrop-filter: blur(16px); pointer-events: none; max-width: calc(100vw - 120px); overflow: hidden; text-overflow: ellipsis; }
     .toolbar { position: fixed; right: 18px; bottom: calc(max(18px, env(safe-area-inset-bottom)) + 58px); z-index: 30; display: grid; gap: 10px; }
     .tool-button { width: 52px; height: 52px; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; background: rgba(22,25,43,.92); color: white; font-size: 21px; box-shadow: 0 14px 34px rgba(0,0,0,.28); backdrop-filter: blur(14px); }
@@ -51,7 +59,7 @@
     <header class="preview-header">
       <div class="preview-badge">
         <strong>BOONWAVE</strong>
-        <span>Core Stage A/B Preview</span>
+        <span>Core Stage C · Typed Nodes</span>
       </div>
     </header>
 
