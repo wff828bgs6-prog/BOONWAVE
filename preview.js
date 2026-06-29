@@ -1,22 +1,68 @@
 import storage from './storage/index.js';
+import { createNode } from './domain/node.js';
 import { WorkspaceController } from './controllers/workspace-controller.js';
 import { LinkController } from './controllers/link-controller.js';
 import { NodeController } from './controllers/node-controller.js';
 
-const seedCards = {
-  project_demo: { id: 'project_demo', type: 'project', title: 'BOONWAVE Core', description: 'Модульное ядро, камера, жесты и SVG-связи.', x: 120, y: 170, width: 230, height: 138 },
-  process_demo: { id: 'process_demo', type: 'process', title: 'Рабочий процесс', description: 'Связь берётся из общего store и перерисовывается реактивно.', x: 520, y: 310, width: 230, height: 138 },
-  person_demo: { id: 'person_demo', type: 'person', title: 'Человек', description: 'Положение сохраняется после перетаскивания.', x: 330, y: 560, width: 230, height: 138 },
-};
+const seedCards = [
+  createNode({
+    type: 'project',
+    title: 'BOONWAVE Core',
+    description: 'Модульное ядро, камера, жесты и SVG-связи.',
+    x: 120,
+    y: 170,
+    data: { status: 'preparation', address: 'Core Stage A/B' },
+  }),
+  createNode({
+    type: 'process',
+    title: 'Рабочий процесс',
+    description: 'Связь берётся из общего store и перерисовывается реактивно.',
+    x: 520,
+    y: 310,
+    data: { status: 'in_progress', progress: 62 },
+  }),
+  createNode({
+    type: 'person',
+    title: 'Человек',
+    description: 'Положение сохраняется после перетаскивания.',
+    x: 330,
+    y: 560,
+    data: { role: 'Арт-инженер', organization: 'BOONWAVE' },
+  }),
+  createNode({
+    type: 'idea',
+    title: 'Живой свет',
+    description: 'Идея будущей кинетической системы.',
+    x: 810,
+    y: 170,
+    data: { status: 'draft', category: 'Kinetic Light' },
+  }),
+  createNode({
+    type: 'goal',
+    title: 'Production build',
+    description: 'Единая архитектура для Web и iOS.',
+    x: 820,
+    y: 560,
+    data: { status: 'active', progress: 35 },
+  }),
+];
+
+seedCards[0].id = 'project_demo';
+seedCards[1].id = 'process_demo';
+seedCards[2].id = 'person_demo';
+seedCards[3].id = 'idea_demo';
+seedCards[4].id = 'goal_demo';
 
 const seedLinks = [
   { id: 'link_project_process', sourceId: 'project_demo', targetId: 'process_demo' },
   { id: 'link_person_process', sourceId: 'person_demo', targetId: 'process_demo' },
+  { id: 'link_idea_project', sourceId: 'idea_demo', targetId: 'project_demo' },
+  { id: 'link_project_goal', sourceId: 'project_demo', targetId: 'goal_demo' },
 ];
 
 async function seedPreview() {
   await Promise.all([
-    ...Object.values(seedCards).map((card) => storage.saveCard(card)),
+    ...seedCards.map((card) => storage.saveCard(card)),
     ...seedLinks.map((link) => storage.saveLink(link)),
   ]);
 }
