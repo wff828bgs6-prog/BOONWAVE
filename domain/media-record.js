@@ -6,12 +6,12 @@ const toFiniteSize = (value) => {
   return Number.isFinite(size) && size >= 0 ? Math.round(size) : 0;
 };
 
-const normalizeKind = (kind, mimeType = '') => {
+export function inferMediaKind(kind, mimeType = '') {
   if (MEDIA_KINDS.includes(kind)) return kind;
   if (String(mimeType).startsWith('image/')) return 'image';
   if (String(mimeType) === 'application/pdf') return 'document';
   return 'file';
-};
+}
 
 export function validateMediaRecord(record) {
   const errors = [];
@@ -37,7 +37,7 @@ export function normalizeMediaRecord(raw = {}) {
     ...raw,
     id: String(raw.id ?? '').trim(),
     schemaVersion: MEDIA_SCHEMA_VERSION,
-    kind: normalizeKind(raw.kind, mimeType),
+    kind: inferMediaKind(raw.kind, mimeType),
     name: String(raw.name ?? '').trim() || 'Без названия',
     mimeType,
     size: toFiniteSize(raw.size),
