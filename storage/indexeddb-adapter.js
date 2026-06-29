@@ -5,6 +5,15 @@ function uniqueIds(values = []) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function abortTransaction(transaction, error, reject) {
+  try {
+    transaction.abort();
+  } catch {
+    // The transaction may already be inactive. The original error remains authoritative.
+  }
+  reject(error);
+}
+
 function detachOwnerInTransaction(mediaStore, blobStore, mediaId, ownerId) {
   const request = mediaStore.get(mediaId);
   request.onsuccess = () => {
@@ -29,23 +38,30 @@ export class IndexedDBAdapter extends StorageAdapter {
   async saveCardBundle({ card, mediaEntries = [], removedMediaIds = [] }) {
     const database = await db.initDB();
     return new Promise((resolve, reject) => {
-      const tx = database.transaction(['cards', 'media', 'mediaBlobs'], 'readwrite');
-      const cardStore = tx.objectStore('cards');
-      const mediaStore = tx.objectStore('media');
-      const blobStore = tx.objectStore('mediaBlobs');
+      const transaction = database.transaction(['cards', 'media', 'mediaBlobs'], 'readwrite');
+      const cardStore = transaction.objectStore('cards');
+      const mediaStore = transaction.objectStore('media');
+      const blobStore = transaction.objectStore('mediaBlobs');
+      const removedIds = uniqueIds(removedMediaIds);
 
-      cardStore.put(card);
-      for (const entry of mediaEntries) {
-        mediaStore.put(entry.record);
-        blobStore.put({ id: entry.record.id, blob: entry.blob });
-      }
-      for (const mediaId of uniqueIds(removedMediaIds)) {
-        detachOwnerInTransaction(mediaStore, blobStore, mediaId, card.id);
-      }
+      transaction.oncomplete = () => resolve({ card, mediaEntries, removedMediaIds: removedIds });
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(
+        transaction.error ?? new Error('IndexedDB card save transaction aborted.'),
+      );
 
-      tx.oncomplete = () => resolve({ card, mediaEntries, removedMediaIds: uniqueIds(removedMediaIds) });
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error ?? new Error('IndexedDB card save transaction aborted.'));
+      try {
+        cardStore.put(card);
+        for (const entry of mediaEntries) {
+          mediaStore.put(entry.record);
+          blobStore.put({ id: entry.record.id, blob: entry.blob });
+        }
+        for (const mediaId of removedIds) {
+          detachOwnerInTransaction(mediaStore, blobStore, mediaId, card.id);
+        }
+      } catch (error) {
+        abortTransaction(transaction, error, reject);
+      }
     });
   }
 
@@ -57,17 +73,27 @@ export class IndexedDBAdapter extends StorageAdapter {
     const links = uniqueIds(linkIds);
     const media = uniqueIds(mediaIds);
     return new Promise((resolve, reject) => {
-      const tx = database.transaction(['cards', 'links', 'media', 'mediaBlobs'], 'readwrite');
-      const cardStore = tx.objectStore('cards');
-      const linkStore = tx.objectStore('links');
-      const mediaStore = tx.objectStore('media');
-      const blobStore = tx.objectStore('mediaBlobs');
-      cardStore.delete(cardId);
-      for (const id of links) linkStore.delete(id);
-      for (const id of media) detachOwnerInTransaction(mediaStore, blobStore, id, cardId);
-      tx.oncomplete = () => resolve({ cardId, linkIds: links, mediaIds: media });
-      tx.onerror = () => reject(tx.error);
-      tx.onabort = () => reject(tx.error ?? new Error('IndexedDB card removal transaction aborted.'));
+      const transaction = database.transaction(['cards', 'links', 'media', 'mediaBlobs'], 'readwrite');
+      const cardStore = transaction.objectStore('cards');
+      const linkStore = transaction.objectStore('links');
+      const mediaStore = transaction.objectStore('media');
+      const blobStore = transaction.objectStore('mediaBlobs');
+
+      transaction.oncomplete = () => resolve({ cardId, linkIds: links, mediaIds: media });
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(
+        transaction.error ?? new Error('IndexedDB card removal transaction aborted.'),
+      );
+
+      try {
+        cardStore.delete(cardId);
+        for (const id of links) linkStore.delete(id);
+        for (const id of media) {
+          detachOwnerInTransaction(mediaStore, blobStore, id, cardId);
+        }
+      } catch (error) {
+        abortTransaction(transaction, error, reject);
+      }
     });
   }
 
