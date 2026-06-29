@@ -55,7 +55,6 @@ const createPathData = (start, end) => {
   const dx = end.x - start.x;
   const curve = Math.max(48, Math.abs(dx) * 0.45);
   const direction = dx >= 0 ? 1 : -1;
-
   const c1x = start.x + curve * direction;
   const c2x = end.x - curve * direction;
 
@@ -70,6 +69,11 @@ const createSvgElement = (name, attributes = {}) => {
   return element;
 };
 
+function collectChangedCardIds(nextCards = {}, previousCards = {}) {
+  const ids = new Set([...Object.keys(nextCards), ...Object.keys(previousCards)]);
+  return [...ids].filter((id) => nextCards[id] !== previousCards[id]);
+}
+
 export class LinksRenderer {
   constructor(canvasElement) {
     if (!(canvasElement instanceof Element)) {
@@ -78,14 +82,16 @@ export class LinksRenderer {
 
     this.canvasElement = canvasElement;
     this.svg = this.ensureLayer();
-    this.unsubscribe = store.subscribe(() => this.scheduleRender());
     this.frameId = null;
+    this.pendingFullRender = false;
+    this.pendingCardIds = new Set();
+    this.unsubscribe = store.subscribe((next, previous) => this.handleStoreChange(next, previous));
     this.resizeObserver = typeof ResizeObserver === 'function'
-      ? new ResizeObserver(() => this.scheduleRender())
+      ? new ResizeObserver(() => this.scheduleRender({ full: true }))
       : null;
 
     this.resizeObserver?.observe(this.canvasElement);
-    this.scheduleRender();
+    this.scheduleRender({ full: true });
   }
 
   ensureLayer() {
@@ -117,58 +123,120 @@ export class LinksRenderer {
     return svg;
   }
 
-  scheduleRender() {
+  handleStoreChange(next, previous) {
+    if (next.links !== previous.links) {
+      this.scheduleRender({ full: true });
+      return;
+    }
+
+    const cardIds = new Set();
+
+    if (next.cards !== previous.cards) {
+      for (const id of collectChangedCardIds(next.cards, previous.cards)) cardIds.add(id);
+    }
+
+    if (next.selectedCardId !== previous.selectedCardId) {
+      if (previous.selectedCardId) cardIds.add(previous.selectedCardId);
+      if (next.selectedCardId) cardIds.add(next.selectedCardId);
+    }
+
+    if (cardIds.size > 0) this.scheduleRender({ cardIds });
+  }
+
+  scheduleRender({ full = false, cardIds = [] } = {}) {
+    if (full) {
+      this.pendingFullRender = true;
+      this.pendingCardIds.clear();
+    } else if (!this.pendingFullRender) {
+      for (const id of cardIds) this.pendingCardIds.add(id);
+    }
+
     if (this.frameId !== null) return;
+
     this.frameId = requestAnimationFrame(() => {
       this.frameId = null;
-      this.render();
+      const renderFull = this.pendingFullRender;
+      const changedCardIds = new Set(this.pendingCardIds);
+      this.pendingFullRender = false;
+      this.pendingCardIds.clear();
+      this.render({ full: renderFull, cardIds: changedCardIds });
     });
   }
 
-  render() {
-    const { cards = {}, links = [], selectedCardId = null } = store.getState();
-    const cardMap = cards instanceof Map ? Object.fromEntries(cards) : cards;
-    const nextIds = new Set();
+  getPath(linkId) {
+    return this.svg.querySelector(`[data-link-id="${CSS.escape(linkId)}"]`);
+  }
 
-    for (const link of Array.isArray(links) ? links : []) {
-      const sourceId = getEndpointId(link, 'source');
-      const targetId = getEndpointId(link, 'target');
-      if (!sourceId || !targetId) continue;
+  renderLink(link, cardMap, selectedCardId) {
+    const sourceId = getEndpointId(link, 'source');
+    const targetId = getEndpointId(link, 'target');
+    if (!sourceId || !targetId) return null;
 
-      const sourceCard = cardMap?.[sourceId];
-      const targetCard = cardMap?.[targetId];
-      if (!sourceCard || !targetCard) continue;
+    const linkId = String(link.id ?? `${sourceId}__${targetId}`);
+    const sourceCard = cardMap?.[sourceId];
+    const targetCard = cardMap?.[targetId];
+    let path = this.getPath(linkId);
 
-      const linkId = String(link.id ?? `${sourceId}__${targetId}`);
-      nextIds.add(linkId);
-
-      const sourceRect = getCardRect(sourceCard);
-      const targetRect = getCardRect(targetCard);
-      const start = getAnchor(sourceRect, targetRect);
-      const end = getAnchor(targetRect, sourceRect);
-      const isActive = Boolean(link.active || link.selected || sourceId === selectedCardId || targetId === selectedCardId);
-
-      let path = this.svg.querySelector(`[data-link-id="${CSS.escape(linkId)}"]`);
-      if (!path) {
-        path = createSvgElement('path', {
-          'data-link-id': linkId,
-          fill: 'none',
-          'vector-effect': 'non-scaling-stroke',
-        });
-        this.svg.append(path);
-      }
-
-      path.setAttribute('d', createPathData(start, end));
-      path.setAttribute('stroke', link.color || (isActive ? '#9d8cff' : 'rgba(160, 170, 210, 0.42)'));
-      path.setAttribute('stroke-width', isActive ? '3' : '1.5');
-      path.setAttribute('stroke-linecap', 'round');
-      path.setAttribute('opacity', isActive ? '1' : '0.82');
+    if (!sourceCard || !targetCard) {
+      path?.remove();
+      return linkId;
     }
 
-    for (const path of [...this.svg.querySelectorAll('[data-link-id]')]) {
-      if (!nextIds.has(path.getAttribute('data-link-id'))) {
-        path.remove();
+    const sourceRect = getCardRect(sourceCard);
+    const targetRect = getCardRect(targetCard);
+    const start = getAnchor(sourceRect, targetRect);
+    const end = getAnchor(targetRect, sourceRect);
+    const isActive = Boolean(
+      link.active
+      || link.selected
+      || sourceId === selectedCardId
+      || targetId === selectedCardId
+    );
+
+    if (!path) {
+      path = createSvgElement('path', {
+        'data-link-id': linkId,
+        'data-source-id': sourceId,
+        'data-target-id': targetId,
+        fill: 'none',
+        'vector-effect': 'non-scaling-stroke',
+      });
+      this.svg.append(path);
+    }
+
+    path.setAttribute('d', createPathData(start, end));
+    path.setAttribute('stroke', link.color || (isActive ? '#9d8cff' : 'rgba(160, 170, 210, 0.42)'));
+    path.setAttribute('stroke-width', isActive ? '3' : '1.5');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('opacity', isActive ? '1' : '0.82');
+    return linkId;
+  }
+
+  render({ full, cardIds }) {
+    const { cards = {}, links = [], selectedCardId = null } = store.getState();
+    const cardMap = cards instanceof Map ? Object.fromEntries(cards) : cards;
+    const linkList = Array.isArray(links) ? links : [];
+
+    if (full) {
+      const nextIds = new Set();
+      for (const link of linkList) {
+        const linkId = this.renderLink(link, cardMap, selectedCardId);
+        if (linkId) nextIds.add(linkId);
       }
+
+      for (const path of [...this.svg.querySelectorAll('[data-link-id]')]) {
+        if (!nextIds.has(path.getAttribute('data-link-id'))) path.remove();
+      }
+      return;
+    }
+
+    if (cardIds.size === 0) return;
+
+    for (const link of linkList) {
+      const sourceId = getEndpointId(link, 'source');
+      const targetId = getEndpointId(link, 'target');
+      if (!cardIds.has(sourceId) && !cardIds.has(targetId)) continue;
+      this.renderLink(link, cardMap, selectedCardId);
     }
   }
 
