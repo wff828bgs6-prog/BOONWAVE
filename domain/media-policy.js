@@ -33,8 +33,7 @@ function getSlotConfig(type, slot) {
   return config;
 }
 
-function resolveKind(config, file) {
-  if (config.kinds.length === 1) return config.kinds[0];
+function resolveKind(file) {
   return inferMediaKind(undefined, file?.type ?? '');
 }
 
@@ -68,7 +67,7 @@ export function validatePendingMediaBundle(type, pendingMedia = []) {
   let totalSize = 0;
   const items = pendingMedia.map((pending) => {
     const config = getSlotConfig(type, pending.slot);
-    const kind = resolveKind(config, pending.file);
+    const kind = resolveKind(pending.file);
     const size = toFileSize(pending.file);
 
     if (!config.kinds.includes(kind)) {
