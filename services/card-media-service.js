@@ -1,31 +1,8 @@
 import store from '../state/store.js';
 import storage from '../storage/index.js';
+import { CARD_MEDIA_SLOTS, getCardMediaIds } from '../domain/card-media.js';
 import { updateCardNode } from './node-service.js';
 import { attachMediaOwner, detachMediaOwner, loadMedia } from './media-service.js';
-
-const SLOT_CONFIG = Object.freeze({
-  project: Object.freeze({
-    cover: { field: 'coverMediaId', mode: 'single', kinds: ['image'] },
-    images: { field: 'images', mode: 'multiple', kinds: ['image'] },
-    documents: { field: 'documents', mode: 'multiple', kinds: ['document'] },
-    files: { field: 'files', mode: 'multiple', kinds: ['image', 'document', 'file'] },
-  }),
-  process: Object.freeze({
-    attachments: { field: 'attachments', mode: 'multiple', kinds: ['image', 'document', 'file'] },
-  }),
-  person: Object.freeze({
-    avatar: { field: 'avatarMediaId', mode: 'single', kinds: ['image'] },
-    attachments: { field: 'attachments', mode: 'multiple', kinds: ['image', 'document', 'file'] },
-  }),
-  idea: Object.freeze({
-    cover: { field: 'coverMediaId', mode: 'single', kinds: ['image'] },
-    attachments: { field: 'attachments', mode: 'multiple', kinds: ['image', 'document', 'file'] },
-  }),
-  goal: Object.freeze({
-    cover: { field: 'coverMediaId', mode: 'single', kinds: ['image'] },
-    attachments: { field: 'attachments', mode: 'multiple', kinds: ['image', 'document', 'file'] },
-  }),
-});
 
 function resolveDependencies(options = {}) {
   return {
@@ -35,25 +12,9 @@ function resolveDependencies(options = {}) {
 }
 
 function getSlotConfig(card, slot) {
-  const config = SLOT_CONFIG[card.type]?.[slot];
+  const config = CARD_MEDIA_SLOTS[card.type]?.[slot];
   if (!config) throw new TypeError(`Unsupported media slot "${slot}" for card type "${card.type}".`);
   return config;
-}
-
-export function getCardMediaIds(card) {
-  const config = SLOT_CONFIG[card.type] ?? {};
-  const ids = [];
-
-  for (const slot of Object.values(config)) {
-    const value = card.data?.[slot.field];
-    if (slot.mode === 'single') {
-      if (typeof value === 'string' && value) ids.push(value);
-    } else if (Array.isArray(value)) {
-      ids.push(...value.filter((id) => typeof id === 'string' && id));
-    }
-  }
-
-  return [...new Set(ids)];
 }
 
 export async function attachMediaToCard(cardId, mediaId, slot, options = {}) {
@@ -124,4 +85,4 @@ export async function detachMediaFromCard(cardId, mediaId, slot, options = {}) {
   return updatedCard;
 }
 
-export { SLOT_CONFIG as CARD_MEDIA_SLOTS };
+export { CARD_MEDIA_SLOTS, getCardMediaIds };
