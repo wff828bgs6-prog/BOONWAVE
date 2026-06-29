@@ -5,46 +5,11 @@ import { LinkController } from './controllers/link-controller.js';
 import { NodeController } from './controllers/node-controller.js';
 
 const seedCards = [
-  createNode({
-    type: 'project',
-    title: 'BOONWAVE Core',
-    description: 'Модульное ядро, камера, жесты и SVG-связи.',
-    x: 120,
-    y: 170,
-    data: { status: 'preparation', address: 'Core Stage A/B' },
-  }),
-  createNode({
-    type: 'process',
-    title: 'Рабочий процесс',
-    description: 'Связь берётся из общего store и перерисовывается реактивно.',
-    x: 520,
-    y: 310,
-    data: { status: 'in_progress', progress: 62 },
-  }),
-  createNode({
-    type: 'person',
-    title: 'Человек',
-    description: 'Положение сохраняется после перетаскивания.',
-    x: 330,
-    y: 560,
-    data: { role: 'Арт-инженер', organization: 'BOONWAVE' },
-  }),
-  createNode({
-    type: 'idea',
-    title: 'Живой свет',
-    description: 'Идея будущей кинетической системы.',
-    x: 810,
-    y: 170,
-    data: { status: 'draft', category: 'Kinetic Light' },
-  }),
-  createNode({
-    type: 'goal',
-    title: 'Production build',
-    description: 'Единая архитектура для Web и iOS.',
-    x: 820,
-    y: 560,
-    data: { status: 'active', progress: 35 },
-  }),
+  createNode({ type: 'project', title: 'BOONWAVE Core', description: 'Модульное ядро, камера, жесты и SVG-связи.', x: 120, y: 170, data: { status: 'preparation', address: 'Core Stage A/B' } }),
+  createNode({ type: 'process', title: 'Рабочий процесс', description: 'Связь берётся из общего store и перерисовывается реактивно.', x: 520, y: 310, data: { status: 'in_progress', progress: 62 } }),
+  createNode({ type: 'person', title: 'Человек', description: 'Положение сохраняется после перетаскивания.', x: 330, y: 560, data: { role: 'Арт-инженер', organization: 'BOONWAVE' } }),
+  createNode({ type: 'idea', title: 'Живой свет', description: 'Идея будущей кинетической системы.', x: 810, y: 170, data: { status: 'draft', category: 'Kinetic Light' } }),
+  createNode({ type: 'goal', title: 'Production build', description: 'Единая архитектура для Web и iOS.', x: 820, y: 560, data: { status: 'active', progress: 35 } }),
 ];
 
 seedCards[0].id = 'project_demo';
@@ -72,12 +37,7 @@ async function bootstrapPreview() {
   const world = document.getElementById('world');
   const hint = document.getElementById('hint');
 
-  const workspaceController = new WorkspaceController({
-    canvas,
-    world,
-    initialSelectedCardId: 'project_demo',
-  });
-
+  const workspaceController = new WorkspaceController({ canvas, world, initialSelectedCardId: 'project_demo' });
   const linkController = new LinkController({
     connectButton: document.getElementById('connectButton'),
     disconnectButton: document.getElementById('disconnectButton'),
@@ -103,11 +63,13 @@ async function bootstrapPreview() {
     typeGrid: document.getElementById('typeGrid'),
     titleInput: document.getElementById('cardTitle'),
     descriptionInput: document.getElementById('cardDescription'),
+    createTypeFields: document.getElementById('createTypeFields'),
     editSheet: document.getElementById('editSheet'),
     closeEditButton: document.getElementById('closeEditSheetButton'),
     editForm: document.getElementById('editCardForm'),
     editTitleInput: document.getElementById('editCardTitle'),
     editDescriptionInput: document.getElementById('editCardDescription'),
+    editTypeFields: document.getElementById('editTypeFields'),
     hint,
     getViewportCenter: () => workspaceController.getViewportCenter(),
   });
