@@ -38,6 +38,42 @@ test('staging a replacement cover keeps the new blob and identifies the old medi
   assert.deepEqual(staged.removedMediaIds, ['old-cover']);
 });
 
+test('create without media saves the card before committing store state', async () => {
+  const stateStore = createTestStore({ cards: {}, links: [], selectedCardId: null });
+  let savedCard = null;
+  const storageAdapter = {
+    async saveCard(card) { savedCard = card; },
+  };
+
+  const result = await createCardWithMedia(
+    { type: 'person', title: 'Person' },
+    [],
+    { stateStore, storageAdapter },
+  );
+
+  assert.equal(savedCard.id, result.card.id);
+  assert.equal(stateStore.getState().cards[result.card.id].id, result.card.id);
+  assert.equal(stateStore.getState().selectedCardId, result.card.id);
+});
+
+test('failed plain card save leaves store untouched', async () => {
+  const initialState = { cards: {}, links: [], selectedCardId: null };
+  const stateStore = createTestStore(initialState);
+  const storageAdapter = {
+    async saveCard() { throw new Error('card write failed'); },
+  };
+
+  await assert.rejects(
+    createCardWithMedia(
+      { type: 'person', title: 'Person' },
+      [],
+      { stateStore, storageAdapter },
+    ),
+    /card write failed/,
+  );
+  assert.deepEqual(stateStore.getState(), initialState);
+});
+
 test('create commits store only after the bundle transaction succeeds', async () => {
   const stateStore = createTestStore({ cards: {}, links: [], selectedCardId: null });
   const calls = [];
@@ -54,6 +90,27 @@ test('create commits store only after the bundle transaction succeeds', async ()
   assert.equal(calls.length, 1);
   assert.equal(stateStore.getState().cards[result.card.id].id, result.card.id);
   assert.equal(stateStore.getState().selectedCardId, result.card.id);
+});
+
+test('media save refuses a sequential saveMedia then saveCard fallback', async () => {
+  const initialState = { cards: {}, links: [], selectedCardId: null };
+  const stateStore = createTestStore(initialState);
+  const calls = [];
+  const storageAdapter = {
+    async saveMedia() { calls.push('saveMedia'); },
+    async saveCard() { calls.push('saveCard'); },
+  };
+
+  await assert.rejects(
+    createCardWithMedia(
+      { type: 'idea', title: 'Idea' },
+      [{ slot: 'cover', file: namedBlob('idea.png', 'image/png') }],
+      { stateStore, storageAdapter },
+    ),
+    /Atomic card and media save is not implemented/,
+  );
+  assert.deepEqual(calls, []);
+  assert.deepEqual(stateStore.getState(), initialState);
 });
 
 test('failed bundle transaction leaves store untouched', async () => {
@@ -109,6 +166,6 @@ test('invalid media kind is rejected before persistence', () => {
     () => stageCardMedia(card, [
       { slot: 'cover', file: namedBlob('document.pdf', 'application/pdf') },
     ]),
-    /not allowed/,
+    (error) => error.code === 'UNSUPPORTED_MEDIA_KIND',
   );
 });
