@@ -15,6 +15,7 @@ const typeGrid = document.getElementById('typeGrid');
 const cardTitle = document.getElementById('cardTitle');
 const cardDescription = document.getElementById('cardDescription');
 let selectedNodeType = 'project';
+let cameraSaveTimer = null;
 
 const seedCards = {
   project_demo: { id: 'project_demo', type: 'project', title: 'BOONWAVE Core', description: 'Модульное ядро, камера, жесты и SVG-связи.', x: 120, y: 170, width: 230, height: 138 },
@@ -61,6 +62,23 @@ function applyCamera() {
   world.style.transform = `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`;
 }
 
+function isValidCamera(camera) {
+  return camera
+    && Number.isFinite(camera.x)
+    && Number.isFinite(camera.y)
+    && Number.isFinite(camera.zoom)
+    && camera.zoom > 0;
+}
+
+function scheduleCameraSave(camera) {
+  clearTimeout(cameraSaveTimer);
+  cameraSaveTimer = setTimeout(() => {
+    db.saveSetting('camera', camera).catch((error) => {
+      console.error('Camera save failed:', error);
+    });
+  }, 180);
+}
+
 function viewportCenterInWorld() {
   const { camera } = store.getState();
   return {
@@ -92,7 +110,12 @@ async function bootstrap() {
     await db.loadAllData();
   }
 
-  store.setState({ selectedCardId: 'project_demo', camera: { x: 0, y: 0, zoom: 0.82 } });
+  const savedCamera = await db.loadSetting('camera');
+  const initialCamera = isValidCamera(savedCamera)
+    ? savedCamera
+    : { x: 0, y: 0, zoom: 0.82 };
+
+  store.setState({ selectedCardId: 'project_demo', camera: initialCamera });
   reconcileCards();
   applyCamera();
 
@@ -102,7 +125,10 @@ async function bootstrap() {
 
   const unsubscribe = store.subscribe((next, previous) => {
     if (next.cards !== previous.cards || next.selectedCardId !== previous.selectedCardId) reconcileCards();
-    if (next.camera !== previous.camera) applyCamera();
+    if (next.camera !== previous.camera) {
+      applyCamera();
+      scheduleCameraSave(next.camera);
+    }
   });
 
   canvas.addEventListener('click', (event) => {
@@ -142,6 +168,8 @@ async function bootstrap() {
   });
 
   window.addEventListener('beforeunload', () => {
+    clearTimeout(cameraSaveTimer);
+    db.saveSetting('camera', store.getState().camera).catch(() => {});
     unsubscribe();
     linksRenderer.destroy();
     cardController.destroy();
