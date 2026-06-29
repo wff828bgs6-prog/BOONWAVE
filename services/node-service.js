@@ -1,5 +1,6 @@
 import store from '../state/store.js';
 import storage from '../storage/index.js';
+import StorageAdapter from '../storage/storage-adapter.js';
 import { createNode, normalizeNode } from '../domain/node.js';
 import { mergeNodeData } from '../domain/node-schemas.js';
 import { getCardMediaIds } from '../domain/card-media.js';
@@ -10,6 +11,11 @@ function resolveDependencies(options = {}) {
     stateStore: options.stateStore ?? store,
     storageAdapter: options.storageAdapter ?? storage,
   };
+}
+
+function supportsAtomicCardGraphDelete(storageAdapter) {
+  return typeof storageAdapter?.deleteCardGraph === 'function'
+    && storageAdapter.deleteCardGraph !== StorageAdapter.prototype.deleteCardGraph;
 }
 
 async function detachCardMediaFallback(storageAdapter, cardId, mediaIds) {
@@ -84,7 +90,7 @@ export async function deleteCardNode(cardId, options = {}) {
   const linkIds = relatedLinks.map((link) => link.id);
   const mediaIds = getCardMediaIds(card);
 
-  if (storageAdapter.supportsAtomicCardGraphDelete === true) {
+  if (supportsAtomicCardGraphDelete(storageAdapter)) {
     await storageAdapter.deleteCardGraph({ cardId, linkIds, mediaIds });
   } else {
     await storageAdapter.deleteCardWithLinks(cardId, linkIds);
