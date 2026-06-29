@@ -1,9 +1,11 @@
 import store from './state/store.js';
 import db from './storage/database.js';
-import { createNode } from './domain/node.js';
 import { GestureMachine } from './canvas/gesture-machine.js';
 import { CardController } from './canvas/card-controller.js';
 import { createLinksRenderer } from './canvas/links.js';
+import { createCardNode, updateCardNode, deleteCardNode } from './services/node-service.js';
+import { createLink, deleteLinksBetween } from './services/link-service.js';
+import { loadWorkspace, saveCamera } from './services/workspace-service.js';
 
 const canvas = document.getElementById('canvas');
 const world = document.getElementById('world');
@@ -77,18 +79,10 @@ function applyCamera() {
   world.style.transform = `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`;
 }
 
-function isValidCamera(camera) {
-  return camera
-    && Number.isFinite(camera.x)
-    && Number.isFinite(camera.y)
-    && Number.isFinite(camera.zoom)
-    && camera.zoom > 0;
-}
-
 function scheduleCameraSave(camera) {
   clearTimeout(cameraSaveTimer);
   cameraSaveTimer = setTimeout(() => {
-    db.saveSetting('camera', camera).catch((error) => {
+    saveCamera(camera).catch((error) => {
       console.error('Camera save failed:', error);
     });
   }, 180);
@@ -150,10 +144,6 @@ function setLinkMode(mode) {
   reconcileCards();
 }
 
-function createLinkId(sourceId, targetId) {
-  return `link_${sourceId}_${targetId}_${crypto.randomUUID?.() ?? Date.now()}`;
-}
-
 async function handleCardTap(card) {
   store.setState({ selectedCardId: card.id });
 
@@ -173,38 +163,19 @@ async function handleCardTap(card) {
     return;
   }
 
-  const state = store.getState();
-
   if (linkMode === 'connect') {
-    const duplicate = state.links.some((link) => link.sourceId === linkSourceId && link.targetId === card.id);
-    if (!duplicate) {
-      const link = {
-        id: createLinkId(linkSourceId, card.id),
-        sourceId: linkSourceId,
-        targetId: card.id,
-        createdAt: new Date().toISOString(),
-      };
-      await db.saveLink(link);
-      store.setState({ links: [...state.links, link], selectedCardId: card.id });
-      hint.textContent = 'Связь создана';
-    } else {
-      hint.textContent = 'Такая связь уже существует';
-    }
+    const previousCount = store.getState().links.length;
+    await createLink(linkSourceId, card.id);
+    hint.textContent = store.getState().links.length > previousCount
+      ? 'Связь создана'
+      : 'Такая связь уже существует';
   }
 
   if (linkMode === 'disconnect') {
-    const matches = state.links.filter((link) =>
-      (link.sourceId === linkSourceId && link.targetId === card.id)
-      || (link.sourceId === card.id && link.targetId === linkSourceId));
-
-    if (matches.length > 0) {
-      await Promise.all(matches.map((link) => db.deleteLink(link.id)));
-      const deletedIds = new Set(matches.map((link) => link.id));
-      store.setState({ links: state.links.filter((link) => !deletedIds.has(link.id)), selectedCardId: card.id });
-      hint.textContent = 'Связь удалена';
-    } else {
-      hint.textContent = 'Между этими карточками связи нет';
-    }
+    const deleted = await deleteLinksBetween(linkSourceId, card.id);
+    hint.textContent = deleted.length > 0
+      ? 'Связь удалена'
+      : 'Между этими карточками связи нет';
   }
 
   linkMode = null;
@@ -231,22 +202,7 @@ async function deleteSelectedCard() {
   const confirmed = window.confirm(`Удалить карточку «${card.title}» и все её связи?`);
   if (!confirmed) return;
 
-  const relatedLinks = state.links.filter((link) => link.sourceId === cardId || link.targetId === cardId);
-  await Promise.all([
-    db.deleteCard(cardId),
-    ...relatedLinks.map((link) => db.deleteLink(link.id)),
-  ]);
-
-  const nextCards = { ...state.cards };
-  delete nextCards[cardId];
-  const relatedIds = new Set(relatedLinks.map((link) => link.id));
-
-  store.setState({
-    cards: nextCards,
-    links: state.links.filter((link) => !relatedIds.has(link.id)),
-    selectedCardId: null,
-  });
-
+  await deleteCardNode(cardId);
   hint.textContent = 'Карточка и её связи удалены';
   setTimeout(() => {
     hint.textContent = 'Выбери карточку • ✎ редактировать • ⌫ удалить';
@@ -258,26 +214,20 @@ async function seedDatabase() {
 }
 
 async function bootstrap() {
-  await db.initDB();
-  await db.loadAllData();
+  await loadWorkspace();
 
   if (Object.keys(store.getState().cards).length === 0) {
     await seedDatabase();
-    await db.loadAllData();
+    await loadWorkspace();
   }
 
-  const savedCamera = await db.loadSetting('camera');
-  const initialCamera = isValidCamera(savedCamera)
-    ? savedCamera
-    : { x: 0, y: 0, zoom: 0.82 };
-
-  store.setState({ selectedCardId: 'project_demo', camera: initialCamera });
+  store.setState({ selectedCardId: store.getState().cards.project_demo ? 'project_demo' : null });
   reconcileCards();
   applyCamera();
 
   const gestureMachine = new GestureMachine(canvas);
   const cardController = new CardController(world, {
-    onCommit: (card) => db.saveCard({ ...card, updatedAt: new Date().toISOString() }),
+    onCommit: (card) => updateCardNode(card.id, { x: card.x, y: card.y }),
     onTap: handleCardTap,
   });
   const linksRenderer = createLinksRenderer(world);
@@ -325,17 +275,13 @@ async function bootstrap() {
   createCardForm.addEventListener('submit', async (event) => {
     event.preventDefault();
     const position = viewportCenterInWorld();
-    const node = createNode({
+    await createCardNode({
       type: selectedNodeType,
       title: cardTitle.value,
       description: cardDescription.value,
       x: position.x,
       y: position.y,
     });
-
-    await db.saveCard(node);
-    const state = store.getState();
-    store.setState({ cards: { ...state.cards, [node.id]: node }, selectedCardId: node.id });
     closeCreateSheet();
   });
 
@@ -343,24 +289,9 @@ async function bootstrap() {
     event.preventDefault();
     if (!editingCardId) return;
 
-    const state = store.getState();
-    const card = state.cards[editingCardId];
-    if (!card) {
-      closeEditSheet();
-      return;
-    }
-
-    const updatedCard = {
-      ...card,
-      title: editCardTitle.value.trim() || card.title,
+    await updateCardNode(editingCardId, {
+      title: editCardTitle.value.trim(),
       description: editCardDescription.value.trim(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    await db.saveCard(updatedCard);
-    store.setState({
-      cards: { ...state.cards, [updatedCard.id]: updatedCard },
-      selectedCardId: updatedCard.id,
     });
 
     closeEditSheet();
@@ -372,7 +303,7 @@ async function bootstrap() {
 
   window.addEventListener('beforeunload', () => {
     clearTimeout(cameraSaveTimer);
-    db.saveSetting('camera', store.getState().camera).catch(() => {});
+    saveCamera().catch(() => {});
     unsubscribe();
     linksRenderer.destroy();
     cardController.destroy();
