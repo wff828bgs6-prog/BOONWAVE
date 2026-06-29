@@ -4,6 +4,7 @@ export class StorageAdapter {
   async saveCard() { throw new Error('StorageAdapter.saveCard() is not implemented.'); }
   async deleteCard() { throw new Error('StorageAdapter.deleteCard() is not implemented.'); }
   async deleteCardWithLinks() { throw new Error('StorageAdapter.deleteCardWithLinks() is not implemented.'); }
+  async deleteCardGraph() { throw new Error('StorageAdapter.deleteCardGraph() is not implemented.'); }
   async saveLink() { throw new Error('StorageAdapter.saveLink() is not implemented.'); }
   async deleteLink() { throw new Error('StorageAdapter.deleteLink() is not implemented.'); }
   async saveMedia() { throw new Error('StorageAdapter.saveMedia() is not implemented.'); }

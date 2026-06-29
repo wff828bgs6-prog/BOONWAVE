@@ -2,12 +2,32 @@ import store from '../state/store.js';
 import storage from '../storage/index.js';
 import { createNode, normalizeNode } from '../domain/node.js';
 import { mergeNodeData } from '../domain/node-schemas.js';
+import { getCardMediaIds } from '../domain/card-media.js';
+import { normalizeMediaRecord } from '../domain/media-record.js';
 
 function resolveDependencies(options = {}) {
   return {
     stateStore: options.stateStore ?? store,
     storageAdapter: options.storageAdapter ?? storage,
   };
+}
+
+async function detachCardMediaFallback(storageAdapter, cardId, mediaIds) {
+  for (const mediaId of mediaIds) {
+    const loaded = await storageAdapter.loadMedia(mediaId);
+    if (!loaded?.record) continue;
+    const ownerIds = loaded.record.ownerIds.filter((id) => id !== cardId);
+    if (ownerIds.length === 0) {
+      await storageAdapter.deleteMedia(mediaId);
+      continue;
+    }
+    const updated = normalizeMediaRecord({
+      ...loaded.record,
+      ownerIds,
+      updatedAt: new Date().toISOString(),
+    });
+    await storageAdapter.saveMedia(updated, loaded.blob);
+  }
 }
 
 export async function createCardNode(input, options = {}) {
@@ -56,18 +76,19 @@ export async function deleteCardNode(cardId, options = {}) {
   const { stateStore, storageAdapter } = resolveDependencies(options);
   const state = stateStore.getState();
   const card = state.cards[cardId];
-  if (!card) return { card: null, deletedLinks: [] };
+  if (!card) return { card: null, deletedLinks: [], mediaIds: [] };
 
   const relatedLinks = state.links.filter(
     (link) => link.sourceId === cardId || link.targetId === cardId,
   );
   const linkIds = relatedLinks.map((link) => link.id);
+  const mediaIds = getCardMediaIds(card);
 
-  if (typeof storageAdapter.deleteCardWithLinks === 'function') {
-    await storageAdapter.deleteCardWithLinks(cardId, linkIds);
+  if (typeof storageAdapter.deleteCardGraph === 'function') {
+    await storageAdapter.deleteCardGraph({ cardId, linkIds, mediaIds });
   } else {
-    await storageAdapter.deleteCard(cardId);
-    await Promise.all(relatedLinks.map((link) => storageAdapter.deleteLink(link.id)));
+    await storageAdapter.deleteCardWithLinks(cardId, linkIds);
+    await detachCardMediaFallback(storageAdapter, cardId, mediaIds);
   }
 
   const nextCards = { ...state.cards };
@@ -80,5 +101,5 @@ export async function deleteCardNode(cardId, options = {}) {
     selectedCardId: state.selectedCardId === cardId ? null : state.selectedCardId,
   });
 
-  return { card, deletedLinks: relatedLinks };
+  return { card, deletedLinks: relatedLinks, mediaIds };
 }
