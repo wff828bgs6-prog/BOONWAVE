@@ -26,17 +26,51 @@ const finiteNumber = (value, fallback) => {
 
 const clamp = (value, min, max, fallback) => Math.min(max, Math.max(min, finiteNumber(value, fallback)));
 
+function normalizeCoverFrame(raw = {}, fallback = {}) {
+  return {
+    shape: COVER_SHAPES.includes(raw.shape)
+      ? raw.shape
+      : (COVER_SHAPES.includes(fallback.shape) ? fallback.shape : 'rounded-square'),
+    scale: clamp(raw.scale, 1, 3, fallback.scale ?? 1),
+    positionX: clamp(raw.positionX, 0, 100, fallback.positionX ?? 50),
+    positionY: clamp(raw.positionY, 0, 100, fallback.positionY ?? 50),
+  };
+}
+
 export function normalizeNodeView(raw = {}) {
+  const legacyCover = raw.cover && typeof raw.cover === 'object' ? raw.cover : {};
+  const compact = normalizeCoverFrame(raw.coverFrames?.compact ?? legacyCover);
+  const working = normalizeCoverFrame(raw.coverFrames?.working ?? legacyCover, compact);
+
   return {
     mode: CARD_VIEW_MODES.includes(raw.mode) ? raw.mode : 'standard',
     compactLabel: String(raw.compactLabel ?? '').trim(),
-    cover: {
-      shape: COVER_SHAPES.includes(raw.cover?.shape) ? raw.cover.shape : 'rounded-square',
-      scale: clamp(raw.cover?.scale, 1, 3, 1),
-      positionX: clamp(raw.cover?.positionX, 0, 100, 50),
-      positionY: clamp(raw.cover?.positionY, 0, 100, 50),
-    },
+    coverFrames: { compact, working },
   };
+}
+
+export function createNode({ type, title, description = '', x = 0, y = 0, data, view } = {}) {
+  if (!NODE_TYPES.includes(type)) {
+    throw new TypeError(`Unsupported BOONWAVE node type: ${type}`);
+  }
+
+  const id = `${type}_${crypto.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
+  const now = new Date().toISOString();
+
+  return normalizeNode({
+    id,
+    type,
+    title,
+    description,
+    x,
+    y,
+    width: 230,
+    height: 138,
+    data: data ?? getNodeDataDefaults(type),
+    view,
+    createdAt: now,
+    updatedAt: now,
+  });
 }
 
 export function normalizeNode(raw = {}) {
@@ -68,28 +102,4 @@ export function normalizeNode(raw = {}) {
   }
 
   return node;
-}
-
-export function createNode({ type, title, description = '', x = 0, y = 0, data, view } = {}) {
-  if (!NODE_TYPES.includes(type)) {
-    throw new TypeError(`Unsupported BOONWAVE node type: ${type}`);
-  }
-
-  const id = `${type}_${crypto.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
-  const now = new Date().toISOString();
-
-  return normalizeNode({
-    id,
-    type,
-    title,
-    description,
-    x,
-    y,
-    width: 230,
-    height: 138,
-    data: data ?? getNodeDataDefaults(type),
-    view,
-    createdAt: now,
-    updatedAt: now,
-  });
 }
