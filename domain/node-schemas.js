@@ -69,6 +69,7 @@ const TYPE_DEFAULTS = Object.freeze({
 });
 
 function clone(value) {
+  if (value === undefined || value === null || typeof value !== 'object') return value;
   if (typeof structuredClone === 'function') return structuredClone(value);
   return JSON.parse(JSON.stringify(value));
 }
@@ -93,6 +94,20 @@ function mergeDefaults(defaults, value) {
   return value === undefined ? defaults : value;
 }
 
+function mergePatch(current, patch) {
+  if (patch === undefined) return clone(current);
+  if (Array.isArray(patch)) return clone(patch);
+  if (patch && typeof patch === 'object') {
+    const base = current && typeof current === 'object' && !Array.isArray(current) ? current : {};
+    const result = { ...clone(base) };
+    for (const [key, value] of Object.entries(patch)) {
+      result[key] = mergePatch(base[key], value);
+    }
+    return result;
+  }
+  return patch;
+}
+
 export function getNodeDataDefaults(type) {
   if (!NODE_TYPES.includes(type)) {
     throw new TypeError(`Unsupported BOONWAVE node type: ${type}`);
@@ -102,6 +117,10 @@ export function getNodeDataDefaults(type) {
 
 export function normalizeNodeData(type, data) {
   return mergeDefaults(TYPE_DEFAULTS[type], data);
+}
+
+export function mergeNodeData(type, current, patch) {
+  return normalizeNodeData(type, mergePatch(current, patch));
 }
 
 export function validateNode(node) {
@@ -118,6 +137,11 @@ export function validateNode(node) {
   if (!Number.isFinite(node.width) || node.width <= 0) errors.push('Node width must be positive.');
   if (!Number.isFinite(node.height) || node.height <= 0) errors.push('Node height must be positive.');
   if (!node.data || typeof node.data !== 'object' || Array.isArray(node.data)) errors.push('Node data must be an object.');
+
+  if ((node.type === 'process' || node.type === 'goal')
+    && (!Number.isFinite(node.data?.progress) || node.data.progress < 0 || node.data.progress > 100)) {
+    errors.push('Progress must be between 0 and 100.');
+  }
 
   return { valid: errors.length === 0, errors };
 }
