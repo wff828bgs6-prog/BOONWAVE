@@ -29,6 +29,7 @@ export class CardController {
     onLongPress,
     onDoubleTap,
     canOpenFullscreen,
+    canMoveCard,
   } = {}) {
     if (!(root instanceof Element)) {
       throw new TypeError('CardController expects a DOM element.');
@@ -40,6 +41,7 @@ export class CardController {
     this.onLongPress = typeof onLongPress === 'function' ? onLongPress : null;
     this.onDoubleTap = typeof onDoubleTap === 'function' ? onDoubleTap : null;
     this.canOpenFullscreen = typeof canOpenFullscreen === 'function' ? canOpenFullscreen : () => true;
+    this.canMoveCard = typeof canMoveCard === 'function' ? canMoveCard : () => true;
     this.active = null;
     this.longPressTimer = null;
     this.lastTap = null;
@@ -66,7 +68,7 @@ export class CardController {
   }
 
   releasePointer(active) {
-    if (!active?.element) return;
+    if (!active?.captured || !active.element) return;
     try {
       if (!active.element.hasPointerCapture || active.element.hasPointerCapture(active.pointerId)) {
         active.element.releasePointerCapture?.(active.pointerId);
@@ -76,12 +78,12 @@ export class CardController {
     }
   }
 
-  resetInteraction() {
+  resetInteraction({ setIdle = true } = {}) {
     const active = this.active;
     this.clearLongPressTimer();
     this.active = null;
     this.releasePointer(active);
-    store.setState({ activeGesture: 'IDLE' });
+    if (setIdle) store.setState({ activeGesture: 'IDLE' });
     return active;
   }
 
@@ -103,17 +105,22 @@ export class CardController {
     const card = this.getCardFromElement(element);
     if (!card) return;
 
+    const movable = Boolean(this.canMoveCard(card));
     const camera = getSafeCamera();
     const pointerWorldX = (event.clientX - camera.x) / camera.zoom;
     const pointerWorldY = (event.clientY - camera.y) / camera.zoom;
 
-    event.stopPropagation();
-    element.setPointerCapture?.(event.pointerId);
+    if (movable) {
+      event.stopPropagation();
+      element.setPointerCapture?.(event.pointerId);
+    }
 
     this.active = {
       pointerId: event.pointerId,
       cardId: card.id,
       element,
+      movable,
+      captured: movable,
       startClientX: event.clientX,
       startClientY: event.clientY,
       grabOffsetX: pointerWorldX - card.x,
@@ -121,7 +128,7 @@ export class CardController {
       moved: false,
     };
 
-    store.setState({ selectedCardId: card.id, activeGesture: DRAGGING });
+    store.setState({ selectedCardId: card.id, activeGesture: movable ? DRAGGING : store.getState().activeGesture });
     this.clearLongPressTimer();
     this.longPressTimer = setTimeout(() => {
       const active = this.active;
@@ -129,10 +136,7 @@ export class CardController {
 
       const currentCard = this.getCardFromElement(active.element);
       const sourceElement = active.element;
-
-      // Release capture before the overlay appears. On iOS Safari the subsequent
-      // pointerup may otherwise never reach the world and leave all cards locked.
-      this.resetInteraction();
+      this.resetInteraction({ setIdle: active.movable });
 
       if (currentCard && this.onLongPress) {
         Promise.resolve(this.onLongPress(currentCard, sourceElement)).catch((error) => {
@@ -146,14 +150,15 @@ export class CardController {
     const drag = this.active;
     if (!drag || drag.pointerId !== event.pointerId) return;
 
-    event.preventDefault();
-    event.stopPropagation();
-
     const start = { x: drag.startClientX, y: drag.startClientY };
     const current = { x: event.clientX, y: event.clientY };
     if (!canRemainLongPress(start, current)) this.clearLongPressTimer();
 
     drag.moved = drag.moved || shouldStartCardDrag(start, current);
+    if (!drag.movable) return;
+
+    event.preventDefault();
+    event.stopPropagation();
     if (!drag.moved) return;
 
     const camera = getSafeCamera();
@@ -187,19 +192,21 @@ export class CardController {
     if (!drag || drag.pointerId !== event.pointerId) return;
 
     this.clearLongPressTimer();
-    event.stopPropagation();
+    if (drag.movable) event.stopPropagation();
     this.active = null;
     this.releasePointer(drag);
-    store.setState({ activeGesture: 'IDLE' });
+    if (drag.movable) store.setState({ activeGesture: 'IDLE' });
 
     if (event.type === 'pointercancel') return;
     const card = store.getState().cards[drag.cardId];
     if (!card) return;
 
-    if (drag.moved && this.onCommit) {
-      Promise.resolve(this.onCommit(card)).catch((error) => {
-        console.error('Card position save failed:', error);
-      });
+    if (drag.moved) {
+      if (drag.movable && this.onCommit) {
+        Promise.resolve(this.onCommit(card)).catch((error) => {
+          console.error('Card position save failed:', error);
+        });
+      }
       return;
     }
 
@@ -232,11 +239,12 @@ export class CardController {
 
     const card = store.getState().cards[active.cardId];
     const moved = active.moved;
+    const movable = active.movable;
     this.clearLongPressTimer();
     this.active = null;
-    store.setState({ activeGesture: 'IDLE' });
+    if (movable) store.setState({ activeGesture: 'IDLE' });
 
-    if (moved && card && this.onCommit) {
+    if (movable && moved && card && this.onCommit) {
       Promise.resolve(this.onCommit(card)).catch((error) => {
         console.error('Card position save after lost capture failed:', error);
       });
