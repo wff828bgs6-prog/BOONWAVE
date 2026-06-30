@@ -46,6 +46,26 @@ test('long press releases pointer capture before opening the overlay', () => {
   );
 });
 
+test('fullscreen leaves all free space tappable through the backdrop', () => {
+  const controller = read('controllers/card-focus-controller.js');
+  assert.match(controller, /\.card-focus-stage \{[\s\S]*?pointer-events:none/);
+  assert.match(controller, /\.card-focus-content,\.card-focus-close \{ pointer-events:auto; \}/);
+  assert.doesNotMatch(controller, /data-mode="fullscreen"[^`]*height:100%/);
+  assert.match(controller, /data-mode="fullscreen"[^`]*width:min\(100%,520px\)/);
+});
+
+test('closing recalculates the live source rectangle and exact return transform', () => {
+  const controller = read('controllers/card-focus-controller.js');
+  assert.match(controller, /getSourceRect\(\)/);
+  assert.match(controller, /setStageTransformFromRect\(sourceRect\)/);
+  assert.match(controller, /--focus-from-scale-x/);
+  assert.match(controller, /--focus-from-scale-y/);
+  assert.match(
+    controller,
+    /close\(\{ immediate = false \} = \{\}\) \{[\s\S]*?const sourceRect = this\.getSourceRect\(\);[\s\S]*?this\.setStageTransformFromRect\(sourceRect\)/,
+  );
+});
+
 test('focus lift uses a smoother low-cost animation', () => {
   const controller = read('controllers/card-focus-controller.js');
   assert.match(controller, /const TRANSITION_MS = 300/);
