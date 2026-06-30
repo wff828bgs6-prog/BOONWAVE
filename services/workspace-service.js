@@ -1,6 +1,6 @@
 import store from '../state/store.js';
 import storage from '../storage/index.js';
-import { migrateStoredNodes } from './data-migration-service.js';
+import { migrateStoredNodes, migrateStoredLinks } from './data-migration-service.js';
 import { ensurePrimarySelfNode } from './self-node-service.js';
 import { BASE_ZOOM, clampZoom } from '../canvas/camera.js';
 
@@ -36,13 +36,15 @@ export function normalizeWorkspaceSnapshot(snapshot = {}) {
 export async function loadWorkspace(options = {}) {
   const stateStore = options.stateStore ?? store;
   const storageAdapter = options.storageAdapter ?? storage;
-  const migrate = options.migrate ?? migrateStoredNodes;
+  const migrateNodes = options.migrateNodes ?? options.migrate ?? migrateStoredNodes;
+  const migrateLinks = options.migrateLinks ?? migrateStoredLinks;
   const ensureSelfNode = options.ensureSelfNode ?? ensurePrimarySelfNode;
 
   await storageAdapter.init();
   const workspace = normalizeWorkspaceSnapshot(await storageAdapter.loadWorkspace());
   stateStore.setState(workspace);
-  await migrate({ stateStore, storageAdapter });
+  await migrateNodes({ stateStore, storageAdapter });
+  await migrateLinks({ stateStore, storageAdapter });
   await ensureSelfNode({ stateStore, storageAdapter });
 
   const savedCamera = await storageAdapter.loadSetting('camera');
