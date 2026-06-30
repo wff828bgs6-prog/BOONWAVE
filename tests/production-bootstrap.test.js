@@ -9,37 +9,31 @@ const read = (path) => readFileSync(join(ROOT, path), 'utf8');
 test('public index starts only the modular app', () => {
   const index = read('index.html');
   assert.match(index, /<script type="module" src="app\.js"><\/script>/);
-  assert.doesNotMatch(index, /boonwave\.v8\.js/);
   assert.match(index, /id="canvas"/);
   assert.match(index, /id="world"/);
-  assert.match(index, /id="legacyFallback"/);
-});
-
-test('legacy v8 remains available only through its rollback entry', () => {
-  const legacy = read('legacy-v8.html');
-  assert.match(legacy, /boonwave\.v8\.js\?v=8\.0\.0/);
-  assert.match(legacy, /boonwave\.v8\.css\?v=8\.0\.0/);
+  assert.doesNotMatch(index, /legacy|boonwave\.v8/i);
 });
 
 test('preview delegates to the same modular app without demo seeding', () => {
   const preview = read('preview.js');
   assert.match(preview, /import\('\.\/app\.js'\)/);
   assert.doesNotMatch(preview, /seedCards|seedPreview|saveCard\(/);
+  assert.doesNotMatch(preview, /legacy/i);
 });
 
-test('production bootstrap owns all interactive controllers and migration', () => {
+test('production bootstrap owns all interactive controllers', () => {
   const bootstrap = read('bootstrap/boonwave-bootstrap.js');
   assert.match(bootstrap, /TransactionalNodeController/);
   assert.match(bootstrap, /LinkController/);
   assert.match(bootstrap, /ZoomController/);
-  assert.match(bootstrap, /migrateLegacyV8Workspace/);
   assert.match(bootstrap, /workspace\.destroy\(\)/);
+  assert.doesNotMatch(bootstrap, /legacy|migrateLegacy/i);
 });
 
-test('service worker caches modular and rollback entries', () => {
+test('service worker caches only the modular production entry', () => {
   const worker = read('sw.js');
   assert.match(worker, /\.\/index\.html/);
   assert.match(worker, /\.\/app\.js/);
-  assert.match(worker, /\.\/legacy-v8\.html/);
   assert.match(worker, /\.\/styles\/production-shell\.css/);
+  assert.doesNotMatch(worker, /legacy|boonwave\.v8/i);
 });
