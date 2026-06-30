@@ -1,6 +1,6 @@
 import store from '../state/store.js';
 import storage from '../storage/index.js';
-import { CARD_VIEW_MODES, COVER_SHAPES, normalizeNodeView } from '../domain/node.js';
+import { COVER_SHAPES, normalizeNodeView } from '../domain/node.js';
 import { updateCardNode } from './node-service.js';
 
 function resolveDependencies(options = {}) {
@@ -12,11 +12,6 @@ function resolveDependencies(options = {}) {
 
 function definedEntries(object = {}) {
   return Object.fromEntries(Object.entries(object).filter(([, value]) => value !== undefined));
-}
-
-export function getNextCardViewMode(mode) {
-  const index = CARD_VIEW_MODES.indexOf(mode);
-  return CARD_VIEW_MODES[(index + 1 + CARD_VIEW_MODES.length) % CARD_VIEW_MODES.length];
 }
 
 export async function updateCardView(cardId, patch = {}, options = {}) {
@@ -38,20 +33,19 @@ export async function updateCardView(cardId, patch = {}, options = {}) {
         ...definedEntries(patch.coverFrames?.working),
       },
     },
+    visible: {
+      compact: {
+        ...current.visible.compact,
+        ...definedEntries(patch.visible?.compact),
+      },
+      standard: {
+        ...current.visible.standard,
+        ...definedEntries(patch.visible?.standard),
+      },
+    },
   });
 
   return updateCardNode(cardId, { view: next }, { stateStore, storageAdapter });
-}
-
-export function cycleCardView(cardId, options = {}) {
-  const { stateStore } = resolveDependencies(options);
-  const card = stateStore.getState().cards[cardId];
-  if (!card) throw new Error(`Card not found: ${cardId}`);
-
-  // A card opened through the eye becomes the active visual object and must
-  // render above neighbouring cards until the user selects something else.
-  stateStore.setState({ selectedCardId: cardId });
-  return updateCardView(cardId, { mode: getNextCardViewMode(card.view?.mode) }, options);
 }
 
 export function setCoverFraming(cardId, mode, { shape, scale, positionX, positionY } = {}, options = {}) {
