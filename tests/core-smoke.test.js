@@ -59,13 +59,14 @@ test('node normalization restores defaults and rejects unsupported types', () =>
   assert.throws(() => createNode({ type: 'unknown' }), /Unsupported BOONWAVE node type/);
 });
 
-test('zoom limits keep the working scale centered and bounded', () => {
-  assert.equal(MIN_ZOOM, 0.35);
+test('zoom limits provide a broad overview and detailed working scale', () => {
+  assert.equal(MIN_ZOOM, 0.18);
   assert.equal(BASE_ZOOM, 0.85);
-  assert.equal(MAX_ZOOM, 1.35);
+  assert.equal(MAX_ZOOM, 2.4);
   assert.equal(clampZoom(-10), MIN_ZOOM);
   assert.equal(clampZoom(BASE_ZOOM), BASE_ZOOM);
   assert.equal(clampZoom(10), MAX_ZOOM);
+  assert.equal(clampZoom(Number.NaN), BASE_ZOOM);
 });
 
 test('node service creates and updates a card only after persistence succeeds', async () => {
