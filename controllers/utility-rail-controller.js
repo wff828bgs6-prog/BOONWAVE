@@ -2,6 +2,7 @@ import store from '../state/store.js';
 import storage from '../storage/index.js';
 
 const SIDE_SETTING_KEY = 'utilityRailSide';
+const LOCK_SETTING_KEY = 'cardsLocked';
 const LONG_PRESS_MS = 520;
 const MOVE_TOLERANCE_PX = 9;
 const SUPPRESS_CLICK_MS = 700;
@@ -32,8 +33,12 @@ export class UtilityRailController {
   }
 
   async init() {
-    const savedSide = await storage.loadSetting(SIDE_SETTING_KEY).catch(() => null);
+    const [savedSide, savedLock] = await Promise.all([
+      storage.loadSetting(SIDE_SETTING_KEY).catch(() => null),
+      storage.loadSetting(LOCK_SETTING_KEY).catch(() => null),
+    ]);
     this.setSide(savedSide === 'left' ? 'left' : 'right', { persist: false, announce: false });
+    store.setState({ cardsLocked: savedLock === true });
     this.bind();
     this.syncLockState(store.getState().cardsLocked);
     this.unsubscribe = store.subscribe((next, previous) => {
@@ -45,13 +50,21 @@ export class UtilityRailController {
   bind() {
     const signal = this.abortController.signal;
 
-    this.lockButton.addEventListener('click', (event) => {
+    this.lockButton.addEventListener('click', async (event) => {
       if (this.consumeSuppressedClick(event)) return;
-      const nextLocked = !store.getState().cardsLocked;
+      const previousLocked = Boolean(store.getState().cardsLocked);
+      const nextLocked = !previousLocked;
       store.setState({ cardsLocked: nextLocked });
-      this.announce(nextLocked
-        ? 'Расположение карточек зафиксировано'
-        : 'Перемещение карточек разблокировано');
+      try {
+        await storage.saveSetting(LOCK_SETTING_KEY, nextLocked);
+        this.announce(nextLocked
+          ? 'Расположение карточек зафиксировано'
+          : 'Перемещение карточек разблокировано');
+      } catch (error) {
+        console.error('Card lock save failed:', error);
+        store.setState({ cardsLocked: previousLocked });
+        this.announce('Не удалось сохранить состояние замка');
+      }
     }, { signal });
 
     this.homeButton.addEventListener('click', async (event) => {
