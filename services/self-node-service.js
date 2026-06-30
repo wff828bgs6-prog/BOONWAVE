@@ -1,28 +1,12 @@
 import store from '../state/store.js';
 import storage from '../storage/index.js';
 import { createNode, normalizeNode } from '../domain/node.js';
+import {
+  buildProcessSummary,
+  buildSelfHierarchy,
+} from './graph-summary-service.js';
 
 export const PRIMARY_SELF_NODE_ID = 'self_primary';
-
-const COMPLETE_STATUSES = new Set(['completed', 'done', 'cancelled']);
-
-function isActive(card) {
-  return card && !COMPLETE_STATUSES.has(card.data?.status);
-}
-
-function findIncompleteTask(process) {
-  const tasks = Array.isArray(process?.data?.tasks) ? process.data.tasks : [];
-  return tasks.find((task) => {
-    if (!task || typeof task !== 'object') return false;
-    return !COMPLETE_STATUSES.has(task.status) && task.completed !== true;
-  }) ?? null;
-}
-
-function isOverdue(process, now) {
-  if (!isActive(process) || !process.data?.dueDate) return false;
-  const due = new Date(process.data.dueDate);
-  return Number.isFinite(due.getTime()) && due.getTime() < now.getTime();
-}
 
 function getInitialSelfPosition(cards = {}) {
   const existing = Object.values(cards).filter((card) => card && card.type !== 'self');
@@ -75,17 +59,15 @@ export async function ensurePrimarySelfNode(options = {}) {
 }
 
 export function buildSelfSummary(state = store.getState(), now = new Date()) {
-  const cards = Object.values(state.cards ?? {});
   const selfCard = getPrimarySelfNode(state.cards);
-  const goals = cards.filter((card) => card.type === 'goal' && isActive(card));
-  const projects = cards.filter((card) => card.type === 'project' && isActive(card));
-  const processes = cards.filter((card) => card.type === 'process' && isActive(card));
-  const overdue = processes.filter((card) => isOverdue(card, now));
+  const hierarchy = buildSelfHierarchy(selfCard, state, now);
+  const goals = hierarchy.goals;
+  const projects = hierarchy.projects;
+  const processes = hierarchy.processes;
+  const processSummaries = processes.map((process) => buildProcessSummary(process, state, now));
+  const overdue = processSummaries.filter((summary) => summary.overdue);
   const highPriorityProjects = projects.filter((card) => card.data?.priority === 'high');
-  const withoutNextStep = processes.filter((card) => {
-    const tasks = Array.isArray(card.data?.tasks) ? card.data.tasks : [];
-    return tasks.length === 0 || !findIncompleteTask(card);
-  });
+  const withoutNextStep = processSummaries.filter((summary) => !summary.nextAction);
 
   const manualFocus = Array.isArray(selfCard?.data?.focusItems)
     ? selfCard.data.focusItems.filter((item) => typeof item === 'string' && item.trim()).slice(0, 3)
@@ -95,19 +77,18 @@ export function buildSelfSummary(state = store.getState(), now = new Date()) {
   }
 
   const attentionItems = [
-    ...overdue.map((card) => `Просрочен процесс: ${card.title}`),
+    ...overdue.map((summary) => `Просрочен процесс: ${summary.title}`),
     ...highPriorityProjects.map((card) => `Высокий приоритет: ${card.title}`),
-    ...withoutNextStep.map((card) => `Нужен следующий шаг: ${card.title}`),
+    ...withoutNextStep.map((summary) => `Нужен следующий шаг: ${summary.title}`),
   ].filter((item, index, items) => items.indexOf(item) === index).slice(0, 3);
 
-  const firstTask = processes.map(findIncompleteTask).find(Boolean);
-  const nextAction = manualFocus[0]
-    || firstTask?.title
-    || firstTask?.text
-    || attentionItems[0]
+  const graphNextAction = hierarchy.goalSummaries.find((summary) => summary.nextAction)?.nextAction
+    || hierarchy.projectSummaries.find((summary) => summary.nextAction)?.nextAction
+    || processSummaries.find((summary) => summary.nextAction)?.nextAction
     || null;
-  const progressValues = goals
-    .map((card) => Number(card.data?.progress))
+  const nextAction = manualFocus[0] || graphNextAction || attentionItems[0] || null;
+  const progressValues = hierarchy.goalSummaries
+    .map((summary) => Number(summary.progress))
     .filter(Number.isFinite);
 
   return {
@@ -121,6 +102,7 @@ export function buildSelfSummary(state = store.getState(), now = new Date()) {
     focusItems: manualFocus,
     attentionItems,
     nextAction,
+    structured: hierarchy.structured,
   };
 }
 
@@ -142,5 +124,6 @@ export function formatSelfSummary(card, state = store.getState()) {
   } else {
     lines.push('Требует внимания: явных критических сигналов нет');
   }
+  if (!summary.structured) lines.push('Структура: свяжи «Я Есмь» с целями или проектами');
   return lines.join('\n');
 }
