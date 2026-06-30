@@ -11,7 +11,7 @@ test('workspace owns one focus controller and exposes both gestures', () => {
   assert.match(workspace, /CardFocusController/);
   assert.match(workspace, /onLongPress/);
   assert.match(workspace, /onDoubleTap/);
-  assert.match(workspace, /focusController\.destroy\(\)/);
+  assert.match(workspace, /focusController\?\.destroy\(\)/);
 });
 
 test('focus mode includes accessible close fullscreen and reduced motion behavior', () => {
