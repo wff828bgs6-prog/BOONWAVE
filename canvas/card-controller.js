@@ -107,16 +107,12 @@ export class CardController {
       const active = this.active;
       if (!active || active.pointerId !== event.pointerId || active.moved || active.longPressed) return;
       active.longPressed = true;
-      active.element.releasePointerCapture?.(active.pointerId);
-      this.active = null;
       store.setState({ activeGesture: FOCUSING });
       const currentCard = this.getCardFromElement(active.element);
       if (currentCard && this.onLongPress) {
-        Promise.resolve(this.onLongPress(currentCard, active.element))
-          .catch((error) => console.error('Card focus action failed:', error))
-          .finally(() => store.setState({ activeGesture: 'IDLE' }));
-      } else {
-        store.setState({ activeGesture: 'IDLE' });
+        Promise.resolve(this.onLongPress(currentCard, active.element)).catch((error) => {
+          console.error('Card focus action failed:', error);
+        });
       }
     }, LONG_PRESS_DELAY_MS);
   }
@@ -174,7 +170,8 @@ export class CardController {
 
     if (event.type === 'pointercancel') return;
     const card = store.getState().cards[drag.cardId];
-    if (!card || drag.longPressed) return;
+    if (!card) return;
+    if (drag.longPressed) return;
 
     if (drag.moved && this.onCommit) {
       Promise.resolve(this.onCommit(card)).catch((error) => {
