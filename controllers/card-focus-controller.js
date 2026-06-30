@@ -12,17 +12,19 @@ function ensureFocusStyles() {
     .card-focus-overlay[hidden] { display:none; }
     .card-focus-overlay { position:fixed; inset:0; z-index:120; display:grid; place-items:center; padding:max(76px,calc(env(safe-area-inset-top) + 62px)) 18px max(24px,calc(env(safe-area-inset-bottom) + 16px)); touch-action:none; }
     .card-focus-backdrop { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; background:rgba(4,6,16,.66); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); opacity:0; transition:opacity 240ms ease-out; }
-    .card-focus-stage { --focus-from-x:0px; --focus-from-y:0px; --focus-from-scale:.72; position:relative; z-index:1; max-width:100%; max-height:100%; opacity:0; transform:translate3d(var(--focus-from-x),var(--focus-from-y),0) scale(var(--focus-from-scale)); transform-origin:center; transition:transform ${TRANSITION_MS}ms cubic-bezier(.16,1,.3,1),opacity 240ms ease-out; will-change:transform,opacity; backface-visibility:hidden; -webkit-backface-visibility:hidden; }
+    .card-focus-stage { --focus-from-x:0px; --focus-from-y:0px; --focus-from-scale-x:.72; --focus-from-scale-y:.72; position:relative; z-index:1; max-width:100%; max-height:100%; opacity:0; pointer-events:none; transform:translate3d(var(--focus-from-x),var(--focus-from-y),0) scale(var(--focus-from-scale-x),var(--focus-from-scale-y)); transform-origin:center; transition:transform ${TRANSITION_MS}ms cubic-bezier(.16,1,.3,1),opacity 240ms ease-out; will-change:transform,opacity; backface-visibility:hidden; -webkit-backface-visibility:hidden; }
+    .card-focus-content,.card-focus-close { pointer-events:auto; }
     .card-focus-overlay.is-visible .card-focus-backdrop { opacity:1; }
-    .card-focus-overlay.is-visible .card-focus-stage { opacity:1; transform:translate3d(0,0,0) scale(1); }
+    .card-focus-overlay.is-visible .card-focus-stage { opacity:1; transform:translate3d(0,0,0) scale(1,1); }
     .card-focus-close { position:absolute; top:-14px; right:-14px; z-index:8; width:44px; height:44px; padding:0; border:1px solid rgba(255,255,255,.18); border-radius:50%; background:rgba(11,14,29,.94); color:#fff; display:grid; place-items:center; font-size:25px; line-height:1; box-shadow:0 12px 32px rgba(0,0,0,.36); }
     .card-focus-overlay .card-focus-copy.card { position:relative!important; inset:auto!important; width:min(86vw,340px)!important; max-width:340px; max-height:calc(100svh - 150px); margin:0; overflow:auto; transform:none!important; z-index:1; box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 42px rgba(var(--node-rgb),.24),inset 0 1px 0 rgba(255,255,255,.08); }
     .card-focus-overlay .card-focus-copy.card[data-view-mode="standard"] { min-height:180px; }
     .card-focus-overlay .card-focus-copy.card .card-view-button { z-index:7; }
-    .card-focus-overlay[data-mode="fullscreen"] { padding:max(58px,calc(env(safe-area-inset-top) + 44px)) 10px max(12px,env(safe-area-inset-bottom)); }
-    .card-focus-overlay[data-mode="fullscreen"] .card-focus-stage { width:100%; height:100%; display:grid; place-items:center; }
-    .card-focus-overlay[data-mode="fullscreen"] .card-focus-copy.card { width:min(100%,520px)!important; max-width:520px; max-height:100%; border-radius:28px; }
-    .card-focus-overlay[data-mode="fullscreen"] .card-focus-close { top:4px; right:4px; }
+    .card-focus-overlay[data-mode="fullscreen"] { padding:max(58px,calc(env(safe-area-inset-top) + 44px)) 18px max(18px,calc(env(safe-area-inset-bottom) + 12px)); }
+    .card-focus-overlay[data-mode="fullscreen"] .card-focus-stage { width:min(100%,520px); max-height:100%; }
+    .card-focus-overlay[data-mode="fullscreen"] .card-focus-content { width:100%; max-height:100%; }
+    .card-focus-overlay[data-mode="fullscreen"] .card-focus-copy.card { width:100%!important; max-width:none; max-height:calc(100svh - 96px); border-radius:28px; }
+    .card-focus-overlay[data-mode="fullscreen"] .card-focus-close { top:-12px; right:-12px; }
     .card-focus-overlay[data-mode="fullscreen"] .card-focus-copy .card-view-button { display:none; }
     @media (prefers-reduced-motion:reduce) {
       .card-focus-backdrop,.card-focus-stage { transition:none!important; }
@@ -108,7 +110,6 @@ export class CardFocusController {
     const signal = this.abortController.signal;
     overlay.querySelector('.card-focus-backdrop').addEventListener('click', () => this.close(), { signal });
     this.closeButton.addEventListener('click', () => this.close(), { signal });
-    this.stage.addEventListener('click', (event) => event.stopPropagation(), { signal });
     document.addEventListener('keydown', (event) => this.onKeyDown(event), { signal });
     document.addEventListener('focusin', (event) => {
       if (!this.isOpen() || this.overlay.contains(event.target)) return;
@@ -150,6 +151,30 @@ export class CardFocusController {
     return Boolean(this.activeCardId && !this.overlay.hidden);
   }
 
+  getSourceRect() {
+    if (!this.sourceElement?.isConnected) return null;
+    const rect = this.sourceElement.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    return rect;
+  }
+
+  setStageTransformFromRect(sourceRect) {
+    const stageRect = this.stage.getBoundingClientRect();
+    if (stageRect.width <= 0 || stageRect.height <= 0) return;
+
+    const sourceCenterX = sourceRect.left + sourceRect.width / 2;
+    const sourceCenterY = sourceRect.top + sourceRect.height / 2;
+    const stageCenterX = stageRect.left + stageRect.width / 2;
+    const stageCenterY = stageRect.top + stageRect.height / 2;
+    const scaleX = clamp(sourceRect.width / stageRect.width, 0.08, 1.2);
+    const scaleY = clamp(sourceRect.height / stageRect.height, 0.08, 1.2);
+
+    this.stage.style.setProperty('--focus-from-x', `${sourceCenterX - stageCenterX}px`);
+    this.stage.style.setProperty('--focus-from-y', `${sourceCenterY - stageCenterY}px`);
+    this.stage.style.setProperty('--focus-from-scale-x', String(scaleX));
+    this.stage.style.setProperty('--focus-from-scale-y', String(scaleY));
+  }
+
   open(card, sourceElement, { fullscreen = false } = {}) {
     if (!card || !(sourceElement instanceof Element)) return false;
     clearTimeout(this.closeTimer);
@@ -167,6 +192,7 @@ export class CardFocusController {
     this.overlay.setAttribute('aria-hidden', 'false');
     this.overlay.classList.remove('is-visible');
     this.lockApplication();
+    this.setStageTransformFromRect(sourceRect);
 
     const copy = this.content.querySelector('.card-focus-copy');
     const eyeButton = copy?.querySelector('.card-view-button');
@@ -180,16 +206,6 @@ export class CardFocusController {
       event.preventDefault();
       this.enterFullscreen();
     });
-
-    const targetRect = this.stage.getBoundingClientRect();
-    const sourceCenterX = sourceRect.left + sourceRect.width / 2;
-    const sourceCenterY = sourceRect.top + sourceRect.height / 2;
-    const targetCenterX = targetRect.left + targetRect.width / 2;
-    const targetCenterY = targetRect.top + targetRect.height / 2;
-    const scale = clamp(sourceRect.width / Math.max(targetRect.width, 1), 0.16, 1.08);
-    this.stage.style.setProperty('--focus-from-x', `${sourceCenterX - targetCenterX}px`);
-    this.stage.style.setProperty('--focus-from-y', `${sourceCenterY - targetCenterY}px`);
-    this.stage.style.setProperty('--focus-from-scale', String(scale));
 
     requestAnimationFrame(() => {
       if (token !== this.openToken || this.overlay.hidden) return;
@@ -213,6 +229,8 @@ export class CardFocusController {
     if (!this.isOpen()) return;
 
     this.openToken += 1;
+    const sourceRect = this.getSourceRect();
+    if (sourceRect) this.setStageTransformFromRect(sourceRect);
     this.overlay.classList.remove('is-visible');
 
     const finish = () => {
