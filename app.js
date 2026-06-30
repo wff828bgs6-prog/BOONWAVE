@@ -46,9 +46,7 @@ class BoonwaveApp {
   showStartupError(error) {
     console.error('BOONWAVE startup failed:', error);
     const hint = document.getElementById('hint');
-    if (hint) hint.textContent = 'Ошибка запуска. Старая версия доступна по ссылке Legacy v8.';
-    const fallback = document.getElementById('legacyFallback');
-    if (fallback) fallback.hidden = false;
+    if (hint) hint.textContent = 'Ошибка запуска BOONWAVE. Обновите страницу.';
   }
 
   destroy() {
