@@ -1,12 +1,15 @@
 import store from '../state/store.js';
 
-export const MIN_ZOOM = 0.35;
+export const MIN_ZOOM = 0.18;
 export const BASE_ZOOM = 0.85;
-export const MAX_ZOOM = 1.35;
+export const MAX_ZOOM = 2.4;
 const DEFAULT_PADDING = 48;
 
-export const clampZoom = (value) =>
-  Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value));
+export const clampZoom = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return BASE_ZOOM;
+  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, numeric));
+};
 
 const getCamera = () => {
   const { camera = {} } = store.getState();
@@ -41,7 +44,9 @@ export function pan(dx, dy) {
 
 export function zoomAt(clientX, clientY, factor) {
   const camera = getCamera();
-  const nextZoom = clampZoom(camera.zoom * factor);
+  const safeFactor = Number(factor);
+  if (!Number.isFinite(safeFactor) || safeFactor <= 0) return camera;
+  const nextZoom = clampZoom(camera.zoom * safeFactor);
 
   const worldX = (clientX - camera.x) / camera.zoom;
   const worldY = (clientY - camera.y) / camera.zoom;
