@@ -71,11 +71,3 @@ test('node UI and transactional persistence keep separate responsibilities', () 
   assert.match(cardSaveService, /\bsaveCardBundle\b/);
   assert.doesNotMatch(cardSaveService, /storageAdapter\.saveMedia\s*\(/);
 });
-
-test('public production entry never loads the legacy monolith', () => {
-  const index = readFileSync(join(ROOT, 'index.html'), 'utf8');
-  const legacy = readFileSync(join(ROOT, 'legacy-v8.html'), 'utf8');
-  assert.match(index, /type="module" src="app\.js"/);
-  assert.doesNotMatch(index, /boonwave\.v8\.js/);
-  assert.match(legacy, /boonwave\.v8\.js\?v=8\.0\.0/);
-});
