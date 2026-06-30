@@ -24,6 +24,14 @@ function isOverdue(process, now) {
   return Number.isFinite(due.getTime()) && due.getTime() < now.getTime();
 }
 
+function getInitialSelfPosition(cards = {}) {
+  const existing = Object.values(cards).filter((card) => card && card.type !== 'self');
+  if (existing.length === 0) return { x: 80, y: 80 };
+  const minX = Math.min(...existing.map((card) => Number.isFinite(card.x) ? card.x : 80));
+  const minY = Math.min(...existing.map((card) => Number.isFinite(card.y) ? card.y : 80));
+  return { x: minX - 280, y: minY };
+}
+
 export function getPrimarySelfNode(cards = store.getState().cards) {
   return Object.values(cards ?? {}).find((card) => card?.type === 'self') ?? null;
 }
@@ -35,12 +43,13 @@ export async function ensurePrimarySelfNode(options = {}) {
   const existing = getPrimarySelfNode(state.cards);
   if (existing) return { card: existing, created: false };
 
+  const position = getInitialSelfPosition(state.cards);
   const generated = createNode({
     type: 'self',
     title: 'Я Есмь',
     description: 'Личный центр управления жизнью и проектами',
-    x: 80,
-    y: 80,
+    x: position.x,
+    y: position.y,
     data: {
       attentionStatus: 'stable',
       focusItems: [],
