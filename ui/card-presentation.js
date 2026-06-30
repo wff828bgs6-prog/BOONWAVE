@@ -1,4 +1,5 @@
 const TYPE_FALLBACKS = Object.freeze({
+  self: 'Я',
   project: 'П',
   process: 'Р',
   person: 'Ч',
@@ -7,7 +8,7 @@ const TYPE_FALLBACKS = Object.freeze({
 });
 
 export function getCoverMediaId(card = {}) {
-  return card.type === 'person'
+  return card.type === 'person' || card.type === 'self'
     ? card.data?.avatarMediaId ?? null
     : card.data?.coverMediaId ?? null;
 }
