@@ -31,10 +31,7 @@ export class CardController {
     canOpenFullscreen,
     canMoveCard,
   } = {}) {
-    if (!(root instanceof Element)) {
-      throw new TypeError('CardController expects a DOM element.');
-    }
-
+    if (!(root instanceof Element)) throw new TypeError('CardController expects a DOM element.');
     this.root = root;
     this.onCommit = typeof onCommit === 'function' ? onCommit : null;
     this.onTap = typeof onTap === 'function' ? onTap : null;
@@ -74,7 +71,7 @@ export class CardController {
         active.element.releasePointerCapture?.(active.pointerId);
       }
     } catch {
-      // iOS Safari can throw when capture was already released by a modal transition.
+      // iOS Safari may release capture during a modal transition.
     }
   }
 
@@ -101,31 +98,26 @@ export class CardController {
 
     const element = event.target.closest('[data-card-id]');
     if (!element || !this.root.contains(element)) return;
-
     const card = this.getCardFromElement(element);
     if (!card) return;
 
     const movable = Boolean(this.canMoveCard(card));
-
-    // When layout lock is enabled the card surface becomes part of the canvas.
-    // Do not capture or stop the event: GestureMachine receives it and can pan
-    // from every visible card area. Explicit card controls stop propagation on
-    // their own and remain usable.
-    if (!movable) return;
-
     const camera = getSafeCamera();
     const pointerWorldX = (event.clientX - camera.x) / camera.zoom;
     const pointerWorldY = (event.clientY - camera.y) / camera.zoom;
 
-    event.stopPropagation();
-    element.setPointerCapture?.(event.pointerId);
+    if (movable) {
+      event.stopPropagation();
+      element.setPointerCapture?.(event.pointerId);
+      store.setState({ selectedCardId: card.id, activeGesture: DRAGGING });
+    }
 
     this.active = {
       pointerId: event.pointerId,
       cardId: card.id,
       element,
-      movable: true,
-      captured: true,
+      movable,
+      captured: movable,
       startClientX: event.clientX,
       startClientY: event.clientY,
       grabOffsetX: pointerWorldX - card.x,
@@ -133,19 +125,16 @@ export class CardController {
       moved: false,
     };
 
-    store.setState({ selectedCardId: card.id, activeGesture: DRAGGING });
     this.clearLongPressTimer();
     this.longPressTimer = setTimeout(() => {
       const active = this.active;
       if (!active || active.pointerId !== event.pointerId || active.moved) return;
-
       const currentCard = this.getCardFromElement(active.element);
       const sourceElement = active.element;
-      this.resetInteraction();
-
+      this.resetInteraction({ setIdle: active.movable });
       if (currentCard && this.onLongPress) {
         Promise.resolve(this.onLongPress(currentCard, sourceElement)).catch((error) => {
-          console.error('Card focus action failed:', error);
+          console.error('Card edit action failed:', error);
         });
       }
     }, LONG_PRESS_DELAY_MS);
@@ -158,8 +147,9 @@ export class CardController {
     const start = { x: drag.startClientX, y: drag.startClientY };
     const current = { x: event.clientX, y: event.clientY };
     if (!canRemainLongPress(start, current)) this.clearLongPressTimer();
-
     drag.moved = drag.moved || shouldStartCardDrag(start, current);
+
+    if (!drag.movable) return;
     event.preventDefault();
     event.stopPropagation();
     if (!drag.moved) return;
@@ -167,7 +157,6 @@ export class CardController {
     const camera = getSafeCamera();
     const nextX = (event.clientX - camera.x) / camera.zoom - drag.grabOffsetX;
     const nextY = (event.clientY - camera.y) / camera.zoom - drag.grabOffsetY;
-
     const state = store.getState();
     const card = state.cards[drag.cardId];
     if (!card) return;
@@ -175,17 +164,11 @@ export class CardController {
     const x = Math.round(nextX);
     const y = Math.round(nextY);
     if (card.x === x && card.y === y) return;
-
     drag.element.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-
     store.setState({
       cards: {
         ...state.cards,
-        [drag.cardId]: {
-          ...card,
-          x,
-          y,
-        },
+        [drag.cardId]: { ...card, x, y },
       },
     });
   }
@@ -195,17 +178,15 @@ export class CardController {
     if (!drag || drag.pointerId !== event.pointerId) return;
 
     this.clearLongPressTimer();
-    event.stopPropagation();
+    if (drag.movable) event.stopPropagation();
     this.active = null;
     this.releasePointer(drag);
-    store.setState({ activeGesture: 'IDLE' });
+    if (drag.movable) store.setState({ activeGesture: 'IDLE' });
 
     if (event.type === 'pointercancel') return;
     const card = store.getState().cards[drag.cardId];
-    if (!card) return;
-
-    if (drag.moved) {
-      if (this.onCommit) {
+    if (!card || drag.moved) {
+      if (card && drag.movable && drag.moved && this.onCommit) {
         Promise.resolve(this.onCommit(card)).catch((error) => {
           console.error('Card position save failed:', error);
         });
@@ -213,6 +194,7 @@ export class CardController {
       return;
     }
 
+    store.setState({ selectedCardId: card.id });
     const tap = {
       cardId: card.id,
       x: event.clientX,
@@ -224,11 +206,10 @@ export class CardController {
 
     if (doubleTap && this.onDoubleTap) {
       Promise.resolve(this.onDoubleTap(card, drag.element)).catch((error) => {
-        console.error('Card fullscreen action failed:', error);
+        console.error('Card detail action failed:', error);
       });
       return;
     }
-
     if (this.onTap) {
       Promise.resolve(this.onTap(card)).catch((error) => {
         console.error('Card tap action failed:', error);
@@ -239,14 +220,13 @@ export class CardController {
   onLostPointerCapture(event) {
     const active = this.active;
     if (!active || active.pointerId !== event.pointerId) return;
-
     const card = store.getState().cards[active.cardId];
     const moved = active.moved;
+    const movable = active.movable;
     this.clearLongPressTimer();
     this.active = null;
-    store.setState({ activeGesture: 'IDLE' });
-
-    if (moved && card && this.onCommit) {
+    if (movable) store.setState({ activeGesture: 'IDLE' });
+    if (movable && moved && card && this.onCommit) {
       Promise.resolve(this.onCommit(card)).catch((error) => {
         console.error('Card position save after lost capture failed:', error);
       });
@@ -268,16 +248,15 @@ export class CardController {
       event.preventDefault();
       this.resetInteraction();
       Promise.resolve(this.onLongPress(card, element)).catch((error) => {
-        console.error('Keyboard card focus failed:', error);
+        console.error('Keyboard card edit failed:', error);
       });
       return;
     }
-
     if (event.key === 'Enter' && this.onDoubleTap && this.canOpenFullscreen()) {
       event.preventDefault();
       this.resetInteraction();
       Promise.resolve(this.onDoubleTap(card, element)).catch((error) => {
-        console.error('Keyboard card fullscreen failed:', error);
+        console.error('Keyboard card detail failed:', error);
       });
     }
   }
