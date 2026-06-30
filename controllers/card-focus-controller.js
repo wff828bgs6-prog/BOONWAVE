@@ -1,6 +1,6 @@
 import { normalizeNodeView } from '../domain/node.js';
 
-const TRANSITION_MS = 280;
+const TRANSITION_MS = 300;
 
 function ensureFocusStyles() {
   if (document.getElementById('boonwave-card-focus-styles')) return;
@@ -8,10 +8,11 @@ function ensureFocusStyles() {
   style.id = 'boonwave-card-focus-styles';
   style.textContent = `
     .card, .card * { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
+    html.card-focus-active .app-shell { pointer-events:none; }
     .card-focus-overlay[hidden] { display:none; }
-    .card-focus-overlay { position:fixed; inset:0; z-index:120; display:grid; place-items:center; padding:max(76px,calc(env(safe-area-inset-top) + 62px)) 18px max(24px,calc(env(safe-area-inset-bottom) + 16px)); }
-    .card-focus-backdrop { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; background:rgba(4,6,16,.66); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); opacity:0; transition:opacity 220ms ease-out; }
-    .card-focus-stage { --focus-from-x:0px; --focus-from-y:0px; --focus-from-scale:.72; position:relative; z-index:1; max-width:100%; max-height:100%; opacity:0; transform:translate3d(var(--focus-from-x),var(--focus-from-y),0) scale(var(--focus-from-scale)); transform-origin:center; transition:transform ${TRANSITION_MS}ms cubic-bezier(.16,1,.3,1),opacity 220ms ease-out; will-change:transform,opacity; backface-visibility:hidden; -webkit-backface-visibility:hidden; }
+    .card-focus-overlay { position:fixed; inset:0; z-index:120; display:grid; place-items:center; padding:max(76px,calc(env(safe-area-inset-top) + 62px)) 18px max(24px,calc(env(safe-area-inset-bottom) + 16px)); touch-action:none; }
+    .card-focus-backdrop { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; background:rgba(4,6,16,.66); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); opacity:0; transition:opacity 240ms ease-out; }
+    .card-focus-stage { --focus-from-x:0px; --focus-from-y:0px; --focus-from-scale:.72; position:relative; z-index:1; max-width:100%; max-height:100%; opacity:0; transform:translate3d(var(--focus-from-x),var(--focus-from-y),0) scale(var(--focus-from-scale)); transform-origin:center; transition:transform ${TRANSITION_MS}ms cubic-bezier(.16,1,.3,1),opacity 240ms ease-out; will-change:transform,opacity; backface-visibility:hidden; -webkit-backface-visibility:hidden; }
     .card-focus-overlay.is-visible .card-focus-backdrop { opacity:1; }
     .card-focus-overlay.is-visible .card-focus-stage { opacity:1; transform:translate3d(0,0,0) scale(1); }
     .card-focus-close { position:absolute; top:-14px; right:-14px; z-index:8; width:44px; height:44px; padding:0; border:1px solid rgba(255,255,255,.18); border-radius:50%; background:rgba(11,14,29,.94); color:#fff; display:grid; place-items:center; font-size:25px; line-height:1; box-shadow:0 12px 32px rgba(0,0,0,.36); }
@@ -69,11 +70,10 @@ function prepareClone(card, sourceElement, fullscreen) {
 }
 
 export class CardFocusController {
-  constructor({ root = document.body, appShell = document.querySelector('.app-shell') } = {}) {
+  constructor({ root = document.body } = {}) {
     if (!(root instanceof Element)) throw new TypeError('CardFocusController expects a root element.');
     ensureFocusStyles();
     this.root = root;
-    this.appShell = appShell instanceof Element ? appShell : null;
     this.overlay = null;
     this.stage = null;
     this.content = null;
@@ -109,24 +109,41 @@ export class CardFocusController {
     overlay.querySelector('.card-focus-backdrop').addEventListener('click', () => this.close(), { signal });
     this.closeButton.addEventListener('click', () => this.close(), { signal });
     this.stage.addEventListener('click', (event) => event.stopPropagation(), { signal });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && this.isOpen()) {
-        event.preventDefault();
-        this.close();
-      }
+    document.addEventListener('keydown', (event) => this.onKeyDown(event), { signal });
+    document.addEventListener('focusin', (event) => {
+      if (!this.isOpen() || this.overlay.contains(event.target)) return;
+      this.closeButton.focus({ preventScroll: true });
     }, { signal });
+    window.addEventListener('pagehide', () => this.unlockApplication(), { signal });
   }
 
   lockApplication() {
-    if (!this.appShell) return;
-    this.appShell.setAttribute('inert', '');
-    this.appShell.inert = true;
+    document.documentElement.classList.add('card-focus-active');
   }
 
   unlockApplication() {
-    if (!this.appShell) return;
-    this.appShell.inert = false;
-    this.appShell.removeAttribute('inert');
+    document.documentElement.classList.remove('card-focus-active');
+  }
+
+  onKeyDown(event) {
+    if (!this.isOpen()) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      this.close();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+
+    const focusable = [...this.overlay.querySelectorAll('button:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+      .filter((element) => !element.hidden);
+    if (focusable.length === 0) return;
+
+    const currentIndex = focusable.indexOf(document.activeElement);
+    const nextIndex = event.shiftKey
+      ? (currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1)
+      : (currentIndex >= focusable.length - 1 ? 0 : currentIndex + 1);
+    event.preventDefault();
+    focusable[nextIndex].focus({ preventScroll: true });
   }
 
   isOpen() {
