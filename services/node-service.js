@@ -6,6 +6,9 @@ import { mergeNodeData } from '../domain/node-schemas.js';
 import { getCardMediaIds } from '../domain/card-media.js';
 import { normalizeMediaRecord } from '../domain/media-record.js';
 
+export const SELF_NODE_PROTECTED_ERROR = 'SELF_NODE_PROTECTED';
+export const SELF_NODE_DUPLICATE_ERROR = 'SELF_NODE_DUPLICATE';
+
 function resolveDependencies(options = {}) {
   return {
     stateStore: options.stateStore ?? store,
@@ -38,11 +41,16 @@ async function detachCardMediaFallback(storageAdapter, cardId, mediaIds) {
 
 export async function createCardNode(input, options = {}) {
   const { stateStore, storageAdapter } = resolveDependencies(options);
+  const state = stateStore.getState();
+  if (input?.type === 'self' && Object.values(state.cards).some((card) => card.type === 'self')) {
+    const error = new Error('Only one Я Есмь card can exist.');
+    error.code = SELF_NODE_DUPLICATE_ERROR;
+    throw error;
+  }
   const node = createNode(input);
 
   await storageAdapter.saveCard(node);
 
-  const state = stateStore.getState();
   stateStore.setState({
     cards: { ...state.cards, [node.id]: node },
     selectedCardId: node.id,
@@ -83,6 +91,11 @@ export async function deleteCardNode(cardId, options = {}) {
   const state = stateStore.getState();
   const card = state.cards[cardId];
   if (!card) return { card: null, deletedLinks: [], mediaIds: [] };
+  if (card.type === 'self') {
+    const error = new Error('Карточка «Я Есмь» является системной и не может быть удалена.');
+    error.code = SELF_NODE_PROTECTED_ERROR;
+    throw error;
+  }
 
   const relatedLinks = state.links.filter(
     (link) => link.sourceId === cardId || link.targetId === cardId,
