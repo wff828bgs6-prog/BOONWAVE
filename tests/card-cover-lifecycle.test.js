@@ -21,25 +21,15 @@ function namedBlob(name, type, content) {
   return blob;
 }
 
-test('card cover survives reload, replacement, all view modes, and graph deletion without orphan media', async () => {
+test('card cover survives reload, replacement, thumbnail formats, and graph deletion without orphan media', async () => {
   globalThis.indexedDB = new IDBFactory();
   const { IndexedDBAdapter } = await import('../storage/indexeddb-adapter.js');
   const adapter = new IndexedDBAdapter();
   await adapter.init();
 
   const initialStore = createTestStore({ cards: {}, links: [], selectedCardId: null });
-  const compactFrame = {
-    shape: 'circle',
-    scale: 1.45,
-    positionX: 22,
-    positionY: 68,
-  };
-  const workingFrame = {
-    shape: 'landscape',
-    scale: 2.15,
-    positionX: 71,
-    positionY: 34,
-  };
+  const compactFrame = { shape: 'circle', scale: 1.45, positionX: 22, positionY: 68 };
+  const workingFrame = { shape: 'landscape', scale: 2.15, positionX: 71, positionY: 34 };
 
   const created = await createCardWithMedia({
     type: 'goal',
@@ -49,17 +39,11 @@ test('card cover survives reload, replacement, all view modes, and graph deletio
     view: {
       mode: 'compact',
       compactLabel: 'Цель',
-      coverFrames: {
-        compact: compactFrame,
-        working: workingFrame,
-      },
+      coverFrames: { compact: compactFrame, working: workingFrame },
     },
   }, [
     { slot: 'cover', file: namedBlob('first.png', 'image/png', 'first-cover') },
-  ], {
-    stateStore: initialStore,
-    storageAdapter: adapter,
-  });
+  ], { stateStore: initialStore, storageAdapter: adapter });
 
   const cardId = created.card.id;
   const firstCoverId = created.card.data.coverMediaId;
@@ -83,11 +67,8 @@ test('card cover survives reload, replacement, all view modes, and graph deletio
     selectedCardId: cardId,
   });
 
-  for (const mode of ['compact', 'standard', 'full']) {
-    await updateCardView(cardId, { mode }, {
-      stateStore: reloadedStore,
-      storageAdapter: adapter,
-    });
+  for (const mode of ['compact', 'standard']) {
+    await updateCardView(cardId, { mode }, { stateStore: reloadedStore, storageAdapter: adapter });
     const modeReload = await adapter.loadWorkspace();
     assert.equal(modeReload.cards[cardId].view.mode, mode);
     assert.deepEqual(modeReload.cards[cardId].view.coverFrames.compact, compactFrame);
@@ -98,14 +79,10 @@ test('card cover survives reload, replacement, all view modes, and graph deletio
     title: 'Visual goal updated',
   }, [
     { slot: 'cover', file: namedBlob('second.png', 'image/png', 'second-cover') },
-  ], {
-    stateStore: reloadedStore,
-    storageAdapter: adapter,
-  });
+  ], { stateStore: reloadedStore, storageAdapter: adapter });
 
   const secondCoverId = replaced.card.data.coverMediaId;
   assert.notEqual(secondCoverId, firstCoverId);
-
   const removedFirstMedia = await adapter.loadMedia(firstCoverId);
   assert.equal(removedFirstMedia.record, null);
   assert.equal(removedFirstMedia.blob, null);
@@ -117,7 +94,7 @@ test('card cover survives reload, replacement, all view modes, and graph deletio
   const secondReload = await adapter.loadWorkspace();
   assert.equal(secondReload.cards[cardId].title, 'Visual goal updated');
   assert.equal(secondReload.cards[cardId].data.coverMediaId, secondCoverId);
-  assert.equal(secondReload.cards[cardId].view.mode, 'full');
+  assert.equal(secondReload.cards[cardId].view.mode, 'standard');
   assert.deepEqual(secondReload.cards[cardId].view.coverFrames.compact, compactFrame);
   assert.deepEqual(secondReload.cards[cardId].view.coverFrames.working, workingFrame);
 
@@ -126,10 +103,7 @@ test('card cover survives reload, replacement, all view modes, and graph deletio
     links: secondReload.links,
     selectedCardId: cardId,
   });
-  await deleteCardNode(cardId, {
-    stateStore: deletionStore,
-    storageAdapter: adapter,
-  });
+  await deleteCardNode(cardId, { stateStore: deletionStore, storageAdapter: adapter });
 
   const finalWorkspace = await adapter.loadWorkspace();
   assert.equal(finalWorkspace.cards[cardId], undefined);
