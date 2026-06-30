@@ -1,6 +1,6 @@
 import { normalizeNodeView } from '../domain/node.js';
 
-const TRANSITION_MS = 220;
+const TRANSITION_MS = 280;
 
 function ensureFocusStyles() {
   if (document.getElementById('boonwave-card-focus-styles')) return;
@@ -10,8 +10,8 @@ function ensureFocusStyles() {
     .card, .card * { -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; }
     .card-focus-overlay[hidden] { display:none; }
     .card-focus-overlay { position:fixed; inset:0; z-index:120; display:grid; place-items:center; padding:max(76px,calc(env(safe-area-inset-top) + 62px)) 18px max(24px,calc(env(safe-area-inset-bottom) + 16px)); }
-    .card-focus-backdrop { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; background:rgba(4,6,16,.68); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); opacity:0; transition:opacity ${TRANSITION_MS}ms ease; }
-    .card-focus-stage { --focus-from-x:0px; --focus-from-y:0px; --focus-from-scale:.72; position:relative; z-index:1; max-width:100%; max-height:100%; opacity:0; transform:translate3d(var(--focus-from-x),var(--focus-from-y),0) scale(var(--focus-from-scale)); transform-origin:center; transition:transform ${TRANSITION_MS}ms cubic-bezier(.2,.78,.22,1),opacity ${TRANSITION_MS}ms ease; will-change:transform,opacity; }
+    .card-focus-backdrop { position:absolute; inset:0; width:100%; height:100%; padding:0; border:0; background:rgba(4,6,16,.66); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); opacity:0; transition:opacity 220ms ease-out; }
+    .card-focus-stage { --focus-from-x:0px; --focus-from-y:0px; --focus-from-scale:.72; position:relative; z-index:1; max-width:100%; max-height:100%; opacity:0; transform:translate3d(var(--focus-from-x),var(--focus-from-y),0) scale(var(--focus-from-scale)); transform-origin:center; transition:transform ${TRANSITION_MS}ms cubic-bezier(.16,1,.3,1),opacity 220ms ease-out; will-change:transform,opacity; backface-visibility:hidden; -webkit-backface-visibility:hidden; }
     .card-focus-overlay.is-visible .card-focus-backdrop { opacity:1; }
     .card-focus-overlay.is-visible .card-focus-stage { opacity:1; transform:translate3d(0,0,0) scale(1); }
     .card-focus-close { position:absolute; top:-14px; right:-14px; z-index:8; width:44px; height:44px; padding:0; border:1px solid rgba(255,255,255,.18); border-radius:50%; background:rgba(11,14,29,.94); color:#fff; display:grid; place-items:center; font-size:25px; line-height:1; box-shadow:0 12px 32px rgba(0,0,0,.36); }
@@ -117,6 +117,18 @@ export class CardFocusController {
     }, { signal });
   }
 
+  lockApplication() {
+    if (!this.appShell) return;
+    this.appShell.setAttribute('inert', '');
+    this.appShell.inert = true;
+  }
+
+  unlockApplication() {
+    if (!this.appShell) return;
+    this.appShell.inert = false;
+    this.appShell.removeAttribute('inert');
+  }
+
   isOpen() {
     return Boolean(this.activeCardId && !this.overlay.hidden);
   }
@@ -124,6 +136,7 @@ export class CardFocusController {
   open(card, sourceElement, { fullscreen = false } = {}) {
     if (!card || !(sourceElement instanceof Element)) return false;
     clearTimeout(this.closeTimer);
+    this.unlockApplication();
     this.openToken += 1;
     const token = this.openToken;
     const sourceRect = sourceElement.getBoundingClientRect();
@@ -136,7 +149,7 @@ export class CardFocusController {
     this.overlay.hidden = false;
     this.overlay.setAttribute('aria-hidden', 'false');
     this.overlay.classList.remove('is-visible');
-    if (this.appShell) this.appShell.inert = true;
+    this.lockApplication();
 
     const copy = this.content.querySelector('.card-focus-copy');
     const eyeButton = copy?.querySelector('.card-view-button');
@@ -178,8 +191,10 @@ export class CardFocusController {
   }
 
   close({ immediate = false } = {}) {
-    if (!this.isOpen()) return;
     clearTimeout(this.closeTimer);
+    this.unlockApplication();
+    if (!this.isOpen()) return;
+
     this.openToken += 1;
     this.overlay.classList.remove('is-visible');
 
@@ -190,8 +205,10 @@ export class CardFocusController {
       this.content.replaceChildren();
       this.activeCardId = null;
       this.sourceElement = null;
-      if (this.appShell) this.appShell.inert = false;
-      this.previousActiveElement?.focus?.({ preventScroll: true });
+      this.unlockApplication();
+      if (this.previousActiveElement?.isConnected) {
+        this.previousActiveElement.focus?.({ preventScroll: true });
+      }
       this.previousActiveElement = null;
     };
 
@@ -205,6 +222,7 @@ export class CardFocusController {
   destroy() {
     clearTimeout(this.closeTimer);
     this.close({ immediate: true });
+    this.unlockApplication();
     this.abortController.abort();
     this.overlay?.remove();
   }
