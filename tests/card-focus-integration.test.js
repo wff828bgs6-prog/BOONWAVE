@@ -39,10 +39,10 @@ test('focus mode avoids the unstable iOS inert implementation', () => {
 test('long press releases pointer capture before opening the overlay', () => {
   const controller = read('canvas/card-controller.js');
   assert.match(controller, /lostpointercapture/);
-  assert.match(controller, /resetInteraction\(\)/);
+  assert.match(controller, /resetInteraction\(/);
   assert.match(
     controller,
-    /this\.resetInteraction\(\);[\s\S]*?this\.onLongPress\(currentCard, sourceElement\)/,
+    /this\.resetInteraction\([^;]*\);[\s\S]*?this\.onLongPress\(currentCard, sourceElement\)/,
   );
 });
 
