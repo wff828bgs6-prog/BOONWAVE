@@ -7,7 +7,6 @@ import {
 } from './card-interaction-policy.js';
 
 const DRAGGING = 'DRAGGING_CARD';
-const FOCUSING = 'FOCUSING_CARD';
 
 function getSafeCamera() {
   const { camera = {} } = store.getState();
@@ -48,6 +47,7 @@ export class CardController {
     this.onPointerDown = this.onPointerDown.bind(this);
     this.onPointerMove = this.onPointerMove.bind(this);
     this.onPointerUp = this.onPointerUp.bind(this);
+    this.onLostPointerCapture = this.onLostPointerCapture.bind(this);
     this.onContextMenu = this.onContextMenu.bind(this);
     this.onKeyDown = this.onKeyDown.bind(this);
 
@@ -55,6 +55,7 @@ export class CardController {
     root.addEventListener('pointermove', this.onPointerMove);
     root.addEventListener('pointerup', this.onPointerUp);
     root.addEventListener('pointercancel', this.onPointerUp);
+    root.addEventListener('lostpointercapture', this.onLostPointerCapture);
     root.addEventListener('contextmenu', this.onContextMenu);
     root.addEventListener('keydown', this.onKeyDown);
   }
@@ -62,6 +63,26 @@ export class CardController {
   clearLongPressTimer() {
     clearTimeout(this.longPressTimer);
     this.longPressTimer = null;
+  }
+
+  releasePointer(active) {
+    if (!active?.element) return;
+    try {
+      if (!active.element.hasPointerCapture || active.element.hasPointerCapture(active.pointerId)) {
+        active.element.releasePointerCapture?.(active.pointerId);
+      }
+    } catch {
+      // iOS Safari can throw when capture was already released by a modal transition.
+    }
+  }
+
+  resetInteraction() {
+    const active = this.active;
+    this.clearLongPressTimer();
+    this.active = null;
+    this.releasePointer(active);
+    store.setState({ activeGesture: 'IDLE' });
+    return active;
   }
 
   getCardFromElement(element) {
@@ -98,19 +119,23 @@ export class CardController {
       grabOffsetX: pointerWorldX - card.x,
       grabOffsetY: pointerWorldY - card.y,
       moved: false,
-      longPressed: false,
     };
 
     store.setState({ selectedCardId: card.id, activeGesture: DRAGGING });
     this.clearLongPressTimer();
     this.longPressTimer = setTimeout(() => {
       const active = this.active;
-      if (!active || active.pointerId !== event.pointerId || active.moved || active.longPressed) return;
-      active.longPressed = true;
-      store.setState({ activeGesture: FOCUSING });
+      if (!active || active.pointerId !== event.pointerId || active.moved) return;
+
       const currentCard = this.getCardFromElement(active.element);
+      const sourceElement = active.element;
+
+      // Release capture before the overlay appears. On iOS Safari the subsequent
+      // pointerup may otherwise never reach the world and leave all cards locked.
+      this.resetInteraction();
+
       if (currentCard && this.onLongPress) {
-        Promise.resolve(this.onLongPress(currentCard, active.element)).catch((error) => {
+        Promise.resolve(this.onLongPress(currentCard, sourceElement)).catch((error) => {
           console.error('Card focus action failed:', error);
         });
       }
@@ -127,7 +152,6 @@ export class CardController {
     const start = { x: drag.startClientX, y: drag.startClientY };
     const current = { x: event.clientX, y: event.clientY };
     if (!canRemainLongPress(start, current)) this.clearLongPressTimer();
-    if (drag.longPressed) return;
 
     drag.moved = drag.moved || shouldStartCardDrag(start, current);
     if (!drag.moved) return;
@@ -164,14 +188,13 @@ export class CardController {
 
     this.clearLongPressTimer();
     event.stopPropagation();
-    drag.element.releasePointerCapture?.(event.pointerId);
     this.active = null;
+    this.releasePointer(drag);
     store.setState({ activeGesture: 'IDLE' });
 
     if (event.type === 'pointercancel') return;
     const card = store.getState().cards[drag.cardId];
     if (!card) return;
-    if (drag.longPressed) return;
 
     if (drag.moved && this.onCommit) {
       Promise.resolve(this.onCommit(card)).catch((error) => {
@@ -203,6 +226,23 @@ export class CardController {
     }
   }
 
+  onLostPointerCapture(event) {
+    const active = this.active;
+    if (!active || active.pointerId !== event.pointerId) return;
+
+    const card = store.getState().cards[active.cardId];
+    const moved = active.moved;
+    this.clearLongPressTimer();
+    this.active = null;
+    store.setState({ activeGesture: 'IDLE' });
+
+    if (moved && card && this.onCommit) {
+      Promise.resolve(this.onCommit(card)).catch((error) => {
+        console.error('Card position save after lost capture failed:', error);
+      });
+    }
+  }
+
   onContextMenu(event) {
     if (event.target.closest('[data-card-id]')) event.preventDefault();
   }
@@ -216,6 +256,7 @@ export class CardController {
 
     if (event.key === ' ' && this.onLongPress) {
       event.preventDefault();
+      this.resetInteraction();
       Promise.resolve(this.onLongPress(card, element)).catch((error) => {
         console.error('Keyboard card focus failed:', error);
       });
@@ -224,6 +265,7 @@ export class CardController {
 
     if (event.key === 'Enter' && this.onDoubleTap && this.canOpenFullscreen()) {
       event.preventDefault();
+      this.resetInteraction();
       Promise.resolve(this.onDoubleTap(card, element)).catch((error) => {
         console.error('Keyboard card fullscreen failed:', error);
       });
@@ -231,14 +273,14 @@ export class CardController {
   }
 
   destroy() {
-    this.clearLongPressTimer();
+    this.resetInteraction();
     this.root.removeEventListener('pointerdown', this.onPointerDown);
     this.root.removeEventListener('pointermove', this.onPointerMove);
     this.root.removeEventListener('pointerup', this.onPointerUp);
     this.root.removeEventListener('pointercancel', this.onPointerUp);
+    this.root.removeEventListener('lostpointercapture', this.onLostPointerCapture);
     this.root.removeEventListener('contextmenu', this.onContextMenu);
     this.root.removeEventListener('keydown', this.onKeyDown);
-    this.active = null;
     this.lastTap = null;
   }
 }
