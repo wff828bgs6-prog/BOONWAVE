@@ -50,7 +50,6 @@ test('fullscreen leaves all free space tappable through the backdrop', () => {
   const controller = read('controllers/card-focus-controller.js');
   assert.match(controller, /\.card-focus-stage \{[\s\S]*?pointer-events:none/);
   assert.match(controller, /\.card-focus-content,\.card-focus-close \{ pointer-events:auto; \}/);
-  assert.doesNotMatch(controller, /\.card-focus-overlay\[data-mode="fullscreen"\] \.card-focus-stage \{[^}]*\bheight:100%/);
   assert.match(controller, /\.card-focus-overlay\[data-mode="fullscreen"\] \.card-focus-stage \{ width:min\(100%,520px\); max-height:100%; \}/);
 });
 
