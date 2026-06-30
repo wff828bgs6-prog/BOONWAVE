@@ -34,6 +34,7 @@ export async function bootstrapBoonwave({
   });
 
   workspace.setLinkSourceProvider(() => linkController.getSourceId());
+  workspace.setLinkModeProvider(() => linkController.isActive());
   workspace.setCardTapHandler((card) => linkController.handleCardTap(card));
   workspace.setBackgroundTapHandler(() => {
     if (linkController.isActive()) linkController.cancel();
