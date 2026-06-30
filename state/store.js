@@ -6,6 +6,7 @@ const DEFAULT_STATE = Object.freeze({
   currentSpace: 'personal',
   activeGesture: 'IDLE',
   selectedCardId: null,
+  cardsLocked: false,
   camera: {
     x: 0,
     y: 0,
@@ -60,7 +61,7 @@ class BoonwaveStore {
       try {
         listener(this.state, previousState);
       } catch (error) {
-        console.error("BoonwaveStore subscriber error:", error);
+        console.error('BoonwaveStore subscriber error:', error);
       }
     }
 
