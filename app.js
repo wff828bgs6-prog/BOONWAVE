@@ -1,5 +1,13 @@
 import { bootstrapBoonwave } from './bootstrap/boonwave-bootstrap.js';
 
+function ensureRuntimeLayoutStyles() {
+  if (document.getElementById('boonwave-runtime-layout-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'boonwave-runtime-layout-styles';
+  style.textContent = '.zoom-row.zoom-row-with-create{grid-template-columns:minmax(0,1fr) 58px}@media(max-width:390px){.zoom-row.zoom-row-with-create{grid-template-columns:minmax(0,1fr) 54px}}';
+  document.head.append(style);
+}
+
 class BoonwaveApp {
   constructor() {
     this.runtime = null;
@@ -14,6 +22,7 @@ class BoonwaveApp {
   }
 
   async init() {
+    ensureRuntimeLayoutStyles();
     const { canvas, world } = this.findElements();
 
     if (!canvas || !world) {
