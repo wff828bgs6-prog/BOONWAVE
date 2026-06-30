@@ -25,6 +25,15 @@ test('utility rail mirrors as a whole and persists handedness', () => {
   assert.match(controller, /storage\.loadSetting/);
 });
 
+test('card lock state is loaded and persisted transactionally', () => {
+  const controller = read('controllers/utility-rail-controller.js');
+  assert.match(controller, /LOCK_SETTING_KEY = 'cardsLocked'/);
+  assert.match(controller, /storage\.loadSetting\(LOCK_SETTING_KEY\)/);
+  assert.match(controller, /storage\.saveSetting\(LOCK_SETTING_KEY, nextLocked\)/);
+  assert.match(controller, /store\.setState\(\{ cardsLocked: savedLock === true \}\)/);
+  assert.match(controller, /store\.setState\(\{ cardsLocked: previousLocked \}\)/);
+});
+
 test('long-press suppression is scoped to one button and expires automatically', () => {
   const controller = read('controllers/utility-rail-controller.js');
   assert.match(controller, /SUPPRESS_CLICK_MS = 700/);
@@ -33,17 +42,17 @@ test('long-press suppression is scoped to one button and expires automatically',
   assert.match(controller, /setTimeout\(\(\) => this\.clearSuppressedClick\(\)/);
 });
 
-test('locked card surface becomes canvas while explicit controls remain usable', () => {
+test('locked cards keep passive hold and double-tap tracking while canvas pans', () => {
   const cardController = read('canvas/card-controller.js');
   const gestureMachine = read('canvas/gesture-machine.js');
   const workspace = read('controllers/workspace-controller.js');
 
-  assert.match(cardController, /canMoveCard/);
-  assert.match(cardController, /if \(!movable\) return;/);
-  assert.match(cardController, /Do not capture or stop the event/);
+  assert.match(cardController, /captured: movable/);
+  assert.match(cardController, /if \(!drag\.movable\) return;/);
+  assert.match(cardController, /resetInteraction\(\{ setIdle: active\.movable \}\)/);
   assert.match(gestureMachine, /allowPanFromInteractive/);
-  assert.match(workspace, /allowPanFromInteractive: \(\) => Boolean\(store\.getState\(\)\.cardsLocked\)/);
-  assert.match(workspace, /canMoveCard: \(\) => !store\.getState\(\)\.cardsLocked/);
+  assert.match(workspace, /allowPanFromInteractive:\(\)=>Boolean\(store\.getState\(\)\.cardsLocked\)/);
+  assert.match(workspace, /canMoveCard:\(\)=>!store\.getState\(\)\.cardsLocked/);
 });
 
 test('closed lock means locked and open lock means movable', () => {
