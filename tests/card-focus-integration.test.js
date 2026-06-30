@@ -20,14 +20,15 @@ test('focus mode includes accessible close fullscreen and reduced motion behavio
   assert.match(controller, /card-focus-backdrop/);
   assert.match(controller, /enterFullscreen/);
   assert.match(controller, /prefers-reduced-motion/);
-  assert.match(controller, /lockApplication/);
-  assert.match(controller, /unlockApplication/);
+  assert.match(controller, /onKeyDown/);
+  assert.match(controller, /focusin/);
 });
 
-test('closing focus always removes the iOS inert lock before returning', () => {
+test('focus mode avoids the unstable iOS inert implementation', () => {
   const controller = read('controllers/card-focus-controller.js');
-  assert.match(controller, /setAttribute\('inert', ''\)/);
-  assert.match(controller, /removeAttribute\('inert'\)/);
+  assert.doesNotMatch(controller, /\.inert\s*=|setAttribute\('inert'|removeAttribute\('inert'/);
+  assert.match(controller, /card-focus-active/);
+  assert.match(controller, /pointer-events:none/);
   assert.match(
     controller,
     /close\(\{ immediate = false \} = \{\}\) \{[\s\S]*?this\.unlockApplication\(\);[\s\S]*?if \(!this\.isOpen\(\)\) return;/,
@@ -35,10 +36,20 @@ test('closing focus always removes the iOS inert lock before returning', () => {
   assert.match(controller, /destroy\(\) \{[\s\S]*?this\.unlockApplication\(\)/);
 });
 
+test('long press releases pointer capture before opening the overlay', () => {
+  const controller = read('canvas/card-controller.js');
+  assert.match(controller, /lostpointercapture/);
+  assert.match(controller, /resetInteraction\(\)/);
+  assert.match(
+    controller,
+    /this\.resetInteraction\(\);[\s\S]*?this\.onLongPress\(currentCard, sourceElement\)/,
+  );
+});
+
 test('focus lift uses a smoother low-cost animation', () => {
   const controller = read('controllers/card-focus-controller.js');
-  assert.match(controller, /const TRANSITION_MS = 280/);
-  assert.match(controller, /blur\(6px\)/);
+  assert.match(controller, /const TRANSITION_MS = 300/);
+  assert.match(controller, /blur\(5px\)/);
   assert.match(controller, /cubic-bezier\(\.16,1,\.3,1\)/);
 });
 
