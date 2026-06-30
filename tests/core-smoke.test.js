@@ -59,10 +59,10 @@ test('node normalization restores defaults and rejects unsupported types', () =>
   assert.throws(() => createNode({ type: 'unknown' }), /Unsupported BOONWAVE node type/);
 });
 
-test('zoom limits provide a broad overview and detailed working scale', () => {
-  assert.equal(MIN_ZOOM, 0.18);
+test('zoom limits match the calibrated overview and close inspection range', () => {
+  assert.equal(MIN_ZOOM, 0.14);
   assert.equal(BASE_ZOOM, 0.85);
-  assert.equal(MAX_ZOOM, 2.4);
+  assert.equal(MAX_ZOOM, 1.5);
   assert.equal(clampZoom(-10), MIN_ZOOM);
   assert.equal(clampZoom(BASE_ZOOM), BASE_ZOOM);
   assert.equal(clampZoom(10), MAX_ZOOM);
