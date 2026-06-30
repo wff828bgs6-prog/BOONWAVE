@@ -1,6 +1,8 @@
+import store from '../state/store.js';
 import { TypedWorkspaceController as WorkspaceController } from '../controllers/typed-workspace-controller.js';
 import { LinkController } from '../controllers/link-controller.js';
 import { TransactionalNodeController as NodeController } from '../controllers/transactional-node-controller.js';
+import { CardDisplayController } from '../controllers/card-display-controller.js';
 import { ZoomController } from '../controllers/zoom-controller.js';
 import { UtilityRailController } from '../controllers/utility-rail-controller.js';
 import { storagePlatform } from '../storage/index.js';
@@ -23,11 +25,7 @@ export async function bootstrapBoonwave({
   }
 
   const hint = getRequiredElement(root, 'hint');
-  const workspace = new WorkspaceController({
-    canvas,
-    world,
-    initialSelectedCardId,
-  });
+  const workspace = new WorkspaceController({ canvas, world, initialSelectedCardId });
   const linkController = new LinkController({
     linkButton: getRequiredElement(root, 'linkButton'),
     hint,
@@ -73,6 +71,20 @@ export async function bootstrapBoonwave({
     getViewportCenter: () => workspace.getViewportCenter(),
   });
 
+  const displayController = new CardDisplayController({
+    root: document.body,
+    getCardElement: (cardId) => workspace.getCardElement(cardId),
+  });
+
+  const openEditor = (card) => {
+    if (!card) return false;
+    store.setState({ selectedCardId: card.id });
+    nodeController.openEdit();
+    return true;
+  };
+  workspace.setCardEditHandler(openEditor);
+  workspace.setCardDisplayHandler((card) => displayController.open(card.id));
+
   const zoomController = new ZoomController({
     range: getRequiredElement(root, 'zoomRange'),
     zoomOutButton: getRequiredElement(root, 'zoomOutButton'),
@@ -85,10 +97,12 @@ export async function bootstrapBoonwave({
     linkController,
     utilityRailController,
     nodeController,
+    displayController,
     zoomController,
     storagePlatform,
     destroy() {
       zoomController.destroy();
+      displayController.destroy();
       nodeController.destroy();
       utilityRailController.destroy();
       linkController.destroy();
