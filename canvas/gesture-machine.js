@@ -19,7 +19,10 @@ const midpoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
 const eventTime = (event) => Number.isFinite(event.timeStamp) ? event.timeStamp : performance.now();
 
 export class GestureMachine {
-  constructor(element, { interactiveSelector = '[data-card-id]' } = {}) {
+  constructor(element, {
+    interactiveSelector = '[data-card-id]',
+    allowPanFromInteractive = () => false,
+  } = {}) {
     if (!(element instanceof Element)) {
       throw new TypeError('GestureMachine expects a DOM element.');
     }
@@ -27,6 +30,9 @@ export class GestureMachine {
     this.element = element;
     this.motionElement = element.querySelector('#world');
     this.interactiveSelector = interactiveSelector;
+    this.allowPanFromInteractive = typeof allowPanFromInteractive === 'function'
+      ? allowPanFromInteractive
+      : () => false;
     this.pointers = new Map();
     this.state = STATES.IDLE;
     this.lastPanPoint = null;
@@ -115,6 +121,17 @@ export class GestureMachine {
     if (setIdle && this.state === STATES.INERTIA) this.setState(STATES.IDLE);
   }
 
+  cancelInteraction() {
+    for (const pointerId of this.pointers.keys()) this.safeRelease(pointerId);
+    this.pointers.clear();
+    this.cancelInertia({ setIdle: false });
+    this.cancelQueuedPan();
+    this.velocityTracker.reset();
+    this.lastPanPoint = null;
+    this.lastPinchDistance = 0;
+    this.setState(STATES.IDLE);
+  }
+
   startInertia(velocity) {
     const speed = Math.hypot(velocity.x, velocity.y);
     if (
@@ -151,7 +168,11 @@ export class GestureMachine {
 
   onPointerDown(event) {
     const startedOnInteractive = Boolean(event.target.closest?.(this.interactiveSelector));
-    if (startedOnInteractive && this.pointers.size === 0) return;
+    if (
+      startedOnInteractive
+      && this.pointers.size === 0
+      && !this.allowPanFromInteractive()
+    ) return;
 
     this.cancelInertia({ setIdle: true });
     this.cancelQueuedPan({ flush: true });
@@ -268,17 +289,13 @@ export class GestureMachine {
   }
 
   destroy() {
-    this.cancelInertia({ setIdle: false });
-    this.cancelQueuedPan();
+    this.cancelInteraction();
     this.element.removeEventListener('pointerdown', this.onPointerDown);
     this.element.removeEventListener('pointermove', this.onPointerMove);
     this.element.removeEventListener('pointerup', this.onPointerUp);
     this.element.removeEventListener('pointercancel', this.onPointerUp);
     this.element.removeEventListener('lostpointercapture', this.onLostPointerCapture);
     this.element.removeEventListener('wheel', this.onWheel);
-    this.pointers.clear();
-    this.velocityTracker.reset();
-    this.setState(STATES.IDLE);
   }
 }
 
