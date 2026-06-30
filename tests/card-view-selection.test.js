@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { createNode } from '../domain/node.js';
 import { cycleCardView } from '../services/card-view-service.js';
@@ -33,6 +34,6 @@ test('eye control selects the card before cycling its view', async () => {
 });
 
 test('selected cards render above neighbouring cards', () => {
-  const styles = require('node:fs').readFileSync('styles/production-shell.css', 'utf8');
+  const styles = readFileSync('styles/production-shell.css', 'utf8');
   assert.match(styles, /\.card\[data-selected="true"\]\{z-index:12;/);
 });
