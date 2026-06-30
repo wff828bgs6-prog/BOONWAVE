@@ -1,4 +1,6 @@
-export const NODE_SCHEMA_VERSION = 4;
+import { normalizeTaskList, validateTask } from './task.js';
+
+export const NODE_SCHEMA_VERSION = 5;
 
 export const NODE_TYPES = Object.freeze(['self', 'project', 'process', 'person', 'idea', 'goal']);
 
@@ -24,11 +26,13 @@ const TYPE_DEFAULTS = Object.freeze({
     advance: { amount: null, date: null },
     balance: { amount: null, date: null },
     primaryContact: { name: '', phone: '', email: '' },
-    preliminaryInfo: '', coverMediaId: null, images: [], documents: [], files: [],
+    preliminaryInfo: '', nextAction: '', blockers: [],
+    coverMediaId: null, images: [], documents: [], files: [],
   },
   process: {
     status: 'planned', priority: 'medium', progress: 0,
-    startDate: null, dueDate: null, tasks: [], notes: '', attachments: [],
+    startDate: null, dueDate: null, tasks: [], nextAction: '', blockers: [],
+    notes: '', attachments: [],
   },
   person: {
     fullName: '', phone: '', email: '', organization: '', role: '', notes: '',
@@ -41,7 +45,7 @@ const TYPE_DEFAULTS = Object.freeze({
   goal: {
     status: 'active', priority: 'medium', targetDate: null, progress: 0,
     metric: { name: '', target: null, current: null, unit: '' },
-    notes: '', coverMediaId: null, attachments: [],
+    nextAction: '', blockers: [], notes: '', coverMediaId: null, attachments: [],
   },
 });
 
@@ -79,14 +83,19 @@ function mergePatch(current, patch) {
   return result;
 }
 
+function normalizeTypeSpecificData(type, data) {
+  if (type !== 'process') return data;
+  return { ...data, tasks: normalizeTaskList(data.tasks) };
+}
+
 export function getNodeDataDefaults(type) {
   if (!NODE_TYPES.includes(type)) throw new TypeError(`Unsupported BOONWAVE node type: ${type}`);
-  return clone(TYPE_DEFAULTS[type]);
+  return normalizeTypeSpecificData(type, clone(TYPE_DEFAULTS[type]));
 }
 
 export function normalizeNodeData(type, data) {
   if (!NODE_TYPES.includes(type)) throw new TypeError(`Unsupported BOONWAVE node type: ${type}`);
-  return mergeDefaults(TYPE_DEFAULTS[type], data);
+  return normalizeTypeSpecificData(type, mergeDefaults(TYPE_DEFAULTS[type], data));
 }
 
 export function mergeNodeData(type, current, patch) {
@@ -112,6 +121,13 @@ export function validateNode(node) {
   if ((node.type === 'process' || node.type === 'goal')
     && (!Number.isFinite(node.data?.progress) || node.data.progress < 0 || node.data.progress > 100)) {
     errors.push('Progress must be between 0 and 100.');
+  }
+
+  if (node.type === 'process' && Array.isArray(node.data?.tasks)) {
+    for (const task of node.data.tasks) {
+      const validation = validateTask(task);
+      if (!validation.valid) errors.push(...validation.errors.map((error) => `Task: ${error}`));
+    }
   }
 
   return { valid: errors.length === 0, errors };
