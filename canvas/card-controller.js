@@ -95,8 +95,6 @@ export class CardController {
       element,
       startClientX: event.clientX,
       startClientY: event.clientY,
-      lastClientX: event.clientX,
-      lastClientY: event.clientY,
       grabOffsetX: pointerWorldX - card.x,
       grabOffsetY: pointerWorldY - card.y,
       moved: false,
@@ -109,12 +107,16 @@ export class CardController {
       const active = this.active;
       if (!active || active.pointerId !== event.pointerId || active.moved || active.longPressed) return;
       active.longPressed = true;
+      active.element.releasePointerCapture?.(active.pointerId);
+      this.active = null;
       store.setState({ activeGesture: FOCUSING });
       const currentCard = this.getCardFromElement(active.element);
       if (currentCard && this.onLongPress) {
-        Promise.resolve(this.onLongPress(currentCard, active.element)).catch((error) => {
-          console.error('Card focus action failed:', error);
-        });
+        Promise.resolve(this.onLongPress(currentCard, active.element))
+          .catch((error) => console.error('Card focus action failed:', error))
+          .finally(() => store.setState({ activeGesture: 'IDLE' }));
+      } else {
+        store.setState({ activeGesture: 'IDLE' });
       }
     }, LONG_PRESS_DELAY_MS);
   }
@@ -125,8 +127,6 @@ export class CardController {
 
     event.preventDefault();
     event.stopPropagation();
-    drag.lastClientX = event.clientX;
-    drag.lastClientY = event.clientY;
 
     const start = { x: drag.startClientX, y: drag.startClientY };
     const current = { x: event.clientX, y: event.clientY };
@@ -174,8 +174,7 @@ export class CardController {
 
     if (event.type === 'pointercancel') return;
     const card = store.getState().cards[drag.cardId];
-    if (!card) return;
-    if (drag.longPressed) return;
+    if (!card || drag.longPressed) return;
 
     if (drag.moved && this.onCommit) {
       Promise.resolve(this.onCommit(card)).catch((error) => {
