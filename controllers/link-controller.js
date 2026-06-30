@@ -1,5 +1,6 @@
 import store from '../state/store.js';
 import { createLink, deleteLinksBetween } from '../services/link-service.js';
+import { getLinkTypeLabel } from '../domain/link.js';
 
 const DEFAULT_HINT = 'Выбери карточку';
 
@@ -71,7 +72,7 @@ export class LinkController {
     this.hint.textContent = message;
     this.feedbackTimer = setTimeout(() => {
       if (!this.active) this.hint.textContent = DEFAULT_HINT;
-    }, 1200);
+    }, 1600);
   }
 
   async handleCardTap(card) {
@@ -99,11 +100,11 @@ export class LinkController {
         this.showResult(deleted.length > 0 ? 'Связь удалена' : 'Связь не найдена');
       } else {
         const previousCount = store.getState().links.length;
-        await createLink(this.sourceId, card.id);
+        const created = await createLink(this.sourceId, card.id);
         this.showResult(
           store.getState().links.length > previousCount
-            ? 'Связь создана'
-            : 'Такая связь уже существует',
+            ? `Связь «${getLinkTypeLabel(created.type)}» создана`
+            : 'Такая смысловая связь уже существует',
         );
       }
     } catch (error) {
