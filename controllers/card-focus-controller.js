@@ -39,12 +39,16 @@ function prepareClone(card, sourceElement, fullscreen) {
   const clone = sourceElement.cloneNode(true);
   clone.classList.add('card-focus-copy');
   clone.removeAttribute('data-card-id');
+  clone.removeAttribute('aria-keyshortcuts');
   clone.dataset.selected = 'false';
   clone.dataset.linkSource = 'false';
   clone.dataset.viewMode = fullscreen ? 'full' : 'standard';
   clone.tabIndex = -1;
   clone.setAttribute('role', 'document');
   clone.setAttribute('aria-label', `${card.title}. Режим фокуса`);
+
+  const heading = clone.querySelector('h2');
+  if (heading) heading.textContent = card.title;
 
   const view = normalizeNodeView(card.view);
   const frame = view.coverFrames.working;
