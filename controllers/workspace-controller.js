@@ -2,6 +2,7 @@ import store from '../state/store.js';
 import { GestureMachine } from '../canvas/gesture-machine.js';
 import { CardController } from '../canvas/card-controller.js';
 import { createLinksRenderer } from '../canvas/links.js';
+import { CardFocusController } from './card-focus-controller.js';
 import { NODE_TYPE_LABELS } from '../domain/node-schemas.js';
 import { normalizeNodeView } from '../domain/node.js';
 import { updateCardNode } from '../services/node-service.js';
@@ -93,9 +94,11 @@ export class WorkspaceController {
     this.cardTapHandler = null;
     this.backgroundTapHandler = null;
     this.linkSourceProvider = null;
+    this.linkModeProvider = null;
     this.cameraSaveTimer = null;
     this.gestureMachine = null;
     this.cardController = null;
+    this.focusController = null;
     this.linksRenderer = null;
     this.unsubscribe = null;
     this.mediaUrls = new Map();
@@ -106,6 +109,7 @@ export class WorkspaceController {
   setCardTapHandler(handler) { this.cardTapHandler = typeof handler === 'function' ? handler : null; }
   setBackgroundTapHandler(handler) { this.backgroundTapHandler = typeof handler === 'function' ? handler : null; }
   setLinkSourceProvider(provider) { this.linkSourceProvider = typeof provider === 'function' ? provider : null; }
+  setLinkModeProvider(provider) { this.linkModeProvider = typeof provider === 'function' ? provider : null; }
 
   async init({ onEmpty } = {}) {
     await loadWorkspace();
@@ -191,6 +195,10 @@ export class WorkspaceController {
     element.dataset.selected = String(state.selectedCardId === card.id);
     element.dataset.linkSource = String(linkSourceId === card.id);
     element.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
+    element.tabIndex = 0;
+    element.setAttribute('role', 'group');
+    element.setAttribute('aria-keyshortcuts', 'Space Enter');
+    element.setAttribute('aria-label', `${NODE_TYPE_LABELS[card.type] ?? card.type}: ${card.title}. Удерживайте для режима фокуса. Enter открывает полностью.`);
     element.querySelector('.card-type').textContent = NODE_TYPE_LABELS[card.type] ?? card.type;
     element.querySelector('.card-status').textContent = meta[0] ?? '';
     element.querySelector('h2').textContent = view.mode === 'compact' ? getCompactLabel(card, view) : card.title;
@@ -242,9 +250,22 @@ export class WorkspaceController {
 
   mountCore() {
     this.gestureMachine = new GestureMachine(this.canvas);
+    this.focusController = new CardFocusController({
+      root: document.body,
+      appShell: document.querySelector('.app-shell'),
+    });
     this.cardController = new CardController(this.world, {
       onCommit: (card) => updateCardNode(card.id, { x: card.x, y: card.y }),
       onTap: (card) => this.cardTapHandler?.(card),
+      onLongPress: (card, element) => {
+        if (this.linkModeProvider?.()) return false;
+        return this.focusController.open(card, element);
+      },
+      onDoubleTap: (card, element) => {
+        if (this.linkModeProvider?.()) return false;
+        return this.focusController.open(card, element, { fullscreen: true });
+      },
+      canOpenFullscreen: () => !this.linkModeProvider?.(),
     });
     this.linksRenderer = createLinksRenderer(this.world);
   }
@@ -277,6 +298,7 @@ export class WorkspaceController {
     this.unsubscribe?.();
     this.linksRenderer?.destroy();
     this.cardController?.destroy();
+    this.focusController?.destroy();
     this.gestureMachine?.destroy();
     for (const url of this.mediaUrls.values()) URL.revokeObjectURL(url);
     this.mediaUrls.clear();
