@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createNode, normalizeNodeView } from '../domain/node.js';
-import { getNextCardViewMode, setCoverFraming, updateCardView } from '../services/card-view-service.js';
+import { setCoverFraming, updateCardView } from '../services/card-view-service.js';
 
 function createTestStore(initialState) {
   let state = structuredClone(initialState);
@@ -21,6 +21,9 @@ test('old cards receive safe standard view defaults', () => {
     assert.equal(view.coverFrames[mode].positionX, 50);
     assert.equal(view.coverFrames[mode].positionY, 50);
   }
+  assert.equal(view.visible.compact.cover, true);
+  assert.equal(view.visible.compact.description, false);
+  assert.equal(view.visible.standard.description, true);
 });
 
 test('legacy single cover settings migrate to both modes', () => {
@@ -31,10 +34,8 @@ test('legacy single cover settings migrate to both modes', () => {
   assert.equal(view.coverFrames.compact.shape, 'portrait');
 });
 
-test('card view cycles compact, standard and full', () => {
-  assert.equal(getNextCardViewMode('compact'), 'standard');
-  assert.equal(getNextCardViewMode('standard'), 'full');
-  assert.equal(getNextCardViewMode('full'), 'compact');
+test('legacy full workspace mode becomes standard', () => {
+  assert.equal(normalizeNodeView({ mode: 'full' }).mode, 'standard');
 });
 
 test('compact cover framing is clamped without changing working frame', async () => {
@@ -55,7 +56,7 @@ test('compact cover framing is clamped without changing working frame', async ()
   assert.equal(saved.length, 1);
 });
 
-test('partial view update preserves both cover frames', async () => {
+test('partial view update preserves cover frames and other visibility settings', async () => {
   const card = createNode({
     type: 'project',
     title: 'Project',
@@ -65,13 +66,21 @@ test('partial view update preserves both cover frames', async () => {
         compact: { shape: 'circle', scale: 1.4, positionX: 20, positionY: 40 },
         working: { shape: 'landscape', scale: 2.1, positionX: 65, positionY: 35 },
       },
+      visible: {
+        compact: { description: true },
+      },
     },
   });
   const stateStore = createTestStore({ cards: { [card.id]: card }, links: [], selectedCardId: null });
   const storageAdapter = { async saveCard() {} };
 
-  const updated = await updateCardView(card.id, { mode: 'full' }, { stateStore, storageAdapter });
+  const updated = await updateCardView(card.id, {
+    mode: 'standard',
+    visible: { standard: { meta: false } },
+  }, { stateStore, storageAdapter });
 
-  assert.equal(updated.view.mode, 'full');
+  assert.equal(updated.view.mode, 'standard');
   assert.deepEqual(updated.view.coverFrames, card.view.coverFrames);
+  assert.equal(updated.view.visible.compact.description, true);
+  assert.equal(updated.view.visible.standard.meta, false);
 });
