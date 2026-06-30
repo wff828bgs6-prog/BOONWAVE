@@ -1,8 +1,6 @@
 import store from '../state/store.js';
 import storage from '../storage/index.js';
-
-const makeId = (sourceId, targetId) =>
-  `link_${sourceId}_${targetId}_${crypto.randomUUID?.() ?? Date.now()}`;
+import { createLinkRecord, normalizeLink } from '../domain/link.js';
 
 function resolveDependencies(options = {}) {
   return {
@@ -22,21 +20,42 @@ export async function createLink(sourceId, targetId, options = {}) {
     throw new Error('Cannot create a link for missing cards.');
   }
 
-  const duplicate = state.links.find(
-    (link) => link.sourceId === sourceId && link.targetId === targetId,
-  );
-  if (duplicate) return duplicate;
-
-  const link = {
-    id: makeId(sourceId, targetId),
+  const link = createLinkRecord({
     sourceId,
     targetId,
-    createdAt: new Date().toISOString(),
-  };
+    type: options.relationType,
+  }, state.cards);
+
+  const duplicate = state.links.find((candidate) => {
+    const normalized = normalizeLink(candidate, state.cards);
+    return normalized.sourceId === link.sourceId
+      && normalized.targetId === link.targetId
+      && normalized.type === link.type;
+  });
+  if (duplicate) return normalizeLink(duplicate, state.cards);
 
   await storageAdapter.saveLink(link);
-  stateStore.setState({ links: [...state.links, link], selectedCardId: targetId });
+  stateStore.setState({ links: [...state.links, link], selectedCardId: link.targetId });
   return link;
+}
+
+export async function updateLinkType(linkId, relationType, options = {}) {
+  const { stateStore, storageAdapter } = resolveDependencies(options);
+  const state = stateStore.getState();
+  const existing = state.links.find((link) => link.id === linkId);
+  if (!existing) throw new Error(`Link not found: ${linkId}`);
+
+  const updated = normalizeLink({
+    ...existing,
+    type: relationType,
+    updatedAt: new Date().toISOString(),
+  }, state.cards);
+
+  await storageAdapter.saveLink(updated);
+  stateStore.setState({
+    links: state.links.map((link) => link.id === linkId ? updated : link),
+  });
+  return updated;
 }
 
 export async function deleteLinksBetween(firstId, secondId, options = {}) {
