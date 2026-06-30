@@ -1,8 +1,8 @@
 import store from '../state/store.js';
 
-export const MIN_ZOOM = 0.18;
+export const MIN_ZOOM = 0.14;
 export const BASE_ZOOM = 0.85;
-export const MAX_ZOOM = 2.4;
+export const MAX_ZOOM = 1.5;
 const DEFAULT_PADDING = 48;
 
 export const clampZoom = (value) => {
