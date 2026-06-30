@@ -1,6 +1,7 @@
 import store from '../state/store.js';
 import storage from '../storage/index.js';
 import { migrateStoredNodes } from './data-migration-service.js';
+import { ensurePrimarySelfNode } from './self-node-service.js';
 import { BASE_ZOOM, clampZoom } from '../canvas/camera.js';
 
 const DEFAULT_CAMERA = Object.freeze({ x: 0, y: 0, zoom: BASE_ZOOM });
@@ -36,11 +37,13 @@ export async function loadWorkspace(options = {}) {
   const stateStore = options.stateStore ?? store;
   const storageAdapter = options.storageAdapter ?? storage;
   const migrate = options.migrate ?? migrateStoredNodes;
+  const ensureSelfNode = options.ensureSelfNode ?? ensurePrimarySelfNode;
 
   await storageAdapter.init();
   const workspace = normalizeWorkspaceSnapshot(await storageAdapter.loadWorkspace());
   stateStore.setState(workspace);
-  await migrate();
+  await migrate({ stateStore, storageAdapter });
+  await ensureSelfNode({ stateStore, storageAdapter });
 
   const savedCamera = await storageAdapter.loadSetting('camera');
   const camera = normalizeCamera(savedCamera);
