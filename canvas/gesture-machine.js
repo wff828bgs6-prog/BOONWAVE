@@ -1,14 +1,22 @@
 import store from '../state/store.js';
 import { pan, zoomAt } from './camera.js';
+import {
+  PAN_INERTIA_CONFIG,
+  PanVelocityTracker,
+  prefersReducedPanMotion,
+  stepPanInertia,
+} from './pan-inertia.js';
 
 const STATES = Object.freeze({
   IDLE: 'IDLE',
   PANNING: 'PANNING',
   PINCHING: 'PINCHING',
+  INERTIA: 'INERTIA',
 });
 
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const midpoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+const eventTime = (event) => Number.isFinite(event.timeStamp) ? event.timeStamp : performance.now();
 
 export class GestureMachine {
   constructor(element, { interactiveSelector = '[data-card-id]' } = {}) {
@@ -17,15 +25,24 @@ export class GestureMachine {
     }
 
     this.element = element;
+    this.motionElement = element.querySelector('#world');
     this.interactiveSelector = interactiveSelector;
     this.pointers = new Map();
     this.state = STATES.IDLE;
     this.lastPanPoint = null;
     this.lastPinchDistance = 0;
+    this.velocityTracker = new PanVelocityTracker();
+    this.pendingPan = { x: 0, y: 0 };
+    this.panFrame = null;
+    this.inertiaFrame = null;
+    this.inertiaVelocity = { x: 0, y: 0 };
+    this.inertiaStartedAt = 0;
+    this.inertiaLastFrame = 0;
 
     this.onPointerDown = this.onPointerDown.bind(this);
     this.onPointerMove = this.onPointerMove.bind(this);
     this.onPointerUp = this.onPointerUp.bind(this);
+    this.onLostPointerCapture = this.onLostPointerCapture.bind(this);
     this.onWheel = this.onWheel.bind(this);
 
     this.element.style.touchAction = 'none';
@@ -33,23 +50,121 @@ export class GestureMachine {
     this.element.addEventListener('pointermove', this.onPointerMove);
     this.element.addEventListener('pointerup', this.onPointerUp);
     this.element.addEventListener('pointercancel', this.onPointerUp);
+    this.element.addEventListener('lostpointercapture', this.onLostPointerCapture);
     this.element.addEventListener('wheel', this.onWheel, { passive: false });
   }
 
   setState(nextState) {
+    if (this.state === nextState) return;
     this.state = nextState;
+    if (this.motionElement) {
+      this.motionElement.style.willChange = nextState === STATES.IDLE ? '' : 'transform';
+    }
     store.setState({ activeGesture: nextState });
+  }
+
+  safeCapture(pointerId) {
+    try {
+      this.element.setPointerCapture?.(pointerId);
+    } catch {
+      // Safari can reject capture if the pointer ended during a modal transition.
+    }
+  }
+
+  safeRelease(pointerId) {
+    try {
+      if (!this.element.hasPointerCapture || this.element.hasPointerCapture(pointerId)) {
+        this.element.releasePointerCapture?.(pointerId);
+      }
+    } catch {
+      // Capture may already have been released by the browser.
+    }
+  }
+
+  queuePan(dx, dy) {
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
+    this.pendingPan.x += dx;
+    this.pendingPan.y += dy;
+    if (this.panFrame !== null) return;
+
+    this.panFrame = requestAnimationFrame(() => {
+      this.panFrame = null;
+      this.flushPan();
+    });
+  }
+
+  flushPan() {
+    const { x, y } = this.pendingPan;
+    this.pendingPan = { x: 0, y: 0 };
+    if (x !== 0 || y !== 0) pan(x, y);
+  }
+
+  cancelQueuedPan({ flush = false } = {}) {
+    if (this.panFrame !== null) cancelAnimationFrame(this.panFrame);
+    this.panFrame = null;
+    if (flush) this.flushPan();
+    else this.pendingPan = { x: 0, y: 0 };
+  }
+
+  cancelInertia({ setIdle = true } = {}) {
+    if (this.inertiaFrame !== null) cancelAnimationFrame(this.inertiaFrame);
+    this.inertiaFrame = null;
+    this.inertiaVelocity = { x: 0, y: 0 };
+    this.inertiaStartedAt = 0;
+    this.inertiaLastFrame = 0;
+    if (setIdle && this.state === STATES.INERTIA) this.setState(STATES.IDLE);
+  }
+
+  startInertia(velocity) {
+    const speed = Math.hypot(velocity.x, velocity.y);
+    if (
+      prefersReducedPanMotion()
+      || !Number.isFinite(speed)
+      || speed < PAN_INERTIA_CONFIG.minLaunchSpeed
+    ) return false;
+
+    this.cancelInertia({ setIdle: false });
+    this.inertiaVelocity = velocity;
+    this.inertiaStartedAt = performance.now();
+    this.inertiaLastFrame = this.inertiaStartedAt;
+    this.setState(STATES.INERTIA);
+
+    const tick = (now) => {
+      if (this.state !== STATES.INERTIA) return;
+      const elapsed = now - this.inertiaLastFrame;
+      this.inertiaLastFrame = now;
+      const step = stepPanInertia(this.inertiaVelocity, elapsed);
+      this.inertiaVelocity = step.velocity;
+      if (step.dx !== 0 || step.dy !== 0) pan(step.dx, step.dy);
+
+      const expired = now - this.inertiaStartedAt >= PAN_INERTIA_CONFIG.maxDurationMs;
+      if (step.done || expired) {
+        this.cancelInertia({ setIdle: true });
+        return;
+      }
+      this.inertiaFrame = requestAnimationFrame(tick);
+    };
+
+    this.inertiaFrame = requestAnimationFrame(tick);
+    return true;
   }
 
   onPointerDown(event) {
     const startedOnInteractive = Boolean(event.target.closest?.(this.interactiveSelector));
     if (startedOnInteractive && this.pointers.size === 0) return;
 
-    this.element.setPointerCapture?.(event.pointerId);
-    this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    this.cancelInertia({ setIdle: true });
+    this.cancelQueuedPan({ flush: true });
+    this.safeCapture(event.pointerId);
+    this.pointers.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+      pointerType: event.pointerType,
+    });
 
     if (this.pointers.size === 1) {
       this.lastPanPoint = { x: event.clientX, y: event.clientY };
+      this.velocityTracker.reset(eventTime(event));
       this.setState(STATES.PANNING);
       return;
     }
@@ -57,6 +172,7 @@ export class GestureMachine {
     if (this.pointers.size >= 2) {
       const [first, second] = [...this.pointers.values()];
       this.lastPinchDistance = Math.max(distance(first, second), 1);
+      this.velocityTracker.reset();
       this.setState(STATES.PINCHING);
     }
   }
@@ -64,12 +180,20 @@ export class GestureMachine {
   onPointerMove(event) {
     if (!this.pointers.has(event.pointerId)) return;
 
-    this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    event.preventDefault();
+    this.pointers.set(event.pointerId, {
+      x: event.clientX,
+      y: event.clientY,
+      pointerType: event.pointerType,
+    });
 
     if (this.pointers.size === 1 && this.state === STATES.PANNING) {
       const current = { x: event.clientX, y: event.clientY };
       if (this.lastPanPoint) {
-        pan(current.x - this.lastPanPoint.x, current.y - this.lastPanPoint.y);
+        const dx = current.x - this.lastPanPoint.x;
+        const dy = current.y - this.lastPanPoint.y;
+        this.queuePan(dx, dy);
+        this.velocityTracker.add(dx, dy, eventTime(event));
       }
       this.lastPanPoint = current;
       return;
@@ -86,6 +210,7 @@ export class GestureMachine {
       }
 
       this.lastPinchDistance = nextDistance;
+      this.velocityTracker.reset();
       this.setState(STATES.PINCHING);
     }
   }
@@ -93,15 +218,40 @@ export class GestureMachine {
   onPointerUp(event) {
     if (!this.pointers.has(event.pointerId)) return;
 
+    const wasPanning = this.pointers.size === 1 && this.state === STATES.PANNING;
+    const pointer = this.pointers.get(event.pointerId);
+    const releaseVelocity = wasPanning
+      ? this.velocityTracker.getLaunchVelocity(eventTime(event))
+      : { x: 0, y: 0 };
+
     this.pointers.delete(event.pointerId);
-    this.element.releasePointerCapture?.(event.pointerId);
+    this.safeRelease(event.pointerId);
 
     if (this.pointers.size === 1) {
+      this.cancelQueuedPan({ flush: true });
       this.lastPanPoint = [...this.pointers.values()][0];
+      this.velocityTracker.reset(eventTime(event));
       this.setState(STATES.PANNING);
       return;
     }
 
+    if (this.pointers.size === 0) {
+      this.cancelQueuedPan({ flush: true });
+      this.lastPanPoint = null;
+      this.lastPinchDistance = 0;
+      this.velocityTracker.reset();
+
+      const allowInertia = event.type === 'pointerup' && pointer?.pointerType !== 'mouse';
+      if (allowInertia && wasPanning && this.startInertia(releaseVelocity)) return;
+      this.setState(STATES.IDLE);
+    }
+  }
+
+  onLostPointerCapture(event) {
+    if (!this.pointers.has(event.pointerId)) return;
+    this.pointers.delete(event.pointerId);
+    this.cancelQueuedPan({ flush: true });
+    this.velocityTracker.reset();
     if (this.pointers.size === 0) {
       this.lastPanPoint = null;
       this.lastPinchDistance = 0;
@@ -111,17 +261,23 @@ export class GestureMachine {
 
   onWheel(event) {
     event.preventDefault();
+    this.cancelInertia({ setIdle: true });
+    this.cancelQueuedPan({ flush: true });
     const factor = Math.exp(-event.deltaY * 0.0015);
     zoomAt(event.clientX, event.clientY, factor);
   }
 
   destroy() {
+    this.cancelInertia({ setIdle: false });
+    this.cancelQueuedPan();
     this.element.removeEventListener('pointerdown', this.onPointerDown);
     this.element.removeEventListener('pointermove', this.onPointerMove);
     this.element.removeEventListener('pointerup', this.onPointerUp);
     this.element.removeEventListener('pointercancel', this.onPointerUp);
+    this.element.removeEventListener('lostpointercapture', this.onLostPointerCapture);
     this.element.removeEventListener('wheel', this.onWheel);
     this.pointers.clear();
+    this.velocityTracker.reset();
     this.setState(STATES.IDLE);
   }
 }
