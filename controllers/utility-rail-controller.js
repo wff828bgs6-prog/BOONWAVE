@@ -68,6 +68,18 @@ export class UtilityRailController {
     }
   }
 
+  releaseActivePointer() {
+    const active = this.activePointer;
+    if (!active) return;
+    try {
+      if (!active.button.hasPointerCapture || active.button.hasPointerCapture(active.pointerId)) {
+        active.button.releasePointerCapture?.(active.pointerId);
+      }
+    } catch {
+      // Capture may already be released by Safari.
+    }
+  }
+
   startLongPress(event) {
     if (event.button !== undefined && event.button !== 0) return;
     this.clearLongPress();
@@ -81,6 +93,7 @@ export class UtilityRailController {
     this.longPressTimer = setTimeout(() => {
       if (!this.activePointer || this.activePointer.pointerId !== event.pointerId) return;
       this.suppressNextClick = true;
+      this.releaseActivePointer();
       const nextSide = this.rail.dataset.side === 'left' ? 'right' : 'left';
       this.setSide(nextSide, { persist: true, announce: true });
       this.rail.dataset.mirrored = 'true';
@@ -92,17 +105,14 @@ export class UtilityRailController {
   moveLongPress(event) {
     if (!this.activePointer || this.activePointer.pointerId !== event.pointerId) return;
     if (distance(this.activePointer, { x: event.clientX, y: event.clientY }) > MOVE_TOLERANCE_PX) {
+      this.releaseActivePointer();
       this.clearLongPress();
     }
   }
 
   endLongPress(event) {
     if (!this.activePointer || this.activePointer.pointerId !== event.pointerId) return;
-    try {
-      this.activePointer.button.releasePointerCapture?.(event.pointerId);
-    } catch {
-      // Capture may already be released by Safari.
-    }
+    this.releaseActivePointer();
     this.clearLongPress();
   }
 
@@ -151,6 +161,7 @@ export class UtilityRailController {
 
   destroy() {
     clearTimeout(this.feedbackTimer);
+    this.releaseActivePointer();
     this.clearLongPress();
     this.unsubscribe?.();
     this.abortController.abort();
