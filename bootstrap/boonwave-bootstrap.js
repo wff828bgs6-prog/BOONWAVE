@@ -2,6 +2,7 @@ import { TypedWorkspaceController as WorkspaceController } from '../controllers/
 import { LinkController } from '../controllers/link-controller.js';
 import { TransactionalNodeController as NodeController } from '../controllers/transactional-node-controller.js';
 import { ZoomController } from '../controllers/zoom-controller.js';
+import { UtilityRailController } from '../controllers/utility-rail-controller.js';
 import { storagePlatform } from '../storage/index.js';
 
 function getRequiredElement(root, id) {
@@ -42,6 +43,15 @@ export async function bootstrapBoonwave({
 
   await workspace.init({ onEmpty });
 
+  const utilityRailController = new UtilityRailController({
+    rail: getRequiredElement(root, 'utilityRail'),
+    lockButton: getRequiredElement(root, 'cardLockButton'),
+    homeButton: getRequiredElement(root, 'homeSelfButton'),
+    hint,
+    onHome: () => workspace.focusSelfCard(),
+  });
+  await utilityRailController.init();
+
   const nodeController = new NodeController({
     addButton: getRequiredElement(root, 'addCardButton'),
     editButton: getRequiredElement(root, 'editButton'),
@@ -73,12 +83,14 @@ export async function bootstrapBoonwave({
   return {
     workspace,
     linkController,
+    utilityRailController,
     nodeController,
     zoomController,
     storagePlatform,
     destroy() {
       zoomController.destroy();
       nodeController.destroy();
+      utilityRailController.destroy();
       linkController.destroy();
       workspace.destroy();
     },
