@@ -13,6 +13,15 @@ function getRequiredElement(root, id) {
   return element;
 }
 
+function createDetachedEditTrigger() {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.hidden = true;
+  button.tabIndex = -1;
+  button.setAttribute('aria-hidden', 'true');
+  return button;
+}
+
 export async function bootstrapBoonwave({
   canvas,
   world,
@@ -52,7 +61,7 @@ export async function bootstrapBoonwave({
 
   const nodeController = new NodeController({
     addButton: getRequiredElement(root, 'addCardButton'),
-    editButton: getRequiredElement(root, 'editButton'),
+    editButton: createDetachedEditTrigger(),
     deleteButton: getRequiredElement(root, 'deleteButton'),
     createSheet: getRequiredElement(root, 'createSheet'),
     closeCreateButton: getRequiredElement(root, 'closeSheetButton'),
