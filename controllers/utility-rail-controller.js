@@ -4,6 +4,7 @@ import storage from '../storage/index.js';
 const SIDE_SETTING_KEY = 'utilityRailSide';
 const LONG_PRESS_MS = 520;
 const MOVE_TOLERANCE_PX = 9;
+const SUPPRESS_CLICK_MS = 700;
 
 function distance(start, current) {
   return Math.hypot(current.x - start.x, current.y - start.y);
@@ -22,8 +23,10 @@ export class UtilityRailController {
     this.onHome = typeof onHome === 'function' ? onHome : null;
     this.longPressTimer = null;
     this.feedbackTimer = null;
+    this.suppressResetTimer = null;
     this.activePointer = null;
-    this.suppressNextClick = false;
+    this.suppressedButton = null;
+    this.suppressClickUntil = 0;
     this.unsubscribe = null;
     this.abortController = new AbortController();
   }
@@ -83,6 +86,7 @@ export class UtilityRailController {
   startLongPress(event) {
     if (event.button !== undefined && event.button !== 0) return;
     this.clearLongPress();
+    this.clearExpiredSuppression();
     this.activePointer = {
       pointerId: event.pointerId,
       x: event.clientX,
@@ -92,7 +96,8 @@ export class UtilityRailController {
     event.currentTarget.setPointerCapture?.(event.pointerId);
     this.longPressTimer = setTimeout(() => {
       if (!this.activePointer || this.activePointer.pointerId !== event.pointerId) return;
-      this.suppressNextClick = true;
+      const pressedButton = this.activePointer.button;
+      this.suppressClickFor(pressedButton);
       this.releaseActivePointer();
       const nextSide = this.rail.dataset.side === 'left' ? 'right' : 'left';
       this.setSide(nextSide, { persist: true, announce: true });
@@ -122,9 +127,33 @@ export class UtilityRailController {
     this.activePointer = null;
   }
 
+  suppressClickFor(button) {
+    clearTimeout(this.suppressResetTimer);
+    this.suppressedButton = button;
+    this.suppressClickUntil = performance.now() + SUPPRESS_CLICK_MS;
+    this.suppressResetTimer = setTimeout(() => this.clearSuppressedClick(), SUPPRESS_CLICK_MS + 40);
+  }
+
+  clearExpiredSuppression() {
+    if (this.suppressClickUntil > 0 && performance.now() > this.suppressClickUntil) {
+      this.clearSuppressedClick();
+    }
+  }
+
+  clearSuppressedClick() {
+    clearTimeout(this.suppressResetTimer);
+    this.suppressResetTimer = null;
+    this.suppressedButton = null;
+    this.suppressClickUntil = 0;
+  }
+
   consumeSuppressedClick(event) {
-    if (!this.suppressNextClick) return false;
-    this.suppressNextClick = false;
+    this.clearExpiredSuppression();
+    const shouldSuppress = this.suppressedButton === event.currentTarget
+      && performance.now() <= this.suppressClickUntil;
+    if (!shouldSuppress) return false;
+
+    this.clearSuppressedClick();
     event.preventDefault();
     event.stopPropagation();
     return true;
@@ -141,13 +170,15 @@ export class UtilityRailController {
   }
 
   syncLockState(locked) {
-    this.lockButton.setAttribute('aria-pressed', String(Boolean(locked)));
-    this.lockButton.setAttribute('aria-label', locked
+    const isLocked = Boolean(locked);
+    this.lockButton.setAttribute('aria-pressed', String(isLocked));
+    this.lockButton.dataset.lockState = isLocked ? 'locked' : 'unlocked';
+    this.lockButton.setAttribute('aria-label', isLocked
       ? 'Разблокировать перемещение карточек'
       : 'Зафиксировать расположение карточек');
-    this.lockButton.title = locked
+    this.lockButton.title = isLocked
       ? 'Карточки зафиксированы'
-      : 'Зафиксировать карточки';
+      : 'Карточки можно перемещать';
   }
 
   announce(message) {
@@ -161,6 +192,7 @@ export class UtilityRailController {
 
   destroy() {
     clearTimeout(this.feedbackTimer);
+    this.clearSuppressedClick();
     this.releaseActivePointer();
     this.clearLongPress();
     this.unsubscribe?.();
