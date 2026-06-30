@@ -1,8 +1,7 @@
-const CACHE = 'boonwave-core-1';
+const CACHE = 'boonwave-core-2';
 const CORE = [
   './',
   './index.html',
-  './legacy-v8.html',
   './app.js',
   './preview.html',
   './preview.js',
@@ -11,8 +10,6 @@ const CORE = [
   './manifest.webmanifest',
   './icon-192.png',
   './icon-512.png',
-  './boonwave.v8.css?v=8.0.0',
-  './boonwave.v8.js?v=8.0.0',
 ];
 
 self.addEventListener('install', (event) => {
