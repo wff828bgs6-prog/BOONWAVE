@@ -2,7 +2,6 @@ import { TypedWorkspaceController as WorkspaceController } from '../controllers/
 import { LinkController } from '../controllers/link-controller.js';
 import { TransactionalNodeController as NodeController } from '../controllers/transactional-node-controller.js';
 import { ZoomController } from '../controllers/zoom-controller.js';
-import { migrateLegacyV8Workspace } from '../services/legacy-v8-migration-service.js';
 import { storagePlatform } from '../storage/index.js';
 
 function getRequiredElement(root, id) {
@@ -17,20 +16,12 @@ export async function bootstrapBoonwave({
   root = document,
   initialSelectedCardId = null,
   onEmpty,
-  migrateLegacy = true,
 } = {}) {
   if (!(canvas instanceof Element) || !(world instanceof Element)) {
     throw new TypeError('bootstrapBoonwave expects canvas and world elements.');
   }
 
   const hint = getRequiredElement(root, 'hint');
-  if (migrateLegacy && storagePlatform === 'web') {
-    const migration = await migrateLegacyV8Workspace();
-    if (migration.status === 'migrated') {
-      hint.textContent = `Перенесено из v8: ${migration.cards} карточек`;
-    }
-  }
-
   const workspace = new WorkspaceController({
     canvas,
     world,
