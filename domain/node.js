@@ -8,8 +8,32 @@ import {
 
 export { NODE_SCHEMA_VERSION, NODE_TYPES, validateNode };
 
-export const CARD_VIEW_MODES = Object.freeze(['compact', 'standard', 'full']);
+export const CARD_VIEW_MODES = Object.freeze(['compact', 'standard']);
+export const CARD_VIEW_SECTIONS = Object.freeze([
+  'cover', 'type', 'status', 'title', 'description', 'meta', 'progress',
+]);
 export const COVER_SHAPES = Object.freeze(['rounded-square', 'circle', 'portrait', 'landscape']);
+
+export const DEFAULT_CARD_VIEW_VISIBILITY = Object.freeze({
+  compact: Object.freeze({
+    cover: true,
+    type: false,
+    status: false,
+    title: true,
+    description: false,
+    meta: false,
+    progress: false,
+  }),
+  standard: Object.freeze({
+    cover: true,
+    type: true,
+    status: true,
+    title: true,
+    description: true,
+    meta: true,
+    progress: true,
+  }),
+});
 
 const DEFAULT_TITLES = Object.freeze({
   self: 'Я Есмь',
@@ -38,15 +62,27 @@ function normalizeCoverFrame(raw = {}, fallback = {}) {
   };
 }
 
+function normalizeVisibility(raw = {}, fallback = {}) {
+  return Object.fromEntries(CARD_VIEW_SECTIONS.map((section) => [
+    section,
+    typeof raw[section] === 'boolean' ? raw[section] : Boolean(fallback[section]),
+  ]));
+}
+
 export function normalizeNodeView(raw = {}) {
   const legacyCover = raw.cover && typeof raw.cover === 'object' ? raw.cover : {};
   const compact = normalizeCoverFrame(raw.coverFrames?.compact ?? legacyCover);
   const working = normalizeCoverFrame(raw.coverFrames?.working ?? legacyCover, compact);
+  const rawMode = raw.mode === 'full' ? 'standard' : raw.mode;
 
   return {
-    mode: CARD_VIEW_MODES.includes(raw.mode) ? raw.mode : 'standard',
+    mode: CARD_VIEW_MODES.includes(rawMode) ? rawMode : 'standard',
     compactLabel: String(raw.compactLabel ?? '').trim(),
     coverFrames: { compact, working },
+    visible: {
+      compact: normalizeVisibility(raw.visible?.compact, DEFAULT_CARD_VIEW_VISIBILITY.compact),
+      standard: normalizeVisibility(raw.visible?.standard, DEFAULT_CARD_VIEW_VISIBILITY.standard),
+    },
   };
 }
 
