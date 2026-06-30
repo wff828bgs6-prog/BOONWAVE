@@ -1,4 +1,9 @@
 export const CARD_MEDIA_SLOTS = Object.freeze({
+  self: Object.freeze({
+    avatar: Object.freeze({ field: 'avatarMediaId', mode: 'single', kinds: ['image'] }),
+    documents: Object.freeze({ field: 'documents', mode: 'multiple', kinds: ['document'] }),
+    files: Object.freeze({ field: 'files', mode: 'multiple', kinds: ['image', 'document', 'file'] }),
+  }),
   project: Object.freeze({
     cover: Object.freeze({ field: 'coverMediaId', mode: 'single', kinds: ['image'] }),
     images: Object.freeze({ field: 'images', mode: 'multiple', kinds: ['image'] }),
