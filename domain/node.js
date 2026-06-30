@@ -12,6 +12,7 @@ export const CARD_VIEW_MODES = Object.freeze(['compact', 'standard', 'full']);
 export const COVER_SHAPES = Object.freeze(['rounded-square', 'circle', 'portrait', 'landscape']);
 
 const DEFAULT_TITLES = Object.freeze({
+  self: 'Я Есмь',
   project: 'Новый проект',
   process: 'Новый процесс',
   person: 'Новый человек',
