@@ -47,6 +47,10 @@ export function cycleCardView(cardId, options = {}) {
   const { stateStore } = resolveDependencies(options);
   const card = stateStore.getState().cards[cardId];
   if (!card) throw new Error(`Card not found: ${cardId}`);
+
+  // A card opened through the eye becomes the active visual object and must
+  // render above neighbouring cards until the user selects something else.
+  stateStore.setState({ selectedCardId: cardId });
   return updateCardView(cardId, { mode: getNextCardViewMode(card.view?.mode) }, options);
 }
 
