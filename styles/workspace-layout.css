@@ -1,0 +1,2 @@
+.zoom-row.zoom-row-with-create{grid-template-columns:minmax(0,1fr) 58px}
+@media(max-width:390px){.zoom-row.zoom-row-with-create{grid-template-columns:minmax(0,1fr) 54px}}
