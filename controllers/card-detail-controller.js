@@ -1,3 +1,5 @@
+import { normalizeNodeView } from '../domain/node.js';
+
 const TRANSITION_MS=300;
 
 function ensureStyles(){
@@ -12,6 +14,8 @@ function clamp(value,min,max){return Math.min(max,Math.max(min,value));}
 function prepareClone(card,source){
   const clone=source.cloneNode(true);clone.classList.add('card-detail-copy');clone.removeAttribute('data-card-id');clone.removeAttribute('aria-keyshortcuts');clone.dataset.selected='false';clone.dataset.linkSource='false';clone.dataset.viewMode='detail';clone.tabIndex=-1;clone.setAttribute('role','document');clone.setAttribute('aria-label',`${card.title}. Полная карточка`);
   for(const key of ['Cover','Type','Status','Title','Description','Meta','Progress'])clone.dataset[`show${key}`]='true';
+  const heading=clone.querySelector('h2');if(heading)heading.textContent=card.title;
+  const view=normalizeNodeView(card.view);const frame=view.coverFrames.working;const image=clone.querySelector('.card-cover img');if(image){image.style.transform=`scale(${frame.scale})`;image.style.objectPosition=`${frame.positionX}% ${frame.positionY}%`;}clone.dataset.coverShape=frame.shape;
   clone.querySelectorAll('button').forEach((button)=>button.remove());
   const actions=document.createElement('div');actions.className='card-detail-actions';actions.innerHTML='<button type="button" data-detail-edit>Редактировать</button><button type="button" data-detail-display>Формат отображения</button>';clone.append(actions);return clone;
 }
