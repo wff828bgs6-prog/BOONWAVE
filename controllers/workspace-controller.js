@@ -7,8 +7,14 @@ import { NODE_TYPE_LABELS } from '../domain/node-schemas.js';
 import { normalizeNodeView } from '../domain/node.js';
 import { updateCardNode } from '../services/node-service.js';
 import { cycleCardView } from '../services/card-view-service.js';
+import { getPrimarySelfNode } from '../services/self-node-service.js';
 import { loadMedia } from '../services/media-service.js';
 import { loadWorkspace, saveCamera } from '../services/workspace-service.js';
+import {
+  HOME_CAMERA_DURATION_MS,
+  getCameraForCard,
+  interpolateCamera,
+} from '../canvas/camera-navigation.js';
 import {
   getCoverMediaId,
   collectActiveCoverMediaIds,
@@ -29,6 +35,7 @@ function ensureViewStyles() {
   style.id = 'boonwave-card-view-styles';
   style.textContent = `
     .card { overflow:visible; padding-bottom:52px; }
+    .card[data-position-locked="true"] { cursor:default; }
     .card-cover { position:relative; display:none; overflow:hidden; border:0; box-shadow:none; background:rgba(var(--node-rgb),.12); }
     .card-cover img { display:block; width:100%; height:100%; object-fit:cover; transform-origin:center; pointer-events:none; }
     .card-cover-fallback { position:absolute; inset:0; display:none; place-items:center; font-size:38px; font-weight:800; color:rgba(255,255,255,.82); background:linear-gradient(145deg,rgba(var(--node-rgb),.34),rgba(var(--node-rgb),.12)); }
@@ -96,6 +103,7 @@ export class WorkspaceController {
     this.linkSourceProvider = null;
     this.linkModeProvider = null;
     this.cameraSaveTimer = null;
+    this.cameraAnimationFrame = null;
     this.gestureMachine = null;
     this.cardController = null;
     this.focusController = null;
@@ -119,7 +127,7 @@ export class WorkspaceController {
     }
     const cards = store.getState().cards;
     const selectedCardId = this.initialSelectedCardId && cards[this.initialSelectedCardId] ? this.initialSelectedCardId : null;
-    store.setState({ selectedCardId });
+    store.setState({ selectedCardId, cardsLocked: false });
     this.renderCards();
     this.applyCamera();
     this.mountCore();
@@ -194,6 +202,7 @@ export class WorkspaceController {
     element.dataset.viewMode = view.mode;
     element.dataset.selected = String(state.selectedCardId === card.id);
     element.dataset.linkSource = String(linkSourceId === card.id);
+    element.dataset.positionLocked = String(Boolean(state.cardsLocked));
     element.style.transform = `translate3d(${card.x}px, ${card.y}px, 0)`;
     element.tabIndex = 0;
     element.setAttribute('role', 'group');
@@ -244,12 +253,83 @@ export class WorkspaceController {
     this.cleanupUnusedMediaUrls(state.cards);
   }
 
-  applyCamera() { const { camera } = store.getState(); this.world.style.transform = `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`; }
-  scheduleCameraSave(camera) { clearTimeout(this.cameraSaveTimer); this.cameraSaveTimer = setTimeout(() => saveCamera(camera).catch((error) => console.error('Camera save failed:', error)), 180); }
-  getViewportCenter() { const { camera } = store.getState(); return { x: (window.innerWidth / 2 - camera.x) / camera.zoom - 115, y: (window.innerHeight / 2 - camera.y) / camera.zoom - 69 }; }
+  applyCamera() {
+    const { camera } = store.getState();
+    this.world.style.transform = `translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`;
+  }
+
+  scheduleCameraSave(camera) {
+    clearTimeout(this.cameraSaveTimer);
+    this.cameraSaveTimer = setTimeout(() => saveCamera(camera).catch((error) => console.error('Camera save failed:', error)), 180);
+  }
+
+  getViewportCenter() {
+    const { camera } = store.getState();
+    return { x: (window.innerWidth / 2 - camera.x) / camera.zoom - 115, y: (window.innerHeight / 2 - camera.y) / camera.zoom - 69 };
+  }
+
+  cancelCameraAnimation() {
+    if (this.cameraAnimationFrame !== null) cancelAnimationFrame(this.cameraAnimationFrame);
+    this.cameraAnimationFrame = null;
+  }
+
+  getHomeTargetPoint() {
+    const header = document.querySelector('.app-header')?.getBoundingClientRect();
+    const dock = document.querySelector('.mobile-dock')?.getBoundingClientRect();
+    const top = Math.max(70, (header?.bottom ?? 70) + 12);
+    const bottom = Math.min(window.innerHeight - 80, (dock?.top ?? window.innerHeight - 80) - 12);
+    return {
+      x: window.innerWidth / 2,
+      y: top + Math.max(80, bottom - top) / 2,
+    };
+  }
+
+  focusSelfCard() {
+    const state = store.getState();
+    const selfCard = getPrimarySelfNode(state.cards);
+    if (!selfCard) return false;
+
+    const element = this.world.querySelector(`[data-card-id="${CSS.escape(selfCard.id)}"]`);
+    const targetPoint = this.getHomeTargetPoint();
+    const target = getCameraForCard({
+      card: selfCard,
+      cardWidth: element?.offsetWidth ?? selfCard.width,
+      cardHeight: element?.offsetHeight ?? selfCard.height,
+      targetX: targetPoint.x,
+      targetY: targetPoint.y,
+    });
+    const from = { ...state.camera };
+
+    this.gestureMachine?.cancelInteraction();
+    this.cancelCameraAnimation();
+
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      store.setState({ camera: target, selectedCardId: selfCard.id });
+      return true;
+    }
+
+    const startedAt = performance.now();
+    const animate = (now) => {
+      const progress = Math.min(1, (now - startedAt) / HOME_CAMERA_DURATION_MS);
+      store.setState({
+        camera: interpolateCamera(from, target, progress),
+        selectedCardId: selfCard.id,
+      });
+      if (progress < 1) {
+        this.cameraAnimationFrame = requestAnimationFrame(animate);
+      } else {
+        this.cameraAnimationFrame = null;
+        store.setState({ camera: target, selectedCardId: selfCard.id });
+      }
+    };
+    this.cameraAnimationFrame = requestAnimationFrame(animate);
+    return true;
+  }
 
   mountCore() {
-    this.gestureMachine = new GestureMachine(this.canvas);
+    this.gestureMachine = new GestureMachine(this.canvas, {
+      allowPanFromInteractive: () => Boolean(store.getState().cardsLocked),
+    });
     this.focusController = new CardFocusController({
       root: document.body,
       appShell: document.querySelector('.app-shell'),
@@ -259,13 +339,16 @@ export class WorkspaceController {
       onTap: (card) => this.cardTapHandler?.(card),
       onLongPress: (card, element) => {
         if (this.linkModeProvider?.()) return false;
+        this.gestureMachine?.cancelInteraction();
         return this.focusController.open(card, element);
       },
       onDoubleTap: (card, element) => {
         if (this.linkModeProvider?.()) return false;
+        this.gestureMachine?.cancelInteraction();
         return this.focusController.open(card, element, { fullscreen: true });
       },
       canOpenFullscreen: () => !this.linkModeProvider?.(),
+      canMoveCard: () => !store.getState().cardsLocked,
     });
     this.linksRenderer = createLinksRenderer(this.world);
   }
@@ -278,12 +361,19 @@ export class WorkspaceController {
         if (previous.selectedCardId) changedIds.add(previous.selectedCardId);
         if (next.selectedCardId) changedIds.add(next.selectedCardId);
       }
+      if (next.cardsLocked !== previous.cardsLocked) {
+        for (const id of Object.keys(next.cards)) changedIds.add(id);
+      }
       if (changedIds.size > 0) this.renderCards([...changedIds]);
       if (next.camera !== previous.camera) { this.applyCamera(); this.scheduleCameraSave(next.camera); }
     });
   }
 
   bindCanvas() {
+    this.canvas.addEventListener('pointerdown', () => this.cancelCameraAnimation(), {
+      capture: true,
+      signal: this.abortController.signal,
+    });
     this.canvas.addEventListener('click', (event) => {
       if (event.target.closest('[data-card-id]')) return;
       store.setState({ selectedCardId: null });
@@ -293,6 +383,7 @@ export class WorkspaceController {
 
   destroy() {
     clearTimeout(this.cameraSaveTimer);
+    this.cancelCameraAnimation();
     saveCamera().catch(() => {});
     this.abortController.abort();
     this.unsubscribe?.();
