@@ -1,8 +1,9 @@
-export const NODE_SCHEMA_VERSION = 3;
+export const NODE_SCHEMA_VERSION = 4;
 
-export const NODE_TYPES = Object.freeze(['project', 'process', 'person', 'idea', 'goal']);
+export const NODE_TYPES = Object.freeze(['self', 'project', 'process', 'person', 'idea', 'goal']);
 
 export const NODE_TYPE_LABELS = Object.freeze({
+  self: 'Я Есмь',
   project: 'Проект',
   process: 'Процесс',
   person: 'Человек',
@@ -11,6 +12,12 @@ export const NODE_TYPE_LABELS = Object.freeze({
 });
 
 const TYPE_DEFAULTS = Object.freeze({
+  self: {
+    fullName: '', currentState: '', currentFocus: '', attentionStatus: 'stable',
+    focusItems: [], lifeAreas: [],
+    profile: { bio: '', profession: '', location: '' },
+    avatarMediaId: null, documents: [], files: [],
+  },
   project: {
     priority: 'medium', status: 'preparation', address: '', itemCount: null,
     contractDate: null, budget: null, expectedProfit: null,
