@@ -14,21 +14,24 @@ test('production shell exposes one complete one-hand rail', () => {
   assert.match(index, /id="cardLockButton"/);
   assert.match(index, /id="redoButton"/);
   assert.match(index, /id="zoomRange"/);
+  assert.match(index, /aria-orientation="vertical"/);
   assert.match(index, /id="undoButton"/);
   assert.match(index, /id="addCardButton"/);
   assert.match(index, /id="moreToolsButton"/);
   assert.doesNotMatch(index, /class="mobile-dock"/);
 });
 
-test('handedness uses a dedicated grip instead of functional buttons', () => {
+test('handedness uses a dedicated grip and suppresses the synthetic click after a gesture', () => {
   const controller = read('controllers/utility-rail-controller.js');
   assert.match(controller, /SIDE_SETTING_KEY = 'utilityRailSide'/);
   assert.match(controller, /HOLD_MS = 480/);
   assert.match(controller, /SWIPE_THRESHOLD_PX = 28/);
+  assert.match(controller, /SUPPRESS_CLICK_MS = 700/);
   assert.match(controller, /this\.grip\.addEventListener\('pointerdown'/);
   assert.match(controller, /this\.grip\.addEventListener\('pointermove'/);
   assert.match(controller, /this\.setSide\(delta < 0 \? 'left' : 'right'/);
-  assert.doesNotMatch(controller, /suppressedButton|SUPPRESS_CLICK_MS/);
+  assert.match(controller, /this\.suppressNextClick\(\)/);
+  assert.match(controller, /this\.consumeSuppressedClick\(event\)/);
 });
 
 test('card lock state is loaded and persisted transactionally', () => {
@@ -38,6 +41,19 @@ test('card lock state is loaded and persisted transactionally', () => {
   assert.match(controller, /storage\.saveSetting\(LOCK_SETTING_KEY, nextLocked\)/);
   assert.match(controller, /store\.setState\(\{ cardsLocked: savedLock === true \}\)/);
   assert.match(controller, /store\.setState\(\{ cardsLocked: previousLocked \}\)/);
+});
+
+test('secondary tools are explicit while unfinished history actions stay disabled', () => {
+  const index = read('index.html');
+  const bootstrap = read('bootstrap/boonwave-bootstrap.js');
+  assert.match(index, /id="redoButton"[^>]*disabled/);
+  assert.match(index, /id="undoButton"[^>]*disabled/);
+  assert.match(index, /id="toolsSheet"[^>]*hidden/);
+  assert.match(index, /id="linkButton"/);
+  assert.match(index, /id="deleteButton"/);
+  assert.match(bootstrap, /OneHandPanelController/);
+  assert.match(bootstrap, /moreToolsButton/);
+  assert.match(bootstrap, /toolsSheet/);
 });
 
 test('locked cards keep passive hold and double-tap tracking while canvas pans', () => {
