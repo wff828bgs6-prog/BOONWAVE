@@ -1,17 +1,13 @@
 import store from '../state/store.js';
 import { BASE_ZOOM, MAX_ZOOM, MIN_ZOOM, zoomAt } from '../canvas/camera.js';
 
-const ZOOM_OUT_FACTOR = 0.82;
-const ZOOM_IN_FACTOR = 1.22;
 const RANGE_STEP = 0.005;
 const TRACK_INSET_PX = 12;
 
 export class ZoomController {
-  constructor({ range, zoomOutButton, zoomInButton, getCenter }) {
+  constructor({ range, getCenter }) {
     if (!(range instanceof HTMLInputElement)) throw new TypeError('ZoomController expects a range input.');
     this.range = range;
-    this.zoomOutButton = zoomOutButton;
-    this.zoomInButton = zoomInButton;
     this.getCenter = getCenter;
     this.touchArea = range.closest('.zoom-touch-area');
     this.visualRoot = range.closest('.rail-zoom');
@@ -37,14 +33,13 @@ export class ZoomController {
     const signal = this.abortController.signal;
 
     this.range.addEventListener('input', () => this.applyZoom(Number(this.range.value)), { signal });
-    this.zoomOutButton.addEventListener('click', () => this.step(ZOOM_OUT_FACTOR), { signal });
-    this.zoomInButton.addEventListener('click', () => this.step(ZOOM_IN_FACTOR), { signal });
 
     if (this.touchArea) {
       this.touchArea.addEventListener('pointerdown', (event) => this.onPointerDown(event), { signal });
       this.touchArea.addEventListener('pointermove', (event) => this.onPointerMove(event), { signal });
       this.touchArea.addEventListener('pointerup', (event) => this.onPointerUp(event), { signal });
       this.touchArea.addEventListener('pointercancel', (event) => this.onPointerUp(event), { signal });
+      this.touchArea.addEventListener('contextmenu', (event) => event.preventDefault(), { signal });
     }
 
     window.addEventListener('resize', () => this.scheduleVisualSync(store.getState().camera.zoom), { signal });
@@ -101,11 +96,6 @@ export class ZoomController {
     if (!Number.isFinite(nextZoom) || !Number.isFinite(currentZoom) || currentZoom <= 0) return;
     const center = this.getCenter();
     zoomAt(center.x, center.y, nextZoom / currentZoom);
-  }
-
-  step(factor) {
-    const center = this.getCenter();
-    zoomAt(center.x, center.y, factor);
   }
 
   sync(zoom) {
