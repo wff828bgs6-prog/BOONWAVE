@@ -59,7 +59,7 @@ class BoonwaveApp {
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   try {
-    await navigator.serviceWorker.register('./sw-v2.js');
+    await navigator.serviceWorker.register('./sw.js', { scope: './' });
   } catch (error) {
     console.warn('BOONWAVE service worker registration failed:', error);
   }
