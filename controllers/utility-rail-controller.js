@@ -5,6 +5,7 @@ const SIDE_SETTING_KEY = 'utilityRailSide';
 const LOCK_SETTING_KEY = 'cardsLocked';
 const HOLD_MS = 480;
 const SWIPE_THRESHOLD_PX = 28;
+const SUPPRESS_CLICK_MS = 700;
 
 export class UtilityRailController {
   constructor({ rail, grip, lockButton, homeButton, hint, onHome } = {}) {
@@ -20,6 +21,8 @@ export class UtilityRailController {
     this.onHome = typeof onHome === 'function' ? onHome : null;
     this.feedbackTimer = null;
     this.holdTimer = null;
+    this.suppressClickTimer = null;
+    this.suppressClickUntil = 0;
     this.activePointer = null;
     this.unsubscribe = null;
     this.abortController = new AbortController();
@@ -71,7 +74,10 @@ export class UtilityRailController {
     this.grip.addEventListener('pointermove', (event) => this.moveGrip(event), { signal });
     this.grip.addEventListener('pointerup', (event) => this.endGrip(event), { signal });
     this.grip.addEventListener('pointercancel', (event) => this.endGrip(event), { signal });
-    this.grip.addEventListener('click', () => this.mirror(), { signal });
+    this.grip.addEventListener('click', (event) => {
+      if (this.consumeSuppressedClick(event)) return;
+      this.mirror();
+    }, { signal });
     this.grip.addEventListener('contextmenu', (event) => event.preventDefault(), { signal });
   }
 
@@ -88,6 +94,7 @@ export class UtilityRailController {
     this.holdTimer = setTimeout(() => {
       if (!this.activePointer || this.activePointer.pointerId !== event.pointerId) return;
       this.activePointer.mirrored = true;
+      this.suppressNextClick();
       this.mirror();
     }, HOLD_MS);
   }
@@ -99,6 +106,7 @@ export class UtilityRailController {
     if (Math.abs(delta) < SWIPE_THRESHOLD_PX || this.activePointer.mirrored) return;
     clearTimeout(this.holdTimer);
     this.activePointer.mirrored = true;
+    this.suppressNextClick();
     this.setSide(delta < 0 ? 'left' : 'right', { persist: true, announce: true });
   }
 
@@ -121,6 +129,25 @@ export class UtilityRailController {
     clearTimeout(this.holdTimer);
     this.holdTimer = null;
     this.activePointer = null;
+  }
+
+  suppressNextClick() {
+    clearTimeout(this.suppressClickTimer);
+    this.suppressClickUntil = performance.now() + SUPPRESS_CLICK_MS;
+    this.suppressClickTimer = setTimeout(() => {
+      this.suppressClickUntil = 0;
+      this.suppressClickTimer = null;
+    }, SUPPRESS_CLICK_MS + 40);
+  }
+
+  consumeSuppressedClick(event) {
+    if (this.suppressClickUntil === 0 || performance.now() > this.suppressClickUntil) return false;
+    clearTimeout(this.suppressClickTimer);
+    this.suppressClickUntil = 0;
+    this.suppressClickTimer = null;
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
   }
 
   mirror() {
@@ -165,6 +192,7 @@ export class UtilityRailController {
 
   destroy() {
     clearTimeout(this.feedbackTimer);
+    clearTimeout(this.suppressClickTimer);
     this.clearGrip();
     this.unsubscribe?.();
     this.abortController.abort();
