@@ -5,14 +5,33 @@ import { CardController } from '../canvas/card-controller.js';
 import { createLinksRenderer } from '../canvas/links.js';
 import { CardDetailController } from './card-detail-controller.js';
 import { updateCardNode } from '../services/node-service.js';
+import { formatCardDetails } from '../ui/card-detail-presenter.js';
+import { formatSelfSummary } from '../services/self-node-service.js';
+import { formatProjectGraphSummary, formatGoalGraphSummary } from '../services/graph-summary-service.js';
+
+function joinSections(...sections) {
+  return sections.filter((section) => typeof section === 'string' && section.trim()).join('\n\n');
+}
 
 export class WorkspaceController extends BaseWorkspaceController {
   updateCardElement(element, card, state, linkSourceId) {
     super.updateCardElement(element, card, state, linkSourceId);
-    element.setAttribute(
-      'aria-label',
-      `${card.title}. Одно нажатие открывает карточку. Удерживание открывает редактирование.`,
-    );
+    element.dataset.systemCard = String(card.type === 'self');
+    element.setAttribute('aria-label', `${card.title}. Одно нажатие открывает карточку. Удерживание открывает редактирование.`);
+
+    const detailsElement = element.querySelector('.card-full');
+    if (!detailsElement) return;
+    if (card.type === 'self') {
+      detailsElement.textContent = formatSelfSummary(card, state);
+      return;
+    }
+    const graphSummary = card.type === 'project'
+      ? formatProjectGraphSummary(card, state)
+      : card.type === 'goal'
+        ? formatGoalGraphSummary(card, state)
+        : '';
+    detailsElement.textContent = joinSections(formatCardDetails(card), graphSummary)
+      || 'Дополнительная информация пока не заполнена';
   }
 
   activateCard(cardId, element) {
