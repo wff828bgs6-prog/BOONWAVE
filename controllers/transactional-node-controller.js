@@ -7,6 +7,8 @@ import {
   updateCardWithMedia,
 } from '../services/card-save-service.js';
 
+const WORKSPACE_HINT = 'Удерживай карточку для редактирования • двойной тап — открыть';
+
 export function readTypedFormData(container, type) {
   const data = {};
   for (const definition of getNodeFormFields(type)) {
@@ -58,6 +60,16 @@ export function collectPendingFormMedia(container) {
 }
 
 export class TransactionalNodeController extends NodeController {
+  showFeedback(message, timeout = 1200) {
+    clearTimeout(this.feedbackTimer);
+    this.elements.hint.textContent = message;
+    if (timeout > 0) {
+      this.feedbackTimer = setTimeout(() => {
+        this.elements.hint.textContent = WORKSPACE_HINT;
+      }, timeout);
+    }
+  }
+
   async submitCreate(event) {
     event.preventDefault();
     if (!this.elements.createForm.reportValidity()) return;
