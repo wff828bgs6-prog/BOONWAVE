@@ -1,6 +1,6 @@
 import store from '../state/store.js';
 import { pan, zoomAt } from './camera.js';
-import { LONG_PRESS_DELAY_MS, canRemainLongPress, shouldStartCardDrag } from './card-interaction-policy.js';
+import { shouldStartCardDrag } from './card-interaction-policy.js';
 import {
   PAN_INERTIA_CONFIG,
   PanVelocityTracker,
@@ -14,9 +14,9 @@ const midpoint=(a,b)=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
 const eventTime=(event)=>Number.isFinite(event.timeStamp)?event.timeStamp:performance.now();
 
 export class GestureMachine{
-  constructor(element,{interactiveSelector='[data-card-id]',allowPanFromInteractive=()=>false,onInteractiveTap,onInteractiveLongPress}={}){
+  constructor(element,{interactiveSelector='[data-card-id]',allowPanFromInteractive=()=>false,onInteractiveTap}={}){
     if(!(element instanceof Element))throw new TypeError('GestureMachine expects a DOM element.');
-    this.element=element;this.motionElement=element.querySelector('#world');this.interactiveSelector=interactiveSelector;this.allowPanFromInteractive=typeof allowPanFromInteractive==='function'?allowPanFromInteractive:()=>false;this.onInteractiveTap=typeof onInteractiveTap==='function'?onInteractiveTap:null;this.onInteractiveLongPress=typeof onInteractiveLongPress==='function'?onInteractiveLongPress:null;this.pointers=new Map();this.state=STATES.IDLE;this.lastPanPoint=null;this.lastPinchDistance=0;this.velocityTracker=new PanVelocityTracker();this.pendingPan={x:0,y:0};this.panFrame=null;this.inertiaFrame=null;this.inertiaVelocity={x:0,y:0};this.inertiaStartedAt=0;this.inertiaLastFrame=0;this.interactiveGesture=null;this.interactiveLongPressTimer=null;
+    this.element=element;this.motionElement=element.querySelector('#world');this.interactiveSelector=interactiveSelector;this.allowPanFromInteractive=typeof allowPanFromInteractive==='function'?allowPanFromInteractive:()=>false;this.onInteractiveTap=typeof onInteractiveTap==='function'?onInteractiveTap:null;this.pointers=new Map();this.state=STATES.IDLE;this.lastPanPoint=null;this.lastPinchDistance=0;this.velocityTracker=new PanVelocityTracker();this.pendingPan={x:0,y:0};this.panFrame=null;this.inertiaFrame=null;this.inertiaVelocity={x:0,y:0};this.inertiaStartedAt=0;this.inertiaLastFrame=0;this.interactiveGesture=null;
     this.onPointerDown=this.onPointerDown.bind(this);this.onPointerMove=this.onPointerMove.bind(this);this.onPointerUp=this.onPointerUp.bind(this);this.onLostPointerCapture=this.onLostPointerCapture.bind(this);this.onWheel=this.onWheel.bind(this);
     this.element.style.touchAction='none';this.element.addEventListener('pointerdown',this.onPointerDown);this.element.addEventListener('pointermove',this.onPointerMove);this.element.addEventListener('pointerup',this.onPointerUp);this.element.addEventListener('pointercancel',this.onPointerUp);this.element.addEventListener('lostpointercapture',this.onLostPointerCapture);this.element.addEventListener('wheel',this.onWheel,{passive:false});
   }
@@ -24,8 +24,7 @@ export class GestureMachine{
   setState(nextState){if(this.state===nextState)return;this.state=nextState;if(this.motionElement)this.motionElement.style.willChange=nextState===STATES.IDLE?'':'transform';store.setState({activeGesture:nextState});}
   safeCapture(pointerId){try{this.element.setPointerCapture?.(pointerId);}catch{}}
   safeRelease(pointerId){try{if(!this.element.hasPointerCapture||this.element.hasPointerCapture(pointerId))this.element.releasePointerCapture?.(pointerId);}catch{}}
-  clearInteractiveLongPress(){clearTimeout(this.interactiveLongPressTimer);this.interactiveLongPressTimer=null;}
-  resetInteractiveGesture(){this.clearInteractiveLongPress();this.interactiveGesture=null;}
+  resetInteractiveGesture(){this.interactiveGesture=null;}
   queuePan(dx,dy){if(!Number.isFinite(dx)||!Number.isFinite(dy))return;this.pendingPan.x+=dx;this.pendingPan.y+=dy;if(this.panFrame!==null)return;this.panFrame=requestAnimationFrame(()=>{this.panFrame=null;this.flushPan();});}
   flushPan(){const{x,y}=this.pendingPan;this.pendingPan={x:0,y:0};if(x!==0||y!==0)pan(x,y);}
   cancelQueuedPan({flush=false}={}){if(this.panFrame!==null)cancelAnimationFrame(this.panFrame);this.panFrame=null;if(flush)this.flushPan();else this.pendingPan={x:0,y:0};}
@@ -33,44 +32,12 @@ export class GestureMachine{
   cancelInteraction(){for(const pointerId of this.pointers.keys())this.safeRelease(pointerId);this.pointers.clear();this.cancelInertia({setIdle:false});this.cancelQueuedPan();this.velocityTracker.reset();this.lastPanPoint=null;this.lastPinchDistance=0;this.resetInteractiveGesture();this.setState(STATES.IDLE);}
   startInertia(velocity){const speed=Math.hypot(velocity.x,velocity.y);if(prefersReducedPanMotion()||!Number.isFinite(speed)||speed<PAN_INERTIA_CONFIG.minLaunchSpeed)return false;this.cancelInertia({setIdle:false});this.inertiaVelocity=velocity;this.inertiaStartedAt=performance.now();this.inertiaLastFrame=this.inertiaStartedAt;this.setState(STATES.INERTIA);const tick=(now)=>{if(this.state!==STATES.INERTIA)return;const elapsed=now-this.inertiaLastFrame;this.inertiaLastFrame=now;const step=stepPanInertia(this.inertiaVelocity,elapsed);this.inertiaVelocity=step.velocity;if(step.dx!==0||step.dy!==0)pan(step.dx,step.dy);const expired=now-this.inertiaStartedAt>=PAN_INERTIA_CONFIG.maxDurationMs;if(step.done||expired){this.cancelInertia({setIdle:true});return;}this.inertiaFrame=requestAnimationFrame(tick);};this.inertiaFrame=requestAnimationFrame(tick);return true;}
 
-  startInteractiveGesture(event,element){
-    const cardId=element?.dataset?.cardId;if(!cardId)return;
-    this.interactiveGesture={pointerId:event.pointerId,cardId,element,startX:event.clientX,startY:event.clientY,moved:false,longPressed:false};
-    this.clearInteractiveLongPress();
-    this.interactiveLongPressTimer=setTimeout(()=>{
-      const gesture=this.interactiveGesture;if(!gesture||gesture.pointerId!==event.pointerId||gesture.moved)return;
-      gesture.longPressed=true;this.cancelInteraction();
-      Promise.resolve(this.onInteractiveLongPress?.(gesture.cardId,gesture.element)).catch((error)=>console.error('Locked card long press failed:',error));
-    },LONG_PRESS_DELAY_MS);
-  }
+  startInteractiveGesture(event,element){const cardId=element?.dataset?.cardId;if(!cardId)return;this.interactiveGesture={pointerId:event.pointerId,cardId,element,startX:event.clientX,startY:event.clientY,moved:false};}
+  finishInteractiveGesture(event,gesture){if(!gesture||gesture.moved||event.type!=='pointerup')return;Promise.resolve(this.onInteractiveTap?.(gesture.cardId,gesture.element)).catch((error)=>console.error('Locked card tap failed:',error));}
 
-  finishInteractiveGesture(event,gesture){
-    if(!gesture||gesture.moved||gesture.longPressed||event.type!=='pointerup')return;
-    Promise.resolve(this.onInteractiveTap?.(gesture.cardId,gesture.element)).catch((error)=>console.error('Locked card tap failed:',error));
-  }
-
-  onPointerDown(event){
-    const interactiveElement=event.target.closest?.(this.interactiveSelector)??null;const startedOnInteractive=Boolean(interactiveElement);
-    if(startedOnInteractive&&this.pointers.size===0&&!this.allowPanFromInteractive())return;
-    this.cancelInertia({setIdle:true});this.cancelQueuedPan({flush:true});this.safeCapture(event.pointerId);this.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY,pointerType:event.pointerType});
-    if(startedOnInteractive&&this.pointers.size===1)this.startInteractiveGesture(event,interactiveElement);
-    if(this.pointers.size===1){this.lastPanPoint={x:event.clientX,y:event.clientY};this.velocityTracker.reset(eventTime(event));this.setState(STATES.PANNING);return;}
-    if(this.pointers.size>=2){this.resetInteractiveGesture();const[first,second]=[...this.pointers.values()];this.lastPinchDistance=Math.max(distance(first,second),1);this.velocityTracker.reset();this.setState(STATES.PINCHING);}
-  }
-
-  onPointerMove(event){
-    if(!this.pointers.has(event.pointerId))return;event.preventDefault();this.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY,pointerType:event.pointerType});
-    const gesture=this.interactiveGesture;if(gesture?.pointerId===event.pointerId){const start={x:gesture.startX,y:gesture.startY};const current={x:event.clientX,y:event.clientY};if(!canRemainLongPress(start,current))this.clearInteractiveLongPress();gesture.moved=gesture.moved||shouldStartCardDrag(start,current);}
-    if(this.pointers.size===1&&this.state===STATES.PANNING){const current={x:event.clientX,y:event.clientY};if(this.lastPanPoint){const dx=current.x-this.lastPanPoint.x;const dy=current.y-this.lastPanPoint.y;this.queuePan(dx,dy);this.velocityTracker.add(dx,dy,eventTime(event));}this.lastPanPoint=current;return;}
-    if(this.pointers.size>=2){const[first,second]=[...this.pointers.values()];const nextDistance=Math.max(distance(first,second),1);const center=midpoint(first,second);const factor=nextDistance/Math.max(this.lastPinchDistance,1);if(Number.isFinite(factor)&&factor>0)zoomAt(center.x,center.y,factor);this.lastPinchDistance=nextDistance;this.velocityTracker.reset();this.setState(STATES.PINCHING);}
-  }
-
-  onPointerUp(event){
-    if(!this.pointers.has(event.pointerId))return;const wasPanning=this.pointers.size===1&&this.state===STATES.PANNING;const pointer=this.pointers.get(event.pointerId);const gesture=this.interactiveGesture?.pointerId===event.pointerId?this.interactiveGesture:null;const releaseVelocity=wasPanning?this.velocityTracker.getLaunchVelocity(eventTime(event)):{x:0,y:0};this.pointers.delete(event.pointerId);this.safeRelease(event.pointerId);this.clearInteractiveLongPress();
-    if(this.pointers.size===1){this.resetInteractiveGesture();this.cancelQueuedPan({flush:true});this.lastPanPoint=[...this.pointers.values()][0];this.velocityTracker.reset(eventTime(event));this.setState(STATES.PANNING);return;}
-    if(this.pointers.size===0){this.cancelQueuedPan({flush:true});this.lastPanPoint=null;this.lastPinchDistance=0;this.velocityTracker.reset();this.interactiveGesture=null;const allowInertia=event.type==='pointerup'&&pointer?.pointerType!=='mouse'&&gesture?.moved!==false;if(allowInertia&&wasPanning&&this.startInertia(releaseVelocity))return;this.setState(STATES.IDLE);this.finishInteractiveGesture(event,gesture);}
-  }
-
+  onPointerDown(event){const interactiveElement=event.target.closest?.(this.interactiveSelector)??null;const startedOnInteractive=Boolean(interactiveElement);if(startedOnInteractive&&this.pointers.size===0&&!this.allowPanFromInteractive())return;this.cancelInertia({setIdle:true});this.cancelQueuedPan({flush:true});this.safeCapture(event.pointerId);this.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY,pointerType:event.pointerType});if(startedOnInteractive&&this.pointers.size===1)this.startInteractiveGesture(event,interactiveElement);if(this.pointers.size===1){this.lastPanPoint={x:event.clientX,y:event.clientY};this.velocityTracker.reset(eventTime(event));this.setState(STATES.PANNING);return;}if(this.pointers.size>=2){this.resetInteractiveGesture();const[first,second]=[...this.pointers.values()];this.lastPinchDistance=Math.max(distance(first,second),1);this.velocityTracker.reset();this.setState(STATES.PINCHING);}}
+  onPointerMove(event){if(!this.pointers.has(event.pointerId))return;event.preventDefault();this.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY,pointerType:event.pointerType});const gesture=this.interactiveGesture;if(gesture?.pointerId===event.pointerId){gesture.moved=gesture.moved||shouldStartCardDrag({x:gesture.startX,y:gesture.startY},{x:event.clientX,y:event.clientY});}if(this.pointers.size===1&&this.state===STATES.PANNING){const current={x:event.clientX,y:event.clientY};if(this.lastPanPoint){const dx=current.x-this.lastPanPoint.x;const dy=current.y-this.lastPanPoint.y;this.queuePan(dx,dy);this.velocityTracker.add(dx,dy,eventTime(event));}this.lastPanPoint=current;return;}if(this.pointers.size>=2){const[first,second]=[...this.pointers.values()];const nextDistance=Math.max(distance(first,second),1);const center=midpoint(first,second);const factor=nextDistance/Math.max(this.lastPinchDistance,1);if(Number.isFinite(factor)&&factor>0)zoomAt(center.x,center.y,factor);this.lastPinchDistance=nextDistance;this.velocityTracker.reset();this.setState(STATES.PINCHING);}}
+  onPointerUp(event){if(!this.pointers.has(event.pointerId))return;const wasPanning=this.pointers.size===1&&this.state===STATES.PANNING;const pointer=this.pointers.get(event.pointerId);const gesture=this.interactiveGesture?.pointerId===event.pointerId?this.interactiveGesture:null;const releaseVelocity=wasPanning?this.velocityTracker.getLaunchVelocity(eventTime(event)):{x:0,y:0};this.pointers.delete(event.pointerId);this.safeRelease(event.pointerId);if(this.pointers.size===1){this.resetInteractiveGesture();this.cancelQueuedPan({flush:true});this.lastPanPoint=[...this.pointers.values()][0];this.velocityTracker.reset(eventTime(event));this.setState(STATES.PANNING);return;}if(this.pointers.size===0){this.cancelQueuedPan({flush:true});this.lastPanPoint=null;this.lastPinchDistance=0;this.velocityTracker.reset();this.interactiveGesture=null;const allowInertia=event.type==='pointerup'&&pointer?.pointerType!=='mouse'&&gesture?.moved!==false;if(allowInertia&&wasPanning&&this.startInertia(releaseVelocity))return;this.setState(STATES.IDLE);this.finishInteractiveGesture(event,gesture);}}
   onLostPointerCapture(event){if(!this.pointers.has(event.pointerId))return;this.pointers.delete(event.pointerId);this.cancelQueuedPan({flush:true});this.velocityTracker.reset();if(this.interactiveGesture?.pointerId===event.pointerId)this.resetInteractiveGesture();if(this.pointers.size===0){this.lastPanPoint=null;this.lastPinchDistance=0;this.setState(STATES.IDLE);}}
   onWheel(event){event.preventDefault();this.cancelInertia({setIdle:true});this.cancelQueuedPan({flush:true});const factor=Math.exp(-event.deltaY*.0015);zoomAt(event.clientX,event.clientY,factor);}
   destroy(){this.cancelInteraction();this.element.removeEventListener('pointerdown',this.onPointerDown);this.element.removeEventListener('pointermove',this.onPointerMove);this.element.removeEventListener('pointerup',this.onPointerUp);this.element.removeEventListener('pointercancel',this.onPointerUp);this.element.removeEventListener('lostpointercapture',this.onLostPointerCapture);this.element.removeEventListener('wheel',this.onWheel);}
