@@ -13,6 +13,10 @@ function joinSections(...sections) {
   return sections.filter((section) => typeof section === 'string' && section.trim()).join('\n\n');
 }
 
+function clearDocumentSelection() {
+  try { window.getSelection?.()?.removeAllRanges(); } catch {}
+}
+
 export class WorkspaceController extends BaseWorkspaceController {
   updateCardElement(element, card, state, linkSourceId) {
     super.updateCardElement(element, card, state, linkSourceId);
@@ -67,14 +71,18 @@ export class WorkspaceController extends BaseWorkspaceController {
   }
 
   bindCanvas() {
-    this.canvas.addEventListener('pointerdown', () => this.cancelCameraAnimation(), {
-      capture: true,
-      signal: this.abortController.signal,
-    });
+    const signal = this.abortController.signal;
+    this.canvas.addEventListener('pointerdown', () => {
+      clearDocumentSelection();
+      this.cancelCameraAnimation();
+    }, { capture: true, signal });
+    this.canvas.addEventListener('selectstart', (event) => event.preventDefault(), { signal });
+    this.canvas.addEventListener('contextmenu', (event) => event.preventDefault(), { signal });
+    this.canvas.addEventListener('dragstart', (event) => event.preventDefault(), { signal });
     this.canvas.addEventListener('click', (event) => {
       if (event.target.closest('[data-card-id]')) return;
       this.backgroundTapHandler?.();
-    }, { signal: this.abortController.signal });
+    }, { signal });
   }
 }
 
