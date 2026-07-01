@@ -11,9 +11,11 @@ test('card detail lifecycle is guarded',()=>{
   assert.ok(text.includes('data-detail-display'));
 });
 
-test('locked gestures use one tap and one long-press owner',()=>{
-  const text=readFileSync('canvas/gesture-machine.js','utf8');
-  assert.ok(text.includes('onInteractiveTap'));
-  assert.ok(text.includes('onInteractiveLongPress'));
-  assert.equal(text.includes('onInteractiveDoubleTap'),false);
+test('locked gestures use one-tap activation without long-press edit',()=>{
+  const gesture=readFileSync('canvas/gesture-machine.js','utf8');
+  const workspace=readFileSync('controllers/workspace-controller-v2.js','utf8');
+  assert.ok(gesture.includes('onInteractiveTap'));
+  assert.equal(gesture.includes('onInteractiveLongPress'),false);
+  assert.equal(workspace.includes('onInteractiveLongPress'),false);
+  assert.equal(workspace.includes('handleCardEdit'),false);
 });
