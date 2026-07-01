@@ -11,7 +11,7 @@ test('runtime opens cards with one tap and keeps selection on background taps', 
 
   assert.match(workspace, /activateCard\(cardId, element\)/);
   assert.match(workspace, /store\.setState\(\{ selectedCardId: card\.id \}\)/);
-  assert.match(workspace, /if\(this\.linkModeProvider\?\.\(\)\)return this\.cardTapHandler\?\.\(card\)/);
+  assert.ok(workspace.includes('if (this.linkModeProvider?.()) return this.cardTapHandler?.(card);'));
   assert.doesNotMatch(workspace, /selectedCardId:null/);
   assert.match(gesture, /onInteractiveTap/);
   assert.doesNotMatch(gesture, /DoubleTap|doubleTap/);
