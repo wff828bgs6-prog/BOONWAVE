@@ -17,7 +17,7 @@ export class OneHandPanelController {
     this.closeButton.addEventListener('click', () => this.close(), { signal });
     this.sheet.addEventListener('click', (event) => {
       if (event.target === this.sheet) this.close();
-      if (event.target.closest('[data-close-tools-after-action]')) this.close();
+      if (event.target.closest('[data-close-tools-after-action],[data-rail-position]')) this.close();
     }, { signal });
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !this.sheet.hidden) this.close();
