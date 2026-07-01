@@ -65,7 +65,7 @@ export class CardDisplayController{
     const card=store.getState().cards[this.cardId];const source=this.getCardElement(this.cardId);
     if(!card||!(source instanceof Element)){this.preview.textContent='Предпросмотр недоступен';return;}
     const clone=source.cloneNode(true);clone.removeAttribute('data-card-id');clone.removeAttribute('aria-keyshortcuts');clone.dataset.selected='true';clone.dataset.linkSource='false';clone.dataset.viewMode=this.draftView.mode;clone.tabIndex=-1;applyVisibility(clone,this.draftView);
-    const heading=clone.querySelector('h2');if(heading)heading.textContent=this.draftView.mode==='compact'?(this.draftView.compactLabel||card.title):card.title;
+    const heading=clone.querySelector('h2');if(heading)heading.textContent=this.draftView.mode==='compact'?(this.draftView.compactLabel||String(card.title??'').trim().split(/\s+/)[0]||card.title):card.title;
     const frame=this.draftView.mode==='compact'?this.draftView.coverFrames.compact:this.draftView.coverFrames.working;const image=clone.querySelector('.card-cover img');if(image){image.style.transform=`scale(${frame.scale})`;image.style.objectPosition=`${frame.positionX}% ${frame.positionY}%`;}clone.dataset.coverShape=frame.shape;clone.querySelectorAll('button').forEach((button)=>button.remove());this.preview.replaceChildren(clone);
   }
 
