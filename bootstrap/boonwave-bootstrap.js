@@ -23,13 +23,7 @@ function createDetachedEditTrigger() {
   return button;
 }
 
-export async function bootstrapBoonwave({
-  canvas,
-  world,
-  root = document,
-  initialSelectedCardId = null,
-  onEmpty,
-} = {}) {
+export async function bootstrapBoonwave({ canvas, world, root = document, initialSelectedCardId = null, onEmpty } = {}) {
   if (!(canvas instanceof Element) || !(world instanceof Element)) {
     throw new TypeError('bootstrapBoonwave expects canvas and world elements.');
   }
@@ -51,13 +45,15 @@ export async function bootstrapBoonwave({
 
   await workspace.init({ onEmpty });
 
+  let zoomController = null;
   const utilityRailController = new UtilityRailController({
     rail: getRequiredElement(root, 'utilityRail'),
-    grip: getRequiredElement(root, 'railGrip'),
     lockButton: getRequiredElement(root, 'cardLockButton'),
     homeButton: getRequiredElement(root, 'homeSelfButton'),
+    positionButtons: root.querySelectorAll('[data-rail-position]'),
     hint,
     onHome: () => workspace.focusSelfCard(),
+    onPositionChange: () => requestAnimationFrame(() => zoomController?.refreshLayout()),
   });
   await utilityRailController.init();
 
@@ -102,12 +98,13 @@ export async function bootstrapBoonwave({
   workspace.setCardEditHandler(openEditor);
   workspace.setCardDisplayHandler((card) => displayController.open(card.id));
 
-  const zoomController = new ZoomController({
+  zoomController = new ZoomController({
     range: getRequiredElement(root, 'zoomRange'),
     zoomOutButton: getRequiredElement(root, 'zoomOutButton'),
     zoomInButton: getRequiredElement(root, 'zoomInButton'),
     getCenter: () => ({ x: window.innerWidth / 2, y: window.innerHeight / 2 }),
   });
+  zoomController.refreshLayout();
 
   return {
     workspace,
