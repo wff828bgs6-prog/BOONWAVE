@@ -5,6 +5,7 @@ import { TransactionalNodeController as NodeController } from '../controllers/tr
 import { CardDisplayController } from '../controllers/card-display-controller.js';
 import { ZoomController } from '../controllers/zoom-controller.js';
 import { UtilityRailController } from '../controllers/utility-rail-controller.js';
+import { OneHandPanelController } from '../controllers/one-hand-panel-controller.js';
 import { storagePlatform } from '../storage/index.js';
 
 function getRequiredElement(root, id) {
@@ -52,12 +53,19 @@ export async function bootstrapBoonwave({
 
   const utilityRailController = new UtilityRailController({
     rail: getRequiredElement(root, 'utilityRail'),
+    grip: getRequiredElement(root, 'railGrip'),
     lockButton: getRequiredElement(root, 'cardLockButton'),
     homeButton: getRequiredElement(root, 'homeSelfButton'),
     hint,
     onHome: () => workspace.focusSelfCard(),
   });
   await utilityRailController.init();
+
+  const oneHandPanelController = new OneHandPanelController({
+    openButton: getRequiredElement(root, 'moreToolsButton'),
+    sheet: getRequiredElement(root, 'toolsSheet'),
+    closeButton: getRequiredElement(root, 'closeToolsButton'),
+  });
 
   const nodeController = new NodeController({
     addButton: getRequiredElement(root, 'addCardButton'),
@@ -105,6 +113,7 @@ export async function bootstrapBoonwave({
     workspace,
     linkController,
     utilityRailController,
+    oneHandPanelController,
     nodeController,
     displayController,
     zoomController,
@@ -113,6 +122,7 @@ export async function bootstrapBoonwave({
       zoomController.destroy();
       displayController.destroy();
       nodeController.destroy();
+      oneHandPanelController.destroy();
       utilityRailController.destroy();
       linkController.destroy();
       workspace.destroy();
