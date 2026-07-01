@@ -4,6 +4,7 @@ import { BASE_ZOOM, MAX_ZOOM, MIN_ZOOM, zoomAt } from '../canvas/camera.js';
 const ZOOM_OUT_FACTOR = 0.82;
 const ZOOM_IN_FACTOR = 1.22;
 const RANGE_STEP = 0.005;
+const TRACK_INSET_PX = 12;
 
 export class ZoomController {
   constructor({ range, zoomOutButton, zoomInButton, getCenter }) {
@@ -14,7 +15,11 @@ export class ZoomController {
     this.getCenter = getCenter;
     this.touchArea = range.closest('.zoom-touch-area');
     this.visualRoot = range.closest('.rail-zoom');
+    this.rail = range.closest('.one-hand-rail');
+    this.thumb = this.visualRoot?.querySelector('.zoom-thumb') ?? null;
+    this.fill = this.visualRoot?.querySelector('.zoom-fill') ?? null;
     this.activePointerId = null;
+    this.visualFrame = null;
     this.abortController = new AbortController();
     this.unsubscribe = null;
     this.configureRange();
@@ -42,10 +47,15 @@ export class ZoomController {
       this.touchArea.addEventListener('pointercancel', (event) => this.onPointerUp(event), { signal });
     }
 
+    window.addEventListener('resize', () => this.scheduleVisualSync(store.getState().camera.zoom), { signal });
     this.unsubscribe = store.subscribe((next, previous) => {
       if (next.camera !== previous.camera) this.sync(next.camera.zoom);
     });
     this.sync(store.getState().camera.zoom);
+  }
+
+  isHorizontal() {
+    return this.rail?.dataset.position === 'bottom';
   }
 
   onPointerDown(event) {
@@ -54,14 +64,14 @@ export class ZoomController {
     event.stopPropagation();
     this.activePointerId = event.pointerId;
     try { this.touchArea.setPointerCapture?.(event.pointerId); } catch {}
-    this.applyFromClientY(event.clientY);
+    this.applyFromPointer(event);
   }
 
   onPointerMove(event) {
     if (event.pointerId !== this.activePointerId) return;
     event.preventDefault();
     event.stopPropagation();
-    this.applyFromClientY(event.clientY);
+    this.applyFromPointer(event);
   }
 
   onPointerUp(event) {
@@ -76,12 +86,14 @@ export class ZoomController {
     this.activePointerId = null;
   }
 
-  applyFromClientY(clientY) {
+  applyFromPointer(event) {
     const rect = this.touchArea.getBoundingClientRect();
-    if (!rect.height) return;
-    const ratio = Math.min(1, Math.max(0, (rect.bottom - clientY) / rect.height));
-    const nextZoom = MIN_ZOOM + ratio * (MAX_ZOOM - MIN_ZOOM);
-    this.applyZoom(nextZoom);
+    if (!rect.width || !rect.height) return;
+    const rawRatio = this.isHorizontal()
+      ? (event.clientX - rect.left) / rect.width
+      : (rect.bottom - event.clientY) / rect.height;
+    const ratio = Math.min(1, Math.max(0, rawRatio));
+    this.applyZoom(MIN_ZOOM + ratio * (MAX_ZOOM - MIN_ZOOM));
   }
 
   applyZoom(nextZoom) {
@@ -98,13 +110,50 @@ export class ZoomController {
 
   sync(zoom) {
     if (!Number.isFinite(zoom)) return;
-    const progress = Math.min(1, Math.max(0, (zoom - MIN_ZOOM) / Math.max(MAX_ZOOM - MIN_ZOOM, Number.EPSILON)));
     this.range.value = String(zoom);
     this.range.setAttribute('aria-valuenow', zoom.toFixed(3));
-    this.visualRoot?.style.setProperty('--zoom-progress', `${progress * 100}%`);
+    this.range.setAttribute('aria-orientation', this.isHorizontal() ? 'horizontal' : 'vertical');
+    this.scheduleVisualSync(zoom);
+  }
+
+  scheduleVisualSync(zoom) {
+    if (this.visualFrame !== null) cancelAnimationFrame(this.visualFrame);
+    this.visualFrame = requestAnimationFrame(() => {
+      this.visualFrame = null;
+      this.updateVisuals(zoom);
+    });
+  }
+
+  updateVisuals(zoom) {
+    if (!this.touchArea || !this.thumb || !this.fill) return;
+    const progress = Math.min(1, Math.max(0, (zoom - MIN_ZOOM) / Math.max(MAX_ZOOM - MIN_ZOOM, Number.EPSILON)));
+    const rect = this.touchArea.getBoundingClientRect();
+
+    if (this.isHorizontal()) {
+      const usable = Math.max(0, rect.width - TRACK_INSET_PX * 2);
+      const offset = TRACK_INSET_PX + usable * progress;
+      this.thumb.style.left = `${offset}px`;
+      this.thumb.style.top = '50%';
+      this.thumb.style.bottom = 'auto';
+      this.fill.style.width = `${usable * progress}px`;
+      this.fill.style.height = '2px';
+    } else {
+      const usable = Math.max(0, rect.height - TRACK_INSET_PX * 2);
+      const offset = TRACK_INSET_PX + usable * progress;
+      this.thumb.style.bottom = `${offset}px`;
+      this.thumb.style.left = '50%';
+      this.thumb.style.top = 'auto';
+      this.fill.style.height = `${usable * progress}px`;
+      this.fill.style.width = '2px';
+    }
+  }
+
+  refreshLayout() {
+    this.sync(store.getState().camera.zoom);
   }
 
   destroy() {
+    if (this.visualFrame !== null) cancelAnimationFrame(this.visualFrame);
     this.abortController.abort();
     this.unsubscribe?.();
     this.activePointerId = null;
