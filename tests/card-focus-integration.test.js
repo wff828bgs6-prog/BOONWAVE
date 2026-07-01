@@ -11,8 +11,9 @@ test('card detail lifecycle is guarded',()=>{
   assert.ok(text.includes('data-detail-display'));
 });
 
-test('locked gestures are handled by the canvas controller',()=>{
+test('locked gestures use one tap and one long-press owner',()=>{
   const text=readFileSync('canvas/gesture-machine.js','utf8');
+  assert.ok(text.includes('onInteractiveTap'));
   assert.ok(text.includes('onInteractiveLongPress'));
-  assert.ok(text.includes('onInteractiveDoubleTap'));
+  assert.equal(text.includes('onInteractiveDoubleTap'),false);
 });
