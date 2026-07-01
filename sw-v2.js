@@ -1,4 +1,4 @@
-const CACHE='boonwave-core-16';
+const CACHE='boonwave-core-17';
 const CORE=['./','./index.html','./app.js','./styles/boonwave-tokens.css','./styles/production-shell.css','./styles/production-shell-v2.css','./styles/card-detail-overrides.css','./styles/card-views.css','./styles/one-hand-rail-v3.css','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',(event)=>{self.skipWaiting();event.waitUntil(caches.open(CACHE).then((cache)=>cache.addAll(CORE)));});
 self.addEventListener('activate',(event)=>{event.waitUntil(caches.keys().then((keys)=>Promise.all(keys.filter((key)=>key.startsWith('boonwave-')&&key!==CACHE).map((key)=>caches.delete(key)))).then(()=>self.clients.claim()));});
