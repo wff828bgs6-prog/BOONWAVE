@@ -17,7 +17,7 @@ export class WorkspaceController extends BaseWorkspaceController {
   updateCardElement(element, card, state, linkSourceId) {
     super.updateCardElement(element, card, state, linkSourceId);
     element.dataset.systemCard = String(card.type === 'self');
-    element.setAttribute('aria-label', `${card.title}. Одно нажатие открывает карточку. Удерживание открывает редактирование.`);
+    element.setAttribute('aria-label', `${card.title}. Одно нажатие открывает карточку.`);
 
     const detailsElement = element.querySelector('.card-full');
     if (!detailsElement) return;
@@ -45,13 +45,6 @@ export class WorkspaceController extends BaseWorkspaceController {
     return this.detailController.open(card, element);
   }
 
-  handleCardEdit(cardId) {
-    const card = this.getCard(cardId);
-    if (!card || this.linkModeProvider?.()) return false;
-    store.setState({ selectedCardId: card.id });
-    return this.cardEditHandler?.(card);
-  }
-
   mountCore() {
     this.detailController = new CardDetailController({
       root: document.body,
@@ -62,18 +55,11 @@ export class WorkspaceController extends BaseWorkspaceController {
     this.gestureMachine = new GestureMachine(this.canvas, {
       allowPanFromInteractive: () => Boolean(store.getState().cardsLocked),
       onInteractiveTap: (cardId, element) => this.activateCard(cardId, element),
-      onInteractiveLongPress: (cardId) => this.handleCardEdit(cardId),
     });
 
     this.cardController = new CardController(this.world, {
       onCommit: (card) => updateCardNode(card.id, { x: card.x, y: card.y }),
       onTap: (card, element) => this.activateCard(card.id, element),
-      onLongPress: (card) => {
-        if (this.linkModeProvider?.()) return false;
-        this.gestureMachine?.cancelInteraction();
-        store.setState({ selectedCardId: card.id });
-        return this.cardEditHandler?.(card);
-      },
       canMoveCard: () => !store.getState().cardsLocked,
     });
 
