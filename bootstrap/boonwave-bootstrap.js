@@ -100,8 +100,6 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
 
   zoomController = new ZoomController({
     range: getRequiredElement(root, 'zoomRange'),
-    zoomOutButton: getRequiredElement(root, 'zoomOutButton'),
-    zoomInButton: getRequiredElement(root, 'zoomInButton'),
     getCenter: () => ({ x: window.innerWidth / 2, y: window.innerHeight / 2 }),
   });
   zoomController.refreshLayout();
