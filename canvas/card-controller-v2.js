@@ -1,5 +1,5 @@
 import store from '../state/store.js';
-import { shouldStartCardDrag } from './card-interaction-policy.js';
+import { shouldStartCardDrag } from './pointer-gesture-policy.js';
 
 const DRAGGING = 'DRAGGING_CARD';
 
@@ -72,8 +72,9 @@ export class CardController {
     const pointerWorldX = (event.clientX - camera.x) / camera.zoom;
     const pointerWorldY = (event.clientY - camera.y) / camera.zoom;
 
+    event.preventDefault();
     event.stopPropagation();
-    element.setPointerCapture?.(event.pointerId);
+    try { element.setPointerCapture?.(event.pointerId); } catch {}
     store.setState({ selectedCardId: card.id, activeGesture: DRAGGING });
 
     this.active = {
@@ -118,6 +119,7 @@ export class CardController {
     const drag = this.active;
     if (!drag || drag.pointerId !== event.pointerId) return;
 
+    event.preventDefault();
     event.stopPropagation();
     this.active = null;
     this.releasePointer(drag);
