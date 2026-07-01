@@ -1,40 +1,41 @@
 import store from '../state/store.js';
 import storage from '../storage/index.js';
 
-const SIDE_SETTING_KEY = 'utilityRailSide';
+const POSITION_SETTING_KEY = 'utilityRailPosition';
+const LEGACY_SIDE_SETTING_KEY = 'utilityRailSide';
 const LOCK_SETTING_KEY = 'cardsLocked';
-const HOLD_MS = 480;
-const SWIPE_THRESHOLD_PX = 28;
-const SUPPRESS_CLICK_MS = 700;
+const VALID_POSITIONS = new Set(['right', 'left', 'bottom']);
 
 export class UtilityRailController {
-  constructor({ rail, grip, lockButton, homeButton, hint, onHome } = {}) {
-    if (!(rail instanceof Element) || !(grip instanceof HTMLButtonElement) || !(lockButton instanceof HTMLButtonElement) || !(homeButton instanceof HTMLButtonElement)) {
-      throw new TypeError('UtilityRailController expects rail, grip, and button elements.');
+  constructor({ rail, lockButton, homeButton, positionButtons = [], hint, onHome, onPositionChange } = {}) {
+    if (!(rail instanceof Element) || !(lockButton instanceof HTMLButtonElement) || !(homeButton instanceof HTMLButtonElement)) {
+      throw new TypeError('UtilityRailController expects a rail and its primary buttons.');
     }
 
     this.rail = rail;
-    this.grip = grip;
     this.lockButton = lockButton;
     this.homeButton = homeButton;
+    this.positionButtons = [...positionButtons].filter((button) => button instanceof HTMLButtonElement);
     this.hint = hint instanceof Element ? hint : null;
     this.onHome = typeof onHome === 'function' ? onHome : null;
+    this.onPositionChange = typeof onPositionChange === 'function' ? onPositionChange : null;
     this.feedbackTimer = null;
-    this.holdTimer = null;
-    this.suppressClickTimer = null;
-    this.suppressClickUntil = 0;
-    this.activePointer = null;
     this.unsubscribe = null;
     this.abortController = new AbortController();
   }
 
   async init() {
-    const [savedSide, savedLock] = await Promise.all([
-      storage.loadSetting(SIDE_SETTING_KEY).catch(() => null),
+    const [savedPosition, legacySide, savedLock] = await Promise.all([
+      storage.loadSetting(POSITION_SETTING_KEY).catch(() => null),
+      storage.loadSetting(LEGACY_SIDE_SETTING_KEY).catch(() => null),
       storage.loadSetting(LOCK_SETTING_KEY).catch(() => null),
     ]);
 
-    this.setSide(savedSide === 'left' ? 'left' : 'right', { persist: false, announce: false });
+    const initialPosition = VALID_POSITIONS.has(savedPosition)
+      ? savedPosition
+      : legacySide === 'left' ? 'left' : 'right';
+
+    this.setPosition(initialPosition, { persist: false, announce: false });
     store.setState({ cardsLocked: savedLock === true });
     this.bind();
     this.syncLockState(store.getState().cardsLocked);
@@ -70,103 +71,42 @@ export class UtilityRailController {
         : 'Возврат к карточке «Я Есмь»');
     }, { signal });
 
-    this.grip.addEventListener('pointerdown', (event) => this.startGrip(event), { signal });
-    this.grip.addEventListener('pointermove', (event) => this.moveGrip(event), { signal });
-    this.grip.addEventListener('pointerup', (event) => this.endGrip(event), { signal });
-    this.grip.addEventListener('pointercancel', (event) => this.endGrip(event), { signal });
-    this.grip.addEventListener('click', (event) => {
-      if (this.consumeSuppressedClick(event)) return;
-      this.mirror();
-    }, { signal });
-    this.grip.addEventListener('contextmenu', (event) => event.preventDefault(), { signal });
-  }
-
-  startGrip(event) {
-    if (event.button !== undefined && event.button !== 0) return;
-    this.clearGrip();
-    this.activePointer = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      currentX: event.clientX,
-      mirrored: false,
-    };
-    this.grip.setPointerCapture?.(event.pointerId);
-    this.holdTimer = setTimeout(() => {
-      if (!this.activePointer || this.activePointer.pointerId !== event.pointerId) return;
-      this.activePointer.mirrored = true;
-      this.suppressNextClick();
-      this.mirror();
-    }, HOLD_MS);
-  }
-
-  moveGrip(event) {
-    if (!this.activePointer || this.activePointer.pointerId !== event.pointerId) return;
-    this.activePointer.currentX = event.clientX;
-    const delta = event.clientX - this.activePointer.startX;
-    if (Math.abs(delta) < SWIPE_THRESHOLD_PX || this.activePointer.mirrored) return;
-    clearTimeout(this.holdTimer);
-    this.activePointer.mirrored = true;
-    this.suppressNextClick();
-    this.setSide(delta < 0 ? 'left' : 'right', { persist: true, announce: true });
-  }
-
-  endGrip(event) {
-    if (!this.activePointer || this.activePointer.pointerId !== event.pointerId) return;
-    try {
-      this.grip.releasePointerCapture?.(event.pointerId);
-    } catch {
-      // Safari may already have released capture.
-    }
-    const mirrored = this.activePointer.mirrored;
-    this.clearGrip();
-    if (mirrored) {
-      event.preventDefault();
-      event.stopPropagation();
+    for (const button of this.positionButtons) {
+      button.addEventListener('click', () => {
+        const position = button.dataset.railPosition;
+        if (VALID_POSITIONS.has(position)) this.setPosition(position, { persist: true, announce: true });
+      }, { signal });
     }
   }
 
-  clearGrip() {
-    clearTimeout(this.holdTimer);
-    this.holdTimer = null;
-    this.activePointer = null;
-  }
+  setPosition(position, { persist = true, announce = false } = {}) {
+    const normalized = VALID_POSITIONS.has(position) ? position : 'right';
+    this.rail.dataset.position = normalized;
+    this.rail.removeAttribute('data-side');
+    const label = normalized === 'bottom'
+      ? 'Управление одной рукой, снизу'
+      : `Управление одной рукой, ${normalized === 'left' ? 'слева' : 'справа'}`;
+    this.rail.setAttribute('aria-label', label);
 
-  suppressNextClick() {
-    clearTimeout(this.suppressClickTimer);
-    this.suppressClickUntil = performance.now() + SUPPRESS_CLICK_MS;
-    this.suppressClickTimer = setTimeout(() => {
-      this.suppressClickUntil = 0;
-      this.suppressClickTimer = null;
-    }, SUPPRESS_CLICK_MS + 40);
-  }
+    for (const button of this.positionButtons) {
+      const active = button.dataset.railPosition === normalized;
+      button.setAttribute('aria-pressed', String(active));
+    }
 
-  consumeSuppressedClick(event) {
-    if (this.suppressClickUntil === 0 || performance.now() > this.suppressClickUntil) return false;
-    clearTimeout(this.suppressClickTimer);
-    this.suppressClickUntil = 0;
-    this.suppressClickTimer = null;
-    event.preventDefault();
-    event.stopPropagation();
-    return true;
-  }
+    this.onPositionChange?.(normalized);
 
-  mirror() {
-    const nextSide = this.rail.dataset.side === 'left' ? 'right' : 'left';
-    this.setSide(nextSide, { persist: true, announce: true });
-    this.rail.dataset.mirrored = 'true';
-    setTimeout(() => delete this.rail.dataset.mirrored, 220);
-  }
-
-  setSide(side, { persist = true, announce = false } = {}) {
-    const normalized = side === 'left' ? 'left' : 'right';
-    this.rail.dataset.side = normalized;
-    this.rail.setAttribute('aria-label', `Управление одной рукой, ${normalized === 'left' ? 'слева' : 'справа'}`);
     if (persist) {
-      storage.saveSetting(SIDE_SETTING_KEY, normalized).catch((error) => {
-        console.error('Utility rail side save failed:', error);
+      storage.saveSetting(POSITION_SETTING_KEY, normalized).catch((error) => {
+        console.error('Utility rail position save failed:', error);
       });
     }
-    if (announce) this.announce(`Панель перенесена ${normalized === 'left' ? 'влево' : 'вправо'}`);
+
+    if (announce) {
+      const message = normalized === 'bottom'
+        ? 'Панель перемещена вниз'
+        : `Панель перемещена ${normalized === 'left' ? 'влево' : 'вправо'}`;
+      this.announce(message);
+    }
   }
 
   syncLockState(locked) {
@@ -192,8 +132,6 @@ export class UtilityRailController {
 
   destroy() {
     clearTimeout(this.feedbackTimer);
-    clearTimeout(this.suppressClickTimer);
-    this.clearGrip();
     this.unsubscribe?.();
     this.abortController.abort();
   }
