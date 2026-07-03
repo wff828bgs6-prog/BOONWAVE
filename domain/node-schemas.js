@@ -2,7 +2,7 @@ import { normalizeTaskList, validateTask } from './task.js';
 import { normalizeProcessData } from './work-process.js';
 import { normalizeContactData } from './contact.js';
 
-export const NODE_SCHEMA_VERSION = 7;
+export const NODE_SCHEMA_VERSION = 8;
 
 export const NODE_TYPES = Object.freeze(['self', 'project', 'process', 'person', 'idea', 'goal']);
 
@@ -43,13 +43,16 @@ const TYPE_DEFAULTS = Object.freeze({
     kind: 'person', fullName: '', organization: '', profession: '', description: '',
     category: 'specialist', status: 'active', city: '', address: '',
     phones: [], emails: [], messengers: [], websites: [], tags: [], skills: [],
+    website: '', instagram: '',
     favorite: false, rating: null,
     legalDetails: {
       legalName: '', taxId: '', registrationId: '', bankName: '', bankAccount: '',
       correspondentAccount: '', bankCode: '', legalAddress: '',
     },
     phone: '', email: '', role: '', notes: '',
-    avatarMediaId: null, attachments: [],
+    avatarMediaId: null, avatarWideMediaId: null,
+    avatarPreviewUrl: '', avatarWidePreviewUrl: '', avatarCrops: {},
+    attachments: [], showOnCanvas: false,
   },
   idea: {
     status: 'draft', category: '', impact: '', notes: '',
@@ -131,32 +134,24 @@ export function validateNode(node) {
   if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) errors.push('Node position must be finite.');
   if (!Number.isFinite(node.width) || node.width <= 0) errors.push('Node width must be positive.');
   if (!Number.isFinite(node.height) || node.height <= 0) errors.push('Node height must be positive.');
-  if (!node.data || typeof node.data !== 'object' || Array.isArray(node.data)) {
-    errors.push('Node data must be an object.');
-  }
+  if (!node.data || typeof node.data !== 'object' || Array.isArray(node.data)) errors.push('Node data must be an object.');
 
   if ((node.type === 'process' || node.type === 'goal')
-    && (!Number.isFinite(node.data?.progress) || node.data.progress < 0 || node.data.progress > 100)) {
-    errors.push('Progress must be between 0 and 100.');
-  }
+    && (!Number.isFinite(node.data?.progress) || node.data.progress < 0 || node.data.progress > 100)) errors.push('Progress must be between 0 and 100.');
 
   if (node.type === 'process') {
     if (!Array.isArray(node.data?.stages)) errors.push('Process stages must be an array.');
     if (!Array.isArray(node.data?.expenses)) errors.push('Process expenses must be an array.');
     if (!Array.isArray(node.data?.participants)) errors.push('Process participants must be an array.');
     if (!Array.isArray(node.data?.mediaAssignments)) errors.push('Process media assignments must be an array.');
-
     if (Array.isArray(node.data?.tasks)) {
       for (const task of node.data.tasks) {
         const validation = validateTask(task);
         if (!validation.valid) errors.push(...validation.errors.map((error) => `Task: ${error}`));
       }
     }
-
     const stageIds = new Set((node.data?.stages ?? []).map((stage) => stage.id));
-    if (node.data?.selectedStageId && !stageIds.has(node.data.selectedStageId)) {
-      errors.push('Selected stage must belong to the process.');
-    }
+    if (node.data?.selectedStageId && !stageIds.has(node.data.selectedStageId)) errors.push('Selected stage must belong to the process.');
   }
 
   if (node.type === 'person') {
