@@ -7,17 +7,22 @@ export function presentContactSummary(card) {
   if (!card || card.type !== 'person') throw new TypeError('Contact presenter requires a person card.');
   const data = card.data ?? {};
   const actions = getPrimaryContactActions(data);
+  const messengers = Array.isArray(data.messengers) ? data.messengers : [];
   return {
     id: card.id,
     title: data.fullName || data.organization || card.title,
     subtitle: [data.profession, data.organization].filter(Boolean).join(' · '),
+    company: data.organization || '',
+    profession: data.profession || data.role || '',
     category: data.category,
     categoryLabel: CATEGORY_LABELS[data.category] ?? data.category,
     status: data.status,
     statusLabel: STATUS_LABELS[data.status] ?? data.status,
     city: data.city || '',
     avatarMediaId: data.avatarMediaId || null,
+    avatarWideMediaId: data.avatarWideMediaId || null,
     avatarPreviewUrl: data.avatarPreviewUrl || '',
+    avatarWidePreviewUrl: data.avatarWidePreviewUrl || data.avatarPreviewUrl || '',
     favorite: Boolean(data.favorite),
     rating: data.rating ?? null,
     tags: data.tags ?? [],
@@ -27,7 +32,8 @@ export function presentContactSummary(card) {
     phone: actions.phone,
     email: actions.email,
     messenger: actions.messenger,
-    messengers: Array.isArray(data.messengers) ? data.messengers : [],
+    messengers,
+    telegram: messengers.find((item) => item.type === 'telegram') ?? null,
     canCall: Boolean(actions.phone?.value),
     canEmail: Boolean(actions.email?.value),
     canMessage: Boolean(actions.messenger?.value),
