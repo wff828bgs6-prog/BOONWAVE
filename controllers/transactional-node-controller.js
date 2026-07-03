@@ -6,6 +6,7 @@ import {
   createCardWithMedia,
   updateCardWithMedia,
 } from '../services/card-save-service.js';
+import { collectPendingFormMedia, readThumbnailFormData } from './node-controller.js';
 
 const WORKSPACE_HINT = 'Удерживай карточку для редактирования • двойной тап — открыть';
 
@@ -50,15 +51,6 @@ export function readViewFormData(container, currentView = {}) {
   });
 }
 
-export function collectPendingFormMedia(container) {
-  return [...container.querySelectorAll('[data-media-slot]')].flatMap((input) => (
-    [...(input.files ?? [])].map((file) => ({
-      slot: input.dataset.mediaSlot,
-      file,
-    }))
-  ));
-}
-
 export class TransactionalNodeController extends NodeController {
   showFeedback(message, timeout = 1200) {
     clearTimeout(this.feedbackTimer);
@@ -83,13 +75,16 @@ export class TransactionalNodeController extends NodeController {
         description: this.elements.descriptionInput.value.trim(),
         x: position.x,
         y: position.y,
-        data: readTypedFormData(this.elements.createTypeFields, this.selectedType),
+        data: {
+          ...readTypedFormData(this.elements.createTypeFields, this.selectedType),
+          ...readThumbnailFormData(this.elements.createTypeFields),
+        },
         view: readViewFormData(this.elements.createTypeFields),
       }, pendingMedia);
 
       this.closeCreate();
       this.showFeedback(pendingMedia.length
-        ? 'Карточка и файлы сохранены'
+        ? 'Карточка и миниатюры сохранены'
         : 'Карточка создана');
     } catch (error) {
       console.error('Atomic card creation failed:', error);
@@ -109,13 +104,16 @@ export class TransactionalNodeController extends NodeController {
       await updateCardWithMedia(this.editingCardId, {
         title: this.elements.editTitleInput.value.trim(),
         description: this.elements.editDescriptionInput.value.trim(),
-        data: readTypedFormData(this.elements.editTypeFields, currentCard.type),
+        data: {
+          ...readTypedFormData(this.elements.editTypeFields, currentCard.type),
+          ...readThumbnailFormData(this.elements.editTypeFields),
+        },
         view: readViewFormData(this.elements.editTypeFields, currentCard.view),
       }, pendingMedia);
 
       this.closeEdit();
       this.showFeedback(pendingMedia.length
-        ? 'Изменения и файлы сохранены'
+        ? 'Изменения и миниатюры сохранены'
         : 'Изменения сохранены');
     } catch (error) {
       console.error('Atomic card update failed:', error);
