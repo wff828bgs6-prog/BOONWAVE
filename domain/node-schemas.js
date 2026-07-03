@@ -1,6 +1,7 @@
 import { normalizeTaskList, validateTask } from './task.js';
+import { normalizeProcessData } from './work-process.js';
 
-export const NODE_SCHEMA_VERSION = 5;
+export const NODE_SCHEMA_VERSION = 6;
 
 export const NODE_TYPES = Object.freeze(['self', 'project', 'process', 'person', 'idea', 'goal']);
 
@@ -30,9 +31,12 @@ const TYPE_DEFAULTS = Object.freeze({
     coverMediaId: null, images: [], documents: [], files: [],
   },
   process: {
-    status: 'planned', priority: 'medium', progress: 0,
-    startDate: null, dueDate: null, tasks: [], nextAction: '', blockers: [],
-    notes: '', attachments: [],
+    projectId: null, parentProcessId: null, sourceStageId: null,
+    status: 'planned', priority: 'medium', progress: 0, progressMode: 'from-stages',
+    startDate: null, dueDate: null, budget: null,
+    selectedStageId: null, taskViewMode: 'selected-stage', expenseViewMode: 'selected-stage',
+    stages: [], tasks: [], expenses: [], participants: [], mediaAssignments: [],
+    nextAction: '', blockers: [], notes: '', attachments: [],
   },
   person: {
     fullName: '', phone: '', email: '', organization: '', role: '', notes: '',
@@ -83,23 +87,24 @@ function mergePatch(current, patch) {
   return result;
 }
 
-function normalizeTypeSpecificData(type, data) {
+function normalizeTypeSpecificData(type, data, nodeId = '') {
   if (type !== 'process') return data;
-  return { ...data, tasks: normalizeTaskList(data.tasks) };
+  const normalizedTasks = normalizeTaskList(data.tasks, { processId: nodeId });
+  return normalizeProcessData({ ...data, tasks: normalizedTasks }, nodeId);
 }
 
-export function getNodeDataDefaults(type) {
+export function getNodeDataDefaults(type, nodeId = '') {
   if (!NODE_TYPES.includes(type)) throw new TypeError(`Unsupported BOONWAVE node type: ${type}`);
-  return normalizeTypeSpecificData(type, clone(TYPE_DEFAULTS[type]));
+  return normalizeTypeSpecificData(type, clone(TYPE_DEFAULTS[type]), nodeId);
 }
 
-export function normalizeNodeData(type, data) {
+export function normalizeNodeData(type, data, nodeId = '') {
   if (!NODE_TYPES.includes(type)) throw new TypeError(`Unsupported BOONWAVE node type: ${type}`);
-  return normalizeTypeSpecificData(type, mergeDefaults(TYPE_DEFAULTS[type], data));
+  return normalizeTypeSpecificData(type, mergeDefaults(TYPE_DEFAULTS[type], data), nodeId);
 }
 
-export function mergeNodeData(type, current, patch) {
-  return normalizeNodeData(type, mergePatch(current, patch));
+export function mergeNodeData(type, current, patch, nodeId = '') {
+  return normalizeNodeData(type, mergePatch(current, patch), nodeId);
 }
 
 export function validateNode(node) {
@@ -123,10 +128,22 @@ export function validateNode(node) {
     errors.push('Progress must be between 0 and 100.');
   }
 
-  if (node.type === 'process' && Array.isArray(node.data?.tasks)) {
-    for (const task of node.data.tasks) {
-      const validation = validateTask(task);
-      if (!validation.valid) errors.push(...validation.errors.map((error) => `Task: ${error}`));
+  if (node.type === 'process') {
+    if (!Array.isArray(node.data?.stages)) errors.push('Process stages must be an array.');
+    if (!Array.isArray(node.data?.expenses)) errors.push('Process expenses must be an array.');
+    if (!Array.isArray(node.data?.participants)) errors.push('Process participants must be an array.');
+    if (!Array.isArray(node.data?.mediaAssignments)) errors.push('Process media assignments must be an array.');
+
+    if (Array.isArray(node.data?.tasks)) {
+      for (const task of node.data.tasks) {
+        const validation = validateTask(task);
+        if (!validation.valid) errors.push(...validation.errors.map((error) => `Task: ${error}`));
+      }
+    }
+
+    const stageIds = new Set((node.data?.stages ?? []).map((stage) => stage.id));
+    if (node.data?.selectedStageId && !stageIds.has(node.data.selectedStageId)) {
+      errors.push('Selected stage must belong to the process.');
     }
   }
 
