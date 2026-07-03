@@ -1,7 +1,8 @@
 import { normalizeTaskList, validateTask } from './task.js';
 import { normalizeProcessData } from './work-process.js';
+import { normalizeContactData } from './contact.js';
 
-export const NODE_SCHEMA_VERSION = 6;
+export const NODE_SCHEMA_VERSION = 7;
 
 export const NODE_TYPES = Object.freeze(['self', 'project', 'process', 'person', 'idea', 'goal']);
 
@@ -39,8 +40,16 @@ const TYPE_DEFAULTS = Object.freeze({
     nextAction: '', blockers: [], notes: '', attachments: [],
   },
   person: {
-    fullName: '', phone: '', email: '', organization: '', role: '', notes: '',
-    avatarMediaId: null, attachments: [], messengers: [], websites: [],
+    kind: 'person', fullName: '', organization: '', profession: '', description: '',
+    category: 'specialist', status: 'active', city: '', address: '',
+    phones: [], emails: [], messengers: [], websites: [], tags: [], skills: [],
+    favorite: false, rating: null,
+    legalDetails: {
+      legalName: '', taxId: '', registrationId: '', bankName: '', bankAccount: '',
+      correspondentAccount: '', bankCode: '', legalAddress: '',
+    },
+    phone: '', email: '', role: '', notes: '',
+    avatarMediaId: null, attachments: [],
   },
   idea: {
     status: 'draft', category: '', impact: '', notes: '',
@@ -88,9 +97,12 @@ function mergePatch(current, patch) {
 }
 
 function normalizeTypeSpecificData(type, data, nodeId = '') {
-  if (type !== 'process') return data;
-  const normalizedTasks = normalizeTaskList(data.tasks, { processId: nodeId });
-  return normalizeProcessData({ ...data, tasks: normalizedTasks }, nodeId);
+  if (type === 'process') {
+    const normalizedTasks = normalizeTaskList(data.tasks, { processId: nodeId });
+    return normalizeProcessData({ ...data, tasks: normalizedTasks }, nodeId);
+  }
+  if (type === 'person') return normalizeContactData(data);
+  return data;
 }
 
 export function getNodeDataDefaults(type, nodeId = '') {
@@ -145,6 +157,13 @@ export function validateNode(node) {
     if (node.data?.selectedStageId && !stageIds.has(node.data.selectedStageId)) {
       errors.push('Selected stage must belong to the process.');
     }
+  }
+
+  if (node.type === 'person') {
+    if (!Array.isArray(node.data?.phones)) errors.push('Contact phones must be an array.');
+    if (!Array.isArray(node.data?.emails)) errors.push('Contact emails must be an array.');
+    if (!Array.isArray(node.data?.messengers)) errors.push('Contact messengers must be an array.');
+    if (!Array.isArray(node.data?.tags)) errors.push('Contact tags must be an array.');
   }
 
   return { valid: errors.length === 0, errors };
