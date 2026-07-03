@@ -191,10 +191,17 @@ export class ContactsScreenController {
     const backButton = el('button', 'contact-detail__back', '‹ Назад');
     backButton.type = 'button';
     backButton.addEventListener('click', () => this.backToList(), { signal: this.abortController.signal });
-    const editButton = el('button', 'contact-detail__edit', 'Редактировать');
+    const rightTools = el('div', 'contact-detail__top-actions');
+    const eyeButton = el('button', `contact-detail__icon-button contact-detail__eye${this.showFilledFields ? ' is-active' : ''}`, '◉');
+    eyeButton.type = 'button';
+    eyeButton.setAttribute('aria-label', 'Показать заполненные поля контакта');
+    eyeButton.addEventListener('click', () => { this.showFilledFields = !this.showFilledFields; this.render(); }, { signal: this.abortController.signal });
+    const editButton = el('button', 'contact-detail__icon-button contact-detail__edit-icon', '✎');
     editButton.type = 'button';
+    editButton.setAttribute('aria-label', 'Редактировать контакт');
     editButton.addEventListener('click', () => { this.editContact?.(contact.id); }, { signal: this.abortController.signal });
-    detailHead.append(backButton, editButton);
+    rightTools.append(eyeButton, editButton);
+    detailHead.append(backButton, rightTools);
     const hero = el('div', 'contact-detail__hero');
     hero.append(avatarNode('contact-detail__avatar', contact.title, contact.avatarPreviewUrl));
     const heroCopy = el('div');
@@ -220,12 +227,6 @@ export class ContactsScreenController {
     assignButton.disabled = false;
     assignButton.addEventListener('click', () => { this.close(); this.assignContact?.(contact.id); }, { signal: this.abortController.signal });
     actions.append(callButton, messageButton, assignButton);
-    const tools = el('div', 'contact-detail__tools');
-    const eyeButton = el('button', `contact-detail__eye${this.showFilledFields ? ' is-active' : ''}`, '◉');
-    eyeButton.type = 'button';
-    eyeButton.setAttribute('aria-label', 'Показать заполненные поля контакта');
-    eyeButton.addEventListener('click', () => { this.showFilledFields = !this.showFilledFields; this.render(); }, { signal: this.abortController.signal });
-    tools.append(eyeButton);
     const stats = el('div', 'contact-detail__stats');
     for (const [value, label] of [[contact.history?.processes?.length ?? 0, 'Процессы'], [contact.history?.tasks?.length ?? 0, 'Задачи'], [contact.history?.projects?.length ?? 0, 'Проекты']]) {
       const stat = el('button', 'contact-detail__stat');
@@ -236,7 +237,7 @@ export class ContactsScreenController {
     deleteButton.type = 'button';
     deleteButton.addEventListener('click', async () => { const deleted = await this.deleteContact?.(contact.id); if (deleted !== false) this.backToList(); }, { signal: this.abortController.signal });
     manage.append(deleteButton);
-    this.details.append(detailHead, hero, el('div', 'contact-detail__flow'), actions, tools, this.renderFilledFields(contact), stats, manage);
+    this.details.append(detailHead, hero, el('div', 'contact-detail__flow'), actions, this.renderFilledFields(contact), stats, manage);
   }
 
   destroy() { this.unsubscribe?.(); this.abortController.abort(); this.overlay.remove(); }
