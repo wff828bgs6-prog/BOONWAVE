@@ -87,9 +87,22 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
 
   const contactsScreenController = new ContactsScreenController({
     openButton: getRequiredElement(root, 'contactsButton'),
+    beforeOpen: () => oneHandPanelController.close(),
     createContact: () => {
+      oneHandPanelController.close();
       nodeController.openCreate();
       root.querySelector('[data-node-type="person"]')?.click();
+    },
+    editContact: (contactId) => {
+      oneHandPanelController.close();
+      store.setState({ selectedCardId: contactId });
+      nodeController.openEdit();
+    },
+    deleteContact: async (contactId) => {
+      oneHandPanelController.close();
+      store.setState({ selectedCardId: contactId });
+      await nodeController.deleteSelected();
+      return !store.getState().cards[contactId];
     },
   });
 
