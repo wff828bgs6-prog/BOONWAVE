@@ -102,6 +102,13 @@ function messengerValue(data, type) {
   return data.messengers?.find((item) => item.type === type)?.value ?? '';
 }
 
+function setFileControlState(form, { actionText, stateText }) {
+  const action = form.querySelector('.contact-editor__file-action');
+  const state = form.querySelector('.contact-editor__file-state');
+  if (action) action.textContent = actionText;
+  if (state) state.textContent = stateText;
+}
+
 export class ContactEditorController {
   constructor({ onSaved } = {}) {
     this.onSaved = typeof onSaved === 'function' ? onSaved : null;
@@ -172,11 +179,12 @@ export class ContactEditorController {
   openCreate() {
     this.editingId = null;
     this.form.reset();
-    this.form.querySelector('.contact-editor__file-state').textContent = 'Файл не выбран';
+    setFileControlState(this.form, { actionText: 'Выбрать изображение', stateText: 'Файл не выбран' });
     this.title.textContent = 'Новый контакт';
     this.submitButton.textContent = 'Сохранить контакт';
     this.overlay.hidden = false;
     this.overlay.setAttribute('aria-hidden', 'false');
+    this.form.scrollTop = 0;
   }
 
   openEdit(contactId) {
@@ -206,11 +214,15 @@ export class ContactEditorController {
     set('skills', (data.skills || []).join(', '));
     set('description', data.description);
     set('notes', data.notes);
-    this.form.querySelector('.contact-editor__file-state').textContent = data.avatarMediaId ? 'Изображение уже добавлено' : 'Файл не выбран';
+    setFileControlState(this.form, {
+      actionText: data.avatarMediaId ? 'Заменить изображение' : 'Выбрать изображение',
+      stateText: data.avatarMediaId ? 'Фото добавлено' : 'Файл не выбран',
+    });
     this.title.textContent = 'Редактировать контакт';
     this.submitButton.textContent = 'Сохранить изменения';
     this.overlay.hidden = false;
     this.overlay.setAttribute('aria-hidden', 'false');
+    this.form.scrollTop = 0;
   }
 
   close() {
