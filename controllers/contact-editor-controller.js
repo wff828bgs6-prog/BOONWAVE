@@ -12,7 +12,6 @@ function field(label, name, type = 'text', options = {}) {
   control.name = name;
   if (options.placeholder) control.placeholder = options.placeholder;
   if (options.required) control.required = true;
-  if (options.accept) control.accept = options.accept;
   if (options.inputMode) control.inputMode = options.inputMode;
   wrapper.append(caption, control);
   return wrapper;
@@ -41,7 +40,7 @@ function messengerFields() {
   const legend = document.createElement('legend');
   legend.textContent = 'Мессенджеры';
   const hint = document.createElement('p');
-  hint.textContent = 'Укажи только те каналы, где реально идёт общение. В карточке они будут отображаться иконками.';
+  hint.textContent = 'Заполни только те каналы, где реально идёт общение.';
   const channels = document.createElement('div');
   channels.className = 'contact-editor__messenger-grid';
   const items = [['telegram', 'TG', '@username или ссылка'], ['whatsapp', 'WA', 'номер или ссылка'], ['max', 'MAX', 'контакт или ссылка']];
@@ -74,10 +73,10 @@ function fileField() {
   thumb.textContent = '◎';
   const action = document.createElement('span');
   action.className = 'contact-editor__file-action';
-  action.textContent = 'Выбрать изображение';
+  action.textContent = 'Выбрать фото';
   const state = document.createElement('span');
   state.className = 'contact-editor__file-state';
-  state.textContent = 'Файл не выбран';
+  state.textContent = '';
   const input = document.createElement('input');
   input.type = 'file';
   input.name = 'avatar';
@@ -98,7 +97,7 @@ function dataUrlFromFile(file) {
     reader.readAsDataURL(file);
   });
 }
-function setFileControlState(form, { actionText, stateText, previewUrl = null }) {
+function setFileControlState(form, { actionText, stateText = '', previewUrl = null }) {
   const action = form.querySelector('.contact-editor__file-action');
   const state = form.querySelector('.contact-editor__file-state');
   const thumb = form.querySelector('.contact-editor__file-thumb');
@@ -116,8 +115,9 @@ export class ContactEditorController {
     this.editingId = null;
     this.pendingAvatarFile = null;
     this.avatarPreviewDataUrl = '';
+    this.avatarCrop = null;
     this.previewUrl = null;
-    this.thumbnailEditor = new ImageThumbnailEditorController();
+    this.thumbnailEditor = new ImageThumbnailEditorController({ title: 'Настройка миниатюры' });
     this.abortController = new AbortController();
     this.build();
     this.bind();
@@ -150,6 +150,8 @@ export class ContactEditorController {
       field('Адрес', 'address'),
       field('Телефон', 'phone', 'tel', { placeholder: '+7 000 000-00-00', inputMode: 'tel' }),
       field('Email', 'email', 'email'),
+      field('Сайт', 'website', 'text', { placeholder: 'site.ru или ссылка' }),
+      field('Instagram', 'instagram', 'text', { placeholder: '@username или ссылка' }),
       messengerFields(),
       selectField('Категория', 'category', [['specialist', 'Специалист'], ['contractor', 'Подрядчик'], ['supplier', 'Поставщик'], ['partner', 'Партнёр'], ['client', 'Клиент'], ['other', 'Другое']]),
       selectField('Статус', 'status', [['active', 'Активный'], ['trusted', 'Проверенный'], ['new', 'Новый'], ['inactive', 'Неактивный']]),
@@ -176,19 +178,22 @@ export class ContactEditorController {
       const file = event.target.files?.[0];
       event.target.value = '';
       if (!file) return;
-      const result = await this.thumbnailEditor.open(file);
+      const current = this.editingId ? store.getState().cards[this.editingId]?.data : null;
+      const result = await this.thumbnailEditor.open(file, { crop: current?.avatarCrop });
       if (!result) return;
       this.pendingAvatarFile = result.file;
+      this.avatarCrop = result.crop;
       this.avatarPreviewDataUrl = await dataUrlFromFile(result.file);
       if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
       this.previewUrl = result.previewUrl;
-      setFileControlState(this.form, { actionText: 'Изменить миниатюру', stateText: result.file.name, previewUrl: this.previewUrl });
+      setFileControlState(this.form, { actionText: 'Изменить фото', previewUrl: this.previewUrl });
     }, { signal });
   }
 
   resetAvatarState() {
     this.pendingAvatarFile = null;
     this.avatarPreviewDataUrl = '';
+    this.avatarCrop = null;
     if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
     this.previewUrl = null;
   }
@@ -197,7 +202,7 @@ export class ContactEditorController {
     this.editingId = null;
     this.form.reset();
     this.resetAvatarState();
-    setFileControlState(this.form, { actionText: 'Выбрать изображение', stateText: 'Файл не выбран' });
+    setFileControlState(this.form, { actionText: 'Выбрать фото' });
     this.title.textContent = 'Новый контакт';
     this.submitButton.textContent = 'Сохранить контакт';
     this.overlay.hidden = false;
@@ -221,6 +226,8 @@ export class ContactEditorController {
     set('address', data.address);
     set('phone', primary(data.phones)?.value || data.phone);
     set('email', primary(data.emails)?.value || data.email);
+    set('website', data.website);
+    set('instagram', data.instagram);
     set('telegram', messengerValue(data, 'telegram'));
     set('whatsapp', messengerValue(data, 'whatsapp'));
     set('max', messengerValue(data, 'max'));
@@ -230,7 +237,8 @@ export class ContactEditorController {
     set('skills', (data.skills || []).join(', '));
     set('description', data.description);
     set('notes', data.notes);
-    setFileControlState(this.form, { actionText: data.avatarMediaId ? 'Заменить изображение' : 'Выбрать изображение', stateText: data.avatarMediaId ? 'Фото добавлено' : 'Файл не выбран', previewUrl: data.avatarPreviewUrl || null });
+    setFileControlState(this.form, { actionText: data.avatarMediaId ? 'Заменить фото' : 'Выбрать фото', previewUrl: data.avatarPreviewUrl || null });
+    this.avatarCrop = data.avatarCrop ?? null;
     this.title.textContent = 'Редактировать контакт';
     this.submitButton.textContent = 'Сохранить изменения';
     this.overlay.hidden = false;
@@ -252,20 +260,41 @@ export class ContactEditorController {
     const messenger = (type, label) => { const messengerValue = value(type); return messengerValue ? { type, value: messengerValue, label, primary: type === 'telegram' } : null; };
     const phone = value('phone');
     const email = value('email');
+    const website = value('website');
+    const instagram = value('instagram');
     const current = this.editingId ? store.getState().cards[this.editingId] : null;
     const data = {
       ...(current?.data ?? {}),
-      kind: value('kind') || 'person', fullName: value('fullName'), organization: value('organization'), profession: value('profession'), role: value('profession'), city: value('city'), address: value('address'), category: value('category') || 'specialist', status: value('status') || 'active', description: value('description'), notes: value('notes'), tags: csv(value('tags')), skills: csv(value('skills')),
+      kind: value('kind') || 'person',
+      fullName: value('fullName'),
+      organization: value('organization'),
+      profession: value('profession'),
+      role: value('profession'),
+      city: value('city'),
+      address: value('address'),
+      category: value('category') || 'specialist',
+      status: value('status') || 'active',
+      description: value('description'),
+      notes: value('notes'),
+      tags: csv(value('tags')),
+      skills: csv(value('skills')),
+      website,
+      instagram,
+      websites: website ? [{ type: 'website', value: website, label: 'Сайт', primary: true }] : [],
       phones: phone ? [{ type: 'phone', value: phone, label: 'Основной', primary: true }] : [],
       emails: email ? [{ type: 'email', value: email, label: 'Основной', primary: true }] : [],
       messengers: [messenger('telegram', 'Telegram'), messenger('whatsapp', 'WhatsApp'), messenger('max', 'MAX')].filter(Boolean),
+      showOnCanvas: current?.data?.showOnCanvas ?? false,
     };
     if (this.avatarPreviewDataUrl) data.avatarPreviewUrl = this.avatarPreviewDataUrl;
+    if (this.avatarCrop) data.avatarCrop = this.avatarCrop;
     const pendingMedia = this.pendingAvatarFile ? [{ slot: 'avatar', file: this.pendingAvatarFile }] : [];
     const title = data.fullName || data.organization || 'Новый контакт';
     this.submitButton.disabled = true;
     try {
-      const result = this.editingId ? await updateCardWithMedia(this.editingId, { title, data }, pendingMedia) : await createCardWithMedia({ type: 'person', title, data, x: 0, y: 0 }, pendingMedia);
+      const result = this.editingId
+        ? await updateCardWithMedia(this.editingId, { title, data }, pendingMedia)
+        : await createCardWithMedia({ type: 'person', title, data, x: 0, y: 0 }, pendingMedia);
       const contactId = result.card.id;
       this.close();
       this.resetAvatarState();
