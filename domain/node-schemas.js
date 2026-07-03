@@ -2,15 +2,16 @@ import { normalizeTaskList, validateTask } from './task.js';
 import { normalizeProcessData } from './work-process.js';
 import { normalizeContactData } from './contact.js';
 
-export const NODE_SCHEMA_VERSION = 8;
+export const NODE_SCHEMA_VERSION = 9;
 
-export const NODE_TYPES = Object.freeze(['self', 'project', 'process', 'person', 'idea', 'goal']);
+export const NODE_TYPES = Object.freeze(['self', 'project', 'process', 'person', 'persona', 'idea', 'goal']);
 
 export const NODE_TYPE_LABELS = Object.freeze({
-  self: 'Я Есмь',
+  self: 'Моя вселенная',
   project: 'Проект',
   process: 'Процесс',
-  person: 'Человек',
+  person: 'Контакт',
+  persona: 'Персона',
   idea: 'Идея',
   goal: 'Цель',
 });
@@ -28,7 +29,7 @@ const TYPE_DEFAULTS = Object.freeze({
     advance: { amount: null, date: null },
     balance: { amount: null, date: null },
     primaryContact: { name: '', phone: '', email: '' },
-    preliminaryInfo: '', nextAction: '', blockers: [],
+    preliminaryInfo: '', nextAction: '', blockers: [], contactAssignments: [],
     coverMediaId: null, images: [], documents: [], files: [],
   },
   process: {
@@ -36,13 +37,13 @@ const TYPE_DEFAULTS = Object.freeze({
     status: 'planned', priority: 'medium', progress: 0, progressMode: 'from-stages',
     startDate: null, dueDate: null, budget: null,
     selectedStageId: null, taskViewMode: 'selected-stage', expenseViewMode: 'selected-stage',
-    stages: [], tasks: [], expenses: [], participants: [], mediaAssignments: [],
+    stages: [], tasks: [], expenses: [], participants: [], mediaAssignments: [], contactAssignments: [],
     nextAction: '', blockers: [], notes: '', attachments: [],
   },
   person: {
     kind: 'person', fullName: '', organization: '', profession: '', description: '',
     category: 'specialist', status: 'active', city: '', address: '',
-    phones: [], emails: [], messengers: [], websites: [], tags: [], skills: [],
+    phones: [], emails: [], messengers: [], websites: [], tags: [], skills: [], assignments: [],
     website: '', instagram: '',
     favorite: false, rating: null,
     legalDetails: {
@@ -54,14 +55,18 @@ const TYPE_DEFAULTS = Object.freeze({
     avatarPreviewUrl: '', avatarWidePreviewUrl: '', avatarCrops: {},
     attachments: [], showOnCanvas: false,
   },
+  persona: {
+    role: '', archetype: '', domain: '', status: 'active', notes: '',
+    coverMediaId: null, attachments: [],
+  },
   idea: {
-    status: 'draft', category: '', impact: '', notes: '',
+    status: 'draft', category: '', impact: '', notes: '', contactAssignments: [],
     coverMediaId: null, attachments: [],
   },
   goal: {
     status: 'active', priority: 'medium', targetDate: null, progress: 0,
     metric: { name: '', target: null, current: null, unit: '' },
-    nextAction: '', blockers: [], notes: '', coverMediaId: null, attachments: [],
+    nextAction: '', blockers: [], notes: '', contactAssignments: [], coverMediaId: null, attachments: [],
   },
 });
 
@@ -159,6 +164,7 @@ export function validateNode(node) {
     if (!Array.isArray(node.data?.emails)) errors.push('Contact emails must be an array.');
     if (!Array.isArray(node.data?.messengers)) errors.push('Contact messengers must be an array.');
     if (!Array.isArray(node.data?.tags)) errors.push('Contact tags must be an array.');
+    if (!Array.isArray(node.data?.assignments)) errors.push('Contact assignments must be an array.');
   }
 
   return { valid: errors.length === 0, errors };
