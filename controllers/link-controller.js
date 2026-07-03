@@ -59,8 +59,8 @@ export class LinkController {
   bindEvents() {
     const signal = this.abortController.signal;
     this.linkButton.addEventListener('click', () => this.toggle(), { signal });
-    this.closeTypeButton.addEventListener('click', () => this.closeTypeSheet(), { signal });
-    this.typeSheet.addEventListener('click', (event) => { if (event.target === this.typeSheet) this.closeTypeSheet(); }, { signal });
+    this.closeTypeButton.addEventListener('click', () => this.cancel(), { signal });
+    this.typeSheet.addEventListener('click', (event) => { if (event.target === this.typeSheet) this.cancel(); }, { signal });
     this.typeButtons.addEventListener('click', (event) => {
       const button = event.target.closest('[data-link-type]');
       if (button) this.commitType(button.dataset.linkType);
@@ -92,8 +92,14 @@ export class LinkController {
     this.onStateChange?.();
   }
 
+  hideTypeSheet() {
+    this.typeSheet.hidden = true;
+    this.typeSheet.setAttribute('aria-hidden', 'true');
+    this.targetId = null;
+  }
+
   cancel() {
-    this.closeTypeSheet();
+    this.hideTypeSheet();
     this.active = false;
     this.sourceId = null;
     this.targetId = null;
@@ -120,16 +126,10 @@ export class LinkController {
     this.typeSheet.setAttribute('aria-hidden', 'false');
   }
 
-  closeTypeSheet() {
-    this.typeSheet.hidden = true;
-    this.typeSheet.setAttribute('aria-hidden', 'true');
-    this.targetId = null;
-  }
-
   async commitType(relationType) {
     const sourceId = this.sourceId;
     const targetId = this.targetId;
-    this.closeTypeSheet();
+    this.hideTypeSheet();
     if (!sourceId || !targetId) return;
     try {
       const previousCount = store.getState().links.length;
