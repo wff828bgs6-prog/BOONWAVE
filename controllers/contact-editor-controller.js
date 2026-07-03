@@ -44,11 +44,7 @@ function messengerFields() {
   hint.textContent = 'Укажи только те каналы, где реально идёт общение. В карточке они будут отображаться иконками.';
   const channels = document.createElement('div');
   channels.className = 'contact-editor__messenger-grid';
-  const items = [
-    ['telegram', 'TG', '@username или ссылка'],
-    ['whatsapp', 'WA', 'номер или ссылка'],
-    ['max', 'MAX', 'контакт или ссылка'],
-  ];
+  const items = [['telegram', 'TG', '@username или ссылка'], ['whatsapp', 'WA', 'номер или ссылка'], ['max', 'MAX', 'контакт или ссылка']];
   for (const [name, label, placeholder] of items) {
     const row = document.createElement('label');
     row.className = `contact-editor__messenger contact-editor__messenger--${name}`;
@@ -91,18 +87,17 @@ function fileField() {
   return wrapper;
 }
 
-function csv(value) {
-  return String(value ?? '').split(',').map((item) => item.trim()).filter(Boolean);
+function csv(value) { return String(value ?? '').split(',').map((item) => item.trim()).filter(Boolean); }
+function primary(items = []) { return items.find((item) => item.primary) ?? items[0] ?? null; }
+function messengerValue(data, type) { return data.messengers?.find((item) => item.type === type)?.value ?? ''; }
+function dataUrlFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
-
-function primary(items = []) {
-  return items.find((item) => item.primary) ?? items[0] ?? null;
-}
-
-function messengerValue(data, type) {
-  return data.messengers?.find((item) => item.type === type)?.value ?? '';
-}
-
 function setFileControlState(form, { actionText, stateText, previewUrl = null }) {
   const action = form.querySelector('.contact-editor__file-action');
   const state = form.querySelector('.contact-editor__file-state');
@@ -120,6 +115,7 @@ export class ContactEditorController {
     this.onSaved = typeof onSaved === 'function' ? onSaved : null;
     this.editingId = null;
     this.pendingAvatarFile = null;
+    this.avatarPreviewDataUrl = '';
     this.previewUrl = null;
     this.thumbnailEditor = new ImageThumbnailEditorController();
     this.abortController = new AbortController();
@@ -132,11 +128,9 @@ export class ContactEditorController {
     this.overlay.className = 'contact-editor';
     this.overlay.hidden = true;
     this.overlay.setAttribute('aria-hidden', 'true');
-
     const form = document.createElement('form');
     form.className = 'contact-editor__panel';
     this.form = form;
-
     const head = document.createElement('div');
     head.className = 'contact-editor__head';
     this.title = document.createElement('h2');
@@ -145,10 +139,9 @@ export class ContactEditorController {
     this.closeButton.textContent = '×';
     this.closeButton.setAttribute('aria-label', 'Закрыть форму контакта');
     head.append(this.title, this.closeButton);
-
     const grid = document.createElement('div');
     grid.className = 'contact-editor__grid';
-    const fields = [
+    grid.append(
       selectField('Тип контакта', 'kind', [['person', 'Человек'], ['company', 'Компания']]),
       field('Имя или название', 'fullName', 'text', { required: true }),
       field('Организация', 'organization'),
@@ -165,9 +158,7 @@ export class ContactEditorController {
       field('Описание', 'description', 'textarea'),
       field('Заметки', 'notes', 'textarea'),
       fileField(),
-    ];
-    grid.append(...fields);
-
+    );
     this.submitButton = document.createElement('button');
     this.submitButton.type = 'submit';
     this.submitButton.className = 'contact-editor__submit';
@@ -179,9 +170,7 @@ export class ContactEditorController {
   bind() {
     const signal = this.abortController.signal;
     this.closeButton.addEventListener('click', () => this.close(), { signal });
-    this.overlay.addEventListener('click', (event) => {
-      if (event.target === this.overlay) this.close();
-    }, { signal });
+    this.overlay.addEventListener('click', (event) => { if (event.target === this.overlay) this.close(); }, { signal });
     this.form.addEventListener('submit', (event) => this.submit(event), { signal });
     this.form.elements.namedItem('avatar').addEventListener('change', async (event) => {
       const file = event.target.files?.[0];
@@ -190,18 +179,16 @@ export class ContactEditorController {
       const result = await this.thumbnailEditor.open(file);
       if (!result) return;
       this.pendingAvatarFile = result.file;
+      this.avatarPreviewDataUrl = await dataUrlFromFile(result.file);
       if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
       this.previewUrl = result.previewUrl;
-      setFileControlState(this.form, {
-        actionText: 'Изменить миниатюру',
-        stateText: result.file.name,
-        previewUrl: this.previewUrl,
-      });
+      setFileControlState(this.form, { actionText: 'Изменить миниатюру', stateText: result.file.name, previewUrl: this.previewUrl });
     }, { signal });
   }
 
   resetAvatarState() {
     this.pendingAvatarFile = null;
+    this.avatarPreviewDataUrl = '';
     if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
     this.previewUrl = null;
   }
@@ -225,10 +212,7 @@ export class ContactEditorController {
     this.form.reset();
     this.resetAvatarState();
     const data = card.data ?? {};
-    const set = (name, value) => {
-      const control = this.form.elements.namedItem(name);
-      if (control) control.value = value ?? '';
-    };
+    const set = (name, value) => { const control = this.form.elements.namedItem(name); if (control) control.value = value ?? ''; };
     set('kind', data.kind || 'person');
     set('fullName', data.fullName || data.organization || card.title);
     set('organization', data.organization);
@@ -246,10 +230,7 @@ export class ContactEditorController {
     set('skills', (data.skills || []).join(', '));
     set('description', data.description);
     set('notes', data.notes);
-    setFileControlState(this.form, {
-      actionText: data.avatarMediaId ? 'Заменить изображение' : 'Выбрать изображение',
-      stateText: data.avatarMediaId ? 'Фото добавлено' : 'Файл не выбран',
-    });
+    setFileControlState(this.form, { actionText: data.avatarMediaId ? 'Заменить изображение' : 'Выбрать изображение', stateText: data.avatarMediaId ? 'Фото добавлено' : 'Файл не выбран', previewUrl: data.avatarPreviewUrl || null });
     this.title.textContent = 'Редактировать контакт';
     this.submitButton.textContent = 'Сохранить изменения';
     this.overlay.hidden = false;
@@ -268,40 +249,23 @@ export class ContactEditorController {
     if (!this.form.reportValidity()) return;
     const formData = new FormData(this.form);
     const value = (name) => String(formData.get(name) ?? '').trim();
-    const messenger = (type, label) => {
-      const messengerValue = value(type);
-      return messengerValue ? { type, value: messengerValue, label, primary: type === 'telegram' } : null;
-    };
+    const messenger = (type, label) => { const messengerValue = value(type); return messengerValue ? { type, value: messengerValue, label, primary: type === 'telegram' } : null; };
     const phone = value('phone');
     const email = value('email');
     const current = this.editingId ? store.getState().cards[this.editingId] : null;
     const data = {
       ...(current?.data ?? {}),
-      kind: value('kind') || 'person',
-      fullName: value('fullName'),
-      organization: value('organization'),
-      profession: value('profession'),
-      role: value('profession'),
-      city: value('city'),
-      address: value('address'),
-      category: value('category') || 'specialist',
-      status: value('status') || 'active',
-      description: value('description'),
-      notes: value('notes'),
-      tags: csv(value('tags')),
-      skills: csv(value('skills')),
+      kind: value('kind') || 'person', fullName: value('fullName'), organization: value('organization'), profession: value('profession'), role: value('profession'), city: value('city'), address: value('address'), category: value('category') || 'specialist', status: value('status') || 'active', description: value('description'), notes: value('notes'), tags: csv(value('tags')), skills: csv(value('skills')),
       phones: phone ? [{ type: 'phone', value: phone, label: 'Основной', primary: true }] : [],
       emails: email ? [{ type: 'email', value: email, label: 'Основной', primary: true }] : [],
       messengers: [messenger('telegram', 'Telegram'), messenger('whatsapp', 'WhatsApp'), messenger('max', 'MAX')].filter(Boolean),
     };
+    if (this.avatarPreviewDataUrl) data.avatarPreviewUrl = this.avatarPreviewDataUrl;
     const pendingMedia = this.pendingAvatarFile ? [{ slot: 'avatar', file: this.pendingAvatarFile }] : [];
     const title = data.fullName || data.organization || 'Новый контакт';
-
     this.submitButton.disabled = true;
     try {
-      const result = this.editingId
-        ? await updateCardWithMedia(this.editingId, { title, data }, pendingMedia)
-        : await createCardWithMedia({ type: 'person', title, data, x: 0, y: 0 }, pendingMedia);
+      const result = this.editingId ? await updateCardWithMedia(this.editingId, { title, data }, pendingMedia) : await createCardWithMedia({ type: 'person', title, data, x: 0, y: 0 }, pendingMedia);
       const contactId = result.card.id;
       this.close();
       this.resetAvatarState();
