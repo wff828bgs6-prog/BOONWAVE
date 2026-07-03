@@ -9,6 +9,7 @@ import { OneHandPanelController } from '../controllers/one-hand-panel-controller
 import { ContactsScreenController } from '../controllers/contacts-screen-controller.js';
 import '../controllers/contact-editor-fields-extension.js';
 import { ContactEditorController } from '../controllers/contact-editor-controller.js';
+import { updateCardNode } from '../services/node-service.js';
 import { storagePlatform } from '../storage/index.js';
 
 function getRequiredElement(root, id) {
@@ -60,8 +61,12 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
     beforeOpen: () => oneHandPanelController.close(),
     createContact: () => { oneHandPanelController.close(); contactEditorController.openCreate(); },
     editContact: (contactId) => { oneHandPanelController.close(); contactEditorController.openEdit(contactId); },
-    assignContact: (contactId) => {
+    assignContact: async (contactId) => {
       oneHandPanelController.close();
+      const center = workspace.getViewportCenter();
+      if (center && store.getState().cards[contactId]) {
+        await updateCardNode(contactId, { x: center.x, y: center.y });
+      }
       const started = linkController.beginFrom(contactId, 'Выбери проект, процесс, цель, идею или задачу для назначения контакта');
       if (started) workspace.renderCards();
     },
