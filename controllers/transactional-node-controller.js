@@ -8,6 +8,8 @@ import {
 } from '../services/card-save-service.js';
 import { collectPendingFormMedia, readThumbnailFormData } from './node-controller.js';
 
+export { collectPendingFormMedia, readThumbnailFormData };
+
 const WORKSPACE_HINT = 'Удерживай карточку для редактирования • двойной тап — открыть';
 
 export function readTypedFormData(container, type) {
