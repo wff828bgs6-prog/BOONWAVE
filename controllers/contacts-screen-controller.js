@@ -112,6 +112,25 @@ export class ContactsScreenController {
     panel.append(head, toolbar, this.body);
     this.overlay.append(panel);
     document.body.append(this.overlay);
+
+    this.assignSheet = el('section', 'contact-assign-sheet');
+    this.assignSheet.hidden = true;
+    this.assignSheet.setAttribute('aria-hidden', 'true');
+    const assignPanel = el('div', 'contact-assign-sheet__panel');
+    const assignHead = el('div', 'contact-assign-sheet__head');
+    assignHead.append(el('h3', '', 'Назначить контакт'));
+    this.assignCloseButton = el('button', '', '×');
+    this.assignCloseButton.type = 'button';
+    this.assignCloseButton.setAttribute('aria-label', 'Закрыть выбор назначения');
+    assignHead.append(this.assignCloseButton);
+    const copy = el('p', '', 'Выбери, что сделать с контактом. Можно просто назначить его в проект или процесс без отдельной карточки на рабочем столе.');
+    this.assignLibraryButton = el('button', 'contact-assign-sheet__primary', 'Просто назначить');
+    this.assignLibraryButton.type = 'button';
+    this.assignCanvasButton = el('button', 'contact-assign-sheet__secondary', 'Добавить карточку на стол');
+    this.assignCanvasButton.type = 'button';
+    assignPanel.append(assignHead, copy, this.assignLibraryButton, this.assignCanvasButton);
+    this.assignSheet.append(assignPanel);
+    document.body.append(this.assignSheet);
   }
 
   bind() {
@@ -121,15 +140,23 @@ export class ContactsScreenController {
     this.overlay.addEventListener('click', (event) => { if (event.target === this.overlay) this.close(); }, { signal });
     this.searchInput.addEventListener('input', () => { this.query = this.searchInput.value; this.render(); }, { signal });
     this.addButton.addEventListener('click', () => { this.createContact?.(); }, { signal });
+    this.assignCloseButton.addEventListener('click', () => this.closeAssignChoice(), { signal });
+    this.assignLibraryButton.addEventListener('click', () => this.commitAssignChoice('library'), { signal });
+    this.assignCanvasButton.addEventListener('click', () => this.commitAssignChoice('canvas'), { signal });
     document.addEventListener('keydown', (event) => {
-      if (event.key !== 'Escape' || this.overlay.hidden) return;
+      if (event.key !== 'Escape') return;
+      if (!this.assignSheet.hidden) { this.closeAssignChoice(); return; }
+      if (this.overlay.hidden) return;
       if (this.selectedContactId) this.backToList(); else this.close();
     }, { signal });
   }
 
   open() { this.beforeOpen?.(); this.overlay.hidden = false; this.overlay.setAttribute('aria-hidden', 'false'); this.openButton.setAttribute('aria-expanded', 'true'); this.render(); }
-  close() { this.selectedContactId = null; this.showFilledFields = false; this.overlay.hidden = true; this.overlay.setAttribute('aria-hidden', 'true'); this.openButton.setAttribute('aria-expanded', 'false'); }
+  close() { this.closeAssignChoice(); this.selectedContactId = null; this.showFilledFields = false; this.overlay.hidden = true; this.overlay.setAttribute('aria-hidden', 'true'); this.openButton.setAttribute('aria-expanded', 'false'); }
   backToList() { this.selectedContactId = null; this.showFilledFields = false; this.render(); }
+  openAssignChoice(contactId) { this.pendingAssignContactId = contactId; this.assignSheet.hidden = false; this.assignSheet.setAttribute('aria-hidden', 'false'); }
+  closeAssignChoice() { this.pendingAssignContactId = null; if (this.assignSheet) { this.assignSheet.hidden = true; this.assignSheet.setAttribute('aria-hidden', 'true'); } }
+  commitAssignChoice(mode) { const contactId = this.pendingAssignContactId; if (!contactId) return; this.closeAssignChoice(); this.close(); this.assignContact?.(contactId, mode); }
 
   renderFilledFields(contact) {
     const section = el('div', 'contact-detail__filled');
@@ -144,9 +171,7 @@ export class ContactsScreenController {
         link.target = '_blank';
         link.rel = 'noreferrer';
         item.append(link);
-      } else {
-        item.append(el('strong', '', row.value));
-      }
+      } else item.append(el('strong', '', row.value));
       section.append(item);
     }
     return section;
@@ -225,7 +250,7 @@ export class ContactsScreenController {
     messageButton.addEventListener('click', () => { if (!openMessenger(contact.messenger) && contact.email?.value) window.location.href = `mailto:${contact.email.value}`; }, { signal: this.abortController.signal });
     const assignButton = el('button', 'contact-detail__assign', 'Назначить');
     assignButton.disabled = false;
-    assignButton.addEventListener('click', () => { this.close(); this.assignContact?.(contact.id); }, { signal: this.abortController.signal });
+    assignButton.addEventListener('click', () => this.openAssignChoice(contact.id), { signal: this.abortController.signal });
     actions.append(callButton, messageButton, assignButton);
     const stats = el('div', 'contact-detail__stats');
     for (const [value, label] of [[contact.history?.processes?.length ?? 0, 'Процессы'], [contact.history?.tasks?.length ?? 0, 'Задачи'], [contact.history?.projects?.length ?? 0, 'Проекты']]) {
@@ -240,7 +265,7 @@ export class ContactsScreenController {
     this.details.append(detailHead, hero, el('div', 'contact-detail__flow'), actions, this.renderFilledFields(contact), stats, manage);
   }
 
-  destroy() { this.unsubscribe?.(); this.abortController.abort(); this.overlay.remove(); }
+  destroy() { this.unsubscribe?.(); this.abortController.abort(); this.assignSheet?.remove(); this.overlay.remove(); }
 }
 
 export default ContactsScreenController;
