@@ -61,7 +61,7 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
   let pendingContactAssignmentId = null;
 
   workspace.setLinkSourceProvider(() => linkController.getSourceId());
-  workspace.setLinkModeProvider(() => linkController.isActive());
+  workspace.setLinkModeProvider(() => linkController.isActive() || Boolean(pendingContactAssignmentId));
   workspace.setCardTapHandler(async (card) => {
     if (pendingContactAssignmentId) {
       const contactId = pendingContactAssignmentId;
@@ -77,6 +77,7 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
     if (pendingContactAssignmentId) {
       pendingContactAssignmentId = null;
       hint.textContent = 'Назначение контакта отменено';
+      workspace.renderCards();
       return;
     }
     if (linkController.isActive()) linkController.cancel();
