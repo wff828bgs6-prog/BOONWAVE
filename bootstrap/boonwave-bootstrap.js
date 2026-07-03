@@ -9,6 +9,7 @@ import { OneHandPanelController } from '../controllers/one-hand-panel-controller
 import { ContactsScreenController } from '../controllers/contacts-screen-controller.js';
 import { ContactEditorController } from '../controllers/contact-editor-controller.js';
 import { updateCardNode } from '../services/node-service.js';
+import { assignContactToEntity } from '../services/contact-assignment-service.js';
 import { storagePlatform } from '../storage/index.js';
 
 function getRequiredElement(root, id) {
@@ -26,60 +27,17 @@ function createDetachedEditTrigger() {
   return button;
 }
 
-function addUnique(list = [], id) {
-  return [...new Set([...(Array.isArray(list) ? list : []), id].filter(Boolean))];
-}
-
-async function assignContactToTarget(contactId, targetCard) {
-  if (!contactId || !targetCard || targetCard.type === 'person') return false;
-  const current = targetCard.data ?? {};
-  const patch = { contactAssignments: addUnique(current.contactAssignments, contactId) };
-  if (targetCard.type === 'process') {
-    const participants = Array.isArray(current.participants) ? current.participants : [];
-    if (!participants.some((item) => item.contactId === contactId || item.personId === contactId)) {
-      patch.participants = [...participants, {
-        id: `participant-${Date.now()}`,
-        contactId,
-        personId: contactId,
-        role: 'Участник',
-        responsibility: '',
-        status: 'active',
-        stageIds: [],
-      }];
-    }
-  }
-  await updateCardNode(targetCard.id, { data: patch });
-  return true;
-}
-
 export async function bootstrapBoonwave({ canvas, world, root = document, initialSelectedCardId = null, onEmpty } = {}) {
   if (!(canvas instanceof Element) || !(world instanceof Element)) throw new TypeError('bootstrapBoonwave expects canvas and world elements.');
 
   const hint = getRequiredElement(root, 'hint');
   const workspace = new WorkspaceController({ canvas, world, initialSelectedCardId });
   const linkController = new LinkController({ linkButton: getRequiredElement(root, 'linkButton'), hint, onStateChange: () => workspace.renderCards() });
-  let pendingContactAssignmentId = null;
 
   workspace.setLinkSourceProvider(() => linkController.getSourceId());
-  workspace.setLinkModeProvider(() => linkController.isActive() || Boolean(pendingContactAssignmentId));
-  workspace.setCardTapHandler(async (card) => {
-    if (pendingContactAssignmentId) {
-      const contactId = pendingContactAssignmentId;
-      pendingContactAssignmentId = null;
-      const assigned = await assignContactToTarget(contactId, card);
-      hint.textContent = assigned ? 'Контакт назначен' : 'Выбери проект, процесс, цель или идею';
-      workspace.renderCards();
-      return assigned;
-    }
-    return linkController.handleCardTap(card);
-  });
+  workspace.setLinkModeProvider(() => linkController.isActive());
+  workspace.setCardTapHandler((card) => linkController.handleCardTap(card));
   workspace.setBackgroundTapHandler(() => {
-    if (pendingContactAssignmentId) {
-      pendingContactAssignmentId = null;
-      hint.textContent = 'Назначение контакта отменено';
-      workspace.renderCards();
-      return;
-    }
     if (linkController.isActive()) linkController.cancel();
   });
   await workspace.init({ onEmpty });
@@ -106,11 +64,11 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
     beforeOpen: () => oneHandPanelController.close(),
     createContact: () => { oneHandPanelController.close(); contactEditorController.openCreate(); },
     editContact: (contactId) => { oneHandPanelController.close(); contactEditorController.openEdit(contactId); },
-    assignContact: async (contactId, mode = 'library') => {
+    assignContact: async (contactId, payload = { mode: 'library' }) => {
       oneHandPanelController.close();
       const contact = store.getState().cards[contactId];
       if (!contact) return;
-      if (mode === 'canvas') {
+      if (payload.mode === 'canvas') {
         const center = workspace.getViewportCenter();
         await updateCardNode(contactId, { x: center.x, y: center.y, data: { showOnCanvas: true } });
         store.setState({ selectedCardId: contactId });
@@ -118,8 +76,8 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
         workspace.renderCards();
         return;
       }
-      pendingContactAssignmentId = contactId;
-      hint.textContent = 'Выбери карточку, куда назначить контакт';
+      await assignContactToEntity({ contactId, ...payload });
+      hint.textContent = 'Контакт назначен';
       workspace.renderCards();
     },
     deleteContact: async (contactId) => {
