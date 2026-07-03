@@ -13,12 +13,15 @@ function initials(title = '') {
 }
 
 export class ContactsScreenController {
-  constructor({ openButton, createContact } = {}) {
+  constructor({ openButton, beforeOpen, createContact, editContact, deleteContact } = {}) {
     if (!(openButton instanceof HTMLButtonElement)) {
       throw new TypeError('ContactsScreenController expects an open button.');
     }
     this.openButton = openButton;
+    this.beforeOpen = typeof beforeOpen === 'function' ? beforeOpen : null;
     this.createContact = typeof createContact === 'function' ? createContact : null;
+    this.editContact = typeof editContact === 'function' ? editContact : null;
+    this.deleteContact = typeof deleteContact === 'function' ? deleteContact : null;
     this.selectedContactId = null;
     this.query = '';
     this.abortController = new AbortController();
@@ -64,7 +67,10 @@ export class ContactsScreenController {
   bind() {
     const signal = this.abortController.signal;
     this.openButton.addEventListener('click', () => this.open(), { signal });
-    this.closeButton.addEventListener('click', () => this.close(), { signal });
+    this.closeButton.addEventListener('click', () => {
+      if (this.selectedContactId) this.backToList();
+      else this.close();
+    }, { signal });
     this.overlay.addEventListener('click', (event) => {
       if (event.target === this.overlay) this.close();
     }, { signal });
@@ -77,11 +83,14 @@ export class ContactsScreenController {
       this.createContact?.();
     }, { signal });
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && !this.overlay.hidden) this.close();
+      if (event.key !== 'Escape' || this.overlay.hidden) return;
+      if (this.selectedContactId) this.backToList();
+      else this.close();
     }, { signal });
   }
 
   open() {
+    this.beforeOpen?.();
     this.overlay.hidden = false;
     this.overlay.setAttribute('aria-hidden', 'false');
     this.openButton.setAttribute('aria-expanded', 'true');
@@ -89,9 +98,15 @@ export class ContactsScreenController {
   }
 
   close() {
+    this.selectedContactId = null;
     this.overlay.hidden = true;
     this.overlay.setAttribute('aria-hidden', 'true');
     this.openButton.setAttribute('aria-expanded', 'false');
+  }
+
+  backToList() {
+    this.selectedContactId = null;
+    this.render();
   }
 
   render() {
@@ -103,6 +118,8 @@ export class ContactsScreenController {
 
     this.list.replaceChildren();
     this.details.replaceChildren();
+    this.closeButton.textContent = this.selectedContactId ? '‹' : '×';
+    this.closeButton.setAttribute('aria-label', this.selectedContactId ? 'Назад к списку контактов' : 'Закрыть контакты');
 
     if (model.emptyState) {
       const empty = el('div', 'contacts-screen__empty');
@@ -133,6 +150,18 @@ export class ContactsScreenController {
     }
 
     this.details.hidden = false;
+    const detailHead = el('div', 'contact-detail__topbar');
+    const backButton = el('button', 'contact-detail__back', '‹ Назад');
+    backButton.type = 'button';
+    backButton.addEventListener('click', () => this.backToList(), { signal: this.abortController.signal });
+    const editButton = el('button', 'contact-detail__edit', 'Редактировать');
+    editButton.type = 'button';
+    editButton.addEventListener('click', () => {
+      this.close();
+      this.editContact?.(contact.id);
+    }, { signal: this.abortController.signal });
+    detailHead.append(backButton, editButton);
+
     const hero = el('div', 'contact-detail__hero');
     hero.append(el('div', 'contact-detail__avatar', initials(contact.title)));
     const heroCopy = el('div');
@@ -140,7 +169,20 @@ export class ContactsScreenController {
     hero.append(heroCopy);
 
     const actions = el('div', 'contact-detail__actions');
-    for (const label of ['Позвонить', 'Написать', 'Назначить']) actions.append(el('button', '', label));
+    const callButton = el('button', '', 'Позвонить');
+    callButton.disabled = !contact.canCall;
+    callButton.addEventListener('click', () => {
+      if (contact.phone?.value) window.location.href = `tel:${contact.phone.value}`;
+    }, { signal: this.abortController.signal });
+    const messageButton = el('button', '', 'Написать');
+    messageButton.disabled = !(contact.canMessage || contact.canEmail);
+    messageButton.addEventListener('click', () => {
+      if (contact.messenger?.value) window.location.href = contact.messenger.value;
+      else if (contact.email?.value) window.location.href = `mailto:${contact.email.value}`;
+    }, { signal: this.abortController.signal });
+    const assignButton = el('button', '', 'Назначить');
+    assignButton.disabled = true;
+    actions.append(callButton, messageButton, assignButton);
 
     const stats = el('div', 'contact-detail__stats');
     const values = [
@@ -149,12 +191,23 @@ export class ContactsScreenController {
       [contact.history?.projects?.length ?? 0, 'Проекты'],
     ];
     for (const [value, label] of values) {
-      const stat = el('div', 'contact-detail__stat');
+      const stat = el('button', 'contact-detail__stat');
+      stat.type = 'button';
+      stat.disabled = value === 0;
       stat.append(el('strong', '', String(value)), el('span', '', label));
       stats.append(stat);
     }
 
-    this.details.append(hero, el('div', 'contact-detail__flow'), actions, stats);
+    const manage = el('div', 'contact-detail__manage');
+    const deleteButton = el('button', 'contact-detail__delete', 'Удалить контакт');
+    deleteButton.type = 'button';
+    deleteButton.addEventListener('click', async () => {
+      const deleted = await this.deleteContact?.(contact.id);
+      if (deleted !== false) this.backToList();
+    }, { signal: this.abortController.signal });
+    manage.append(deleteButton);
+
+    this.details.append(detailHead, hero, el('div', 'contact-detail__flow'), actions, stats, manage);
   }
 
   destroy() {
