@@ -7,6 +7,7 @@ import { ZoomController } from '../controllers/zoom-controller.js';
 import { UtilityRailController } from '../controllers/utility-rail-controller.js';
 import { OneHandPanelController } from '../controllers/one-hand-panel-controller.js';
 import { ContactsScreenController } from '../controllers/contacts-screen-controller.js';
+import '../controllers/contact-editor-fields-extension.js';
 import { ContactEditorController } from '../controllers/contact-editor-controller.js';
 import { storagePlatform } from '../storage/index.js';
 
