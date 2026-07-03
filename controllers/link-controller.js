@@ -38,6 +38,21 @@ export class LinkController {
     return this.active;
   }
 
+  beginFrom(sourceId, message = 'Теперь выбери карточку для связи') {
+    const card = store.getState().cards[sourceId];
+    if (!card) {
+      this.showResult('Карточка для связи не найдена');
+      return false;
+    }
+    this.active = true;
+    this.sourceId = sourceId;
+    store.setState({ selectedCardId: sourceId });
+    this.syncButton();
+    this.hint.textContent = message;
+    this.onStateChange?.();
+    return true;
+  }
+
   toggle() {
     if (this.active) {
       this.cancel();
