@@ -12,6 +12,7 @@ function field(label, name, type = 'text', options = {}) {
   if (options.placeholder) control.placeholder = options.placeholder;
   if (options.required) control.required = true;
   if (options.accept) control.accept = options.accept;
+  if (options.inputMode) control.inputMode = options.inputMode;
   wrapper.append(caption, control);
   return wrapper;
 }
@@ -33,12 +34,72 @@ function selectField(label, name, values) {
   return wrapper;
 }
 
+function messengerFields() {
+  const wrapper = document.createElement('fieldset');
+  wrapper.className = 'contact-editor__messengers';
+  const legend = document.createElement('legend');
+  legend.textContent = 'Мессенджеры';
+  const hint = document.createElement('p');
+  hint.textContent = 'Укажи только те каналы, где реально идёт общение. В карточке они будут отображаться иконками.';
+  const channels = document.createElement('div');
+  channels.className = 'contact-editor__messenger-grid';
+  const items = [
+    ['telegram', 'TG', '@username или ссылка'],
+    ['whatsapp', 'WA', 'номер или ссылка'],
+    ['max', 'MAX', 'контакт или ссылка'],
+  ];
+  for (const [name, label, placeholder] of items) {
+    const row = document.createElement('label');
+    row.className = `contact-editor__messenger contact-editor__messenger--${name}`;
+    const badge = document.createElement('span');
+    badge.className = 'contact-editor__messenger-badge';
+    badge.textContent = label;
+    const input = document.createElement('input');
+    input.name = name;
+    input.placeholder = placeholder;
+    row.append(badge, input);
+    channels.append(row);
+  }
+  wrapper.append(legend, hint, channels);
+  return wrapper;
+}
+
+function fileField() {
+  const wrapper = document.createElement('label');
+  wrapper.className = 'contact-editor__file';
+  const caption = document.createElement('span');
+  caption.className = 'contact-editor__file-caption';
+  caption.textContent = 'Фото / логотип';
+  const box = document.createElement('span');
+  box.className = 'contact-editor__file-box';
+  const action = document.createElement('span');
+  action.className = 'contact-editor__file-action';
+  action.textContent = 'Выбрать изображение';
+  const state = document.createElement('span');
+  state.className = 'contact-editor__file-state';
+  state.textContent = 'Файл не выбран';
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.name = 'avatar';
+  input.accept = 'image/*';
+  input.addEventListener('change', () => {
+    state.textContent = input.files?.[0]?.name || 'Файл не выбран';
+  });
+  box.append(action, state, input);
+  wrapper.append(caption, box);
+  return wrapper;
+}
+
 function csv(value) {
   return String(value ?? '').split(',').map((item) => item.trim()).filter(Boolean);
 }
 
 function primary(items = []) {
   return items.find((item) => item.primary) ?? items[0] ?? null;
+}
+
+function messengerValue(data, type) {
+  return data.messengers?.find((item) => item.type === type)?.value ?? '';
 }
 
 export class ContactEditorController {
@@ -78,18 +139,16 @@ export class ContactEditorController {
       field('Профессия / специализация', 'profession'),
       field('Город', 'city'),
       field('Адрес', 'address'),
-      field('Телефон', 'phone', 'tel', { placeholder: '+7...' }),
+      field('Телефон', 'phone', 'tel', { placeholder: '+7 000 000-00-00', inputMode: 'tel' }),
       field('Email', 'email', 'email'),
-      field('Telegram', 'telegram', 'text', { placeholder: '@username или ссылка' }),
-      field('WhatsApp', 'whatsapp', 'text', { placeholder: 'номер или ссылка' }),
-      field('MAX', 'max', 'text', { placeholder: 'контакт или ссылка' }),
+      messengerFields(),
       selectField('Категория', 'category', [['specialist', 'Специалист'], ['contractor', 'Подрядчик'], ['supplier', 'Поставщик'], ['partner', 'Партнёр'], ['client', 'Клиент'], ['other', 'Другое']]),
       selectField('Статус', 'status', [['active', 'Активный'], ['trusted', 'Проверенный'], ['new', 'Новый'], ['inactive', 'Неактивный']]),
       field('Теги через запятую', 'tags'),
       field('Навыки через запятую', 'skills'),
       field('Описание', 'description', 'textarea'),
       field('Заметки', 'notes', 'textarea'),
-      field('Фото / логотип', 'avatar', 'file', { accept: 'image/*' }),
+      fileField(),
     ];
     grid.append(...fields);
 
@@ -113,6 +172,7 @@ export class ContactEditorController {
   openCreate() {
     this.editingId = null;
     this.form.reset();
+    this.form.querySelector('.contact-editor__file-state').textContent = 'Файл не выбран';
     this.title.textContent = 'Новый контакт';
     this.submitButton.textContent = 'Сохранить контакт';
     this.overlay.hidden = false;
@@ -123,6 +183,7 @@ export class ContactEditorController {
     const card = store.getState().cards[contactId];
     if (!card || card.type !== 'person') return;
     this.editingId = contactId;
+    this.form.reset();
     const data = card.data ?? {};
     const set = (name, value) => {
       const control = this.form.elements.namedItem(name);
@@ -136,15 +197,16 @@ export class ContactEditorController {
     set('address', data.address);
     set('phone', primary(data.phones)?.value || data.phone);
     set('email', primary(data.emails)?.value || data.email);
-    set('telegram', data.messengers?.find((item) => item.type === 'telegram')?.value);
-    set('whatsapp', data.messengers?.find((item) => item.type === 'whatsapp')?.value);
-    set('max', data.messengers?.find((item) => item.type === 'max')?.value);
+    set('telegram', messengerValue(data, 'telegram'));
+    set('whatsapp', messengerValue(data, 'whatsapp'));
+    set('max', messengerValue(data, 'max'));
     set('category', data.category || 'specialist');
     set('status', data.status || 'active');
     set('tags', (data.tags || []).join(', '));
     set('skills', (data.skills || []).join(', '));
     set('description', data.description);
     set('notes', data.notes);
+    this.form.querySelector('.contact-editor__file-state').textContent = data.avatarMediaId ? 'Изображение уже добавлено' : 'Файл не выбран';
     this.title.textContent = 'Редактировать контакт';
     this.submitButton.textContent = 'Сохранить изменения';
     this.overlay.hidden = false;
@@ -162,9 +224,9 @@ export class ContactEditorController {
     if (!this.form.reportValidity()) return;
     const formData = new FormData(this.form);
     const value = (name) => String(formData.get(name) ?? '').trim();
-    const messenger = (type) => {
+    const messenger = (type, label) => {
       const messengerValue = value(type);
-      return messengerValue ? { type, value: messengerValue, label: type.toUpperCase(), primary: type === 'telegram' } : null;
+      return messengerValue ? { type, value: messengerValue, label, primary: type === 'telegram' } : null;
     };
     const phone = value('phone');
     const email = value('email');
@@ -186,7 +248,7 @@ export class ContactEditorController {
       skills: csv(value('skills')),
       phones: phone ? [{ type: 'phone', value: phone, label: 'Основной', primary: true }] : [],
       emails: email ? [{ type: 'email', value: email, label: 'Основной', primary: true }] : [],
-      messengers: [messenger('telegram'), messenger('whatsapp'), messenger('max')].filter(Boolean),
+      messengers: [messenger('telegram', 'Telegram'), messenger('whatsapp', 'WhatsApp'), messenger('max', 'MAX')].filter(Boolean),
     };
     const avatar = this.form.elements.namedItem('avatar')?.files?.[0];
     const pendingMedia = avatar ? [{ slot: 'avatar', file: avatar }] : [];
