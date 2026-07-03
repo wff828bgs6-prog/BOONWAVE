@@ -1,8 +1,9 @@
-const CACHE = 'boonwave-core-28';
+const CACHE = 'boonwave-core-30';
 const CORE = [
   './',
   './index.html',
   './app.js',
+  './assets/boonwave-logo.svg',
   './styles/boonwave-tokens.css',
   './styles/production-shell.css',
   './styles/production-shell-v2.css',
