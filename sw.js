@@ -1,4 +1,4 @@
-const CACHE = 'boonwave-core-32';
+const CACHE = 'boonwave-core-33';
 const CORE = [
   './',
   './index.html',
