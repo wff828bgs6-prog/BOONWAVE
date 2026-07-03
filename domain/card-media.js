@@ -17,6 +17,11 @@ export const CARD_MEDIA_SLOTS = Object.freeze({
     coverWide: Object.freeze({ field: 'coverWideMediaId', mode: 'single', kinds: ['image'] }),
     attachments: Object.freeze({ field: 'attachments', mode: 'multiple', kinds: ['image', 'document', 'file'] }),
   }),
+  task: Object.freeze({
+    cover: Object.freeze({ field: 'coverMediaId', mode: 'single', kinds: ['image'] }),
+    coverWide: Object.freeze({ field: 'coverWideMediaId', mode: 'single', kinds: ['image'] }),
+    attachments: Object.freeze({ field: 'attachments', mode: 'multiple', kinds: ['image', 'document', 'file'] }),
+  }),
   person: Object.freeze({
     avatar: Object.freeze({ field: 'avatarMediaId', mode: 'single', kinds: ['image'] }),
     avatarWide: Object.freeze({ field: 'avatarWideMediaId', mode: 'single', kinds: ['image'] }),
