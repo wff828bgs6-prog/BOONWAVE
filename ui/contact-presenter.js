@@ -1,20 +1,7 @@
 import { getPrimaryContactActions } from '../domain/contact.js';
 
-const CATEGORY_LABELS = Object.freeze({
-  contractor: 'Подрядчик',
-  supplier: 'Поставщик',
-  specialist: 'Специалист',
-  partner: 'Партнёр',
-  client: 'Клиент',
-  other: 'Контакт',
-});
-
-const STATUS_LABELS = Object.freeze({
-  new: 'Новый',
-  active: 'Активный',
-  trusted: 'Проверенный',
-  inactive: 'Неактивный',
-});
+const CATEGORY_LABELS = Object.freeze({ contractor: 'Подрядчик', supplier: 'Поставщик', specialist: 'Специалист', partner: 'Партнёр', client: 'Клиент', other: 'Контакт' });
+const STATUS_LABELS = Object.freeze({ new: 'Новый', active: 'Активный', trusted: 'Проверенный', inactive: 'Неактивный' });
 
 export function presentContactSummary(card) {
   if (!card || card.type !== 'person') throw new TypeError('Contact presenter requires a person card.');
@@ -36,6 +23,7 @@ export function presentContactSummary(card) {
     phone: actions.phone,
     email: actions.email,
     messenger: actions.messenger,
+    messengers: Array.isArray(data.messengers) ? data.messengers : [],
     canCall: Boolean(actions.phone?.value),
     canEmail: Boolean(actions.email?.value),
     canMessage: Boolean(actions.messenger?.value),
@@ -65,11 +53,6 @@ export function presentContactDetails(card, context = {}) {
       tasks: relationships.tasks ?? [],
       expenses: relationships.expenses ?? [],
     },
-    actions: {
-      assignToProcess: true,
-      assignToTask: true,
-      showOnCanvas: true,
-      archive: true,
-    },
+    actions: { assignToProcess: true, assignToTask: true, showOnCanvas: true, archive: true },
   };
 }
