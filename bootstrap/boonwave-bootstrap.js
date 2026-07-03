@@ -7,7 +7,6 @@ import { ZoomController } from '../controllers/zoom-controller.js';
 import { UtilityRailController } from '../controllers/utility-rail-controller.js';
 import { OneHandPanelController } from '../controllers/one-hand-panel-controller.js';
 import { ContactsScreenController } from '../controllers/contacts-screen-controller.js';
-import '../controllers/contact-editor-fields-extension.js';
 import { ContactEditorController } from '../controllers/contact-editor-controller.js';
 import { updateCardNode } from '../services/node-service.js';
 import { storagePlatform } from '../storage/index.js';
@@ -27,16 +26,61 @@ function createDetachedEditTrigger() {
   return button;
 }
 
+function addUnique(list = [], id) {
+  return [...new Set([...(Array.isArray(list) ? list : []), id].filter(Boolean))];
+}
+
+async function assignContactToTarget(contactId, targetCard) {
+  if (!contactId || !targetCard || targetCard.type === 'person') return false;
+  const current = targetCard.data ?? {};
+  const patch = { contactAssignments: addUnique(current.contactAssignments, contactId) };
+  if (targetCard.type === 'process') {
+    const participants = Array.isArray(current.participants) ? current.participants : [];
+    if (!participants.some((item) => item.contactId === contactId || item.personId === contactId)) {
+      patch.participants = [...participants, {
+        id: `participant-${Date.now()}`,
+        contactId,
+        personId: contactId,
+        role: 'Участник',
+        responsibility: '',
+        status: 'active',
+        stageIds: [],
+      }];
+    }
+  }
+  await updateCardNode(targetCard.id, { data: patch });
+  return true;
+}
+
 export async function bootstrapBoonwave({ canvas, world, root = document, initialSelectedCardId = null, onEmpty } = {}) {
   if (!(canvas instanceof Element) || !(world instanceof Element)) throw new TypeError('bootstrapBoonwave expects canvas and world elements.');
 
   const hint = getRequiredElement(root, 'hint');
   const workspace = new WorkspaceController({ canvas, world, initialSelectedCardId });
   const linkController = new LinkController({ linkButton: getRequiredElement(root, 'linkButton'), hint, onStateChange: () => workspace.renderCards() });
+  let pendingContactAssignmentId = null;
+
   workspace.setLinkSourceProvider(() => linkController.getSourceId());
   workspace.setLinkModeProvider(() => linkController.isActive());
-  workspace.setCardTapHandler((card) => linkController.handleCardTap(card));
-  workspace.setBackgroundTapHandler(() => { if (linkController.isActive()) linkController.cancel(); });
+  workspace.setCardTapHandler(async (card) => {
+    if (pendingContactAssignmentId) {
+      const contactId = pendingContactAssignmentId;
+      pendingContactAssignmentId = null;
+      const assigned = await assignContactToTarget(contactId, card);
+      hint.textContent = assigned ? 'Контакт назначен' : 'Выбери проект, процесс, цель или идею';
+      workspace.renderCards();
+      return assigned;
+    }
+    return linkController.handleCardTap(card);
+  });
+  workspace.setBackgroundTapHandler(() => {
+    if (pendingContactAssignmentId) {
+      pendingContactAssignmentId = null;
+      hint.textContent = 'Назначение контакта отменено';
+      return;
+    }
+    if (linkController.isActive()) linkController.cancel();
+  });
   await workspace.init({ onEmpty });
 
   let zoomController = null;
@@ -61,14 +105,21 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
     beforeOpen: () => oneHandPanelController.close(),
     createContact: () => { oneHandPanelController.close(); contactEditorController.openCreate(); },
     editContact: (contactId) => { oneHandPanelController.close(); contactEditorController.openEdit(contactId); },
-    assignContact: async (contactId) => {
+    assignContact: async (contactId, mode = 'library') => {
       oneHandPanelController.close();
-      const center = workspace.getViewportCenter();
-      if (center && store.getState().cards[contactId]) {
-        await updateCardNode(contactId, { x: center.x, y: center.y });
+      const contact = store.getState().cards[contactId];
+      if (!contact) return;
+      if (mode === 'canvas') {
+        const center = workspace.getViewportCenter();
+        await updateCardNode(contactId, { x: center.x, y: center.y, data: { showOnCanvas: true } });
+        store.setState({ selectedCardId: contactId });
+        hint.textContent = 'Контакт добавлен на рабочий стол';
+        workspace.renderCards();
+        return;
       }
-      const started = linkController.beginFrom(contactId, 'Выбери проект, процесс, цель, идею или задачу для назначения контакта');
-      if (started) workspace.renderCards();
+      pendingContactAssignmentId = contactId;
+      hint.textContent = 'Выбери карточку, куда назначить контакт';
+      workspace.renderCards();
     },
     deleteContact: async (contactId) => {
       oneHandPanelController.close();
