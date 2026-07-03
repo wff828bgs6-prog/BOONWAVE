@@ -2,7 +2,8 @@ const TYPE_FALLBACKS = Object.freeze({
   self: 'Я',
   project: 'П',
   process: 'Р',
-  person: 'Ч',
+  person: 'К',
+  persona: 'Пе',
   idea: 'И',
   goal: 'Ц',
 });
