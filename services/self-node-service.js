@@ -7,6 +7,7 @@ import {
 } from './graph-summary-service.js';
 
 export const PRIMARY_SELF_NODE_ID = 'self_primary';
+export const PRIMARY_SELF_TITLE = 'Моя вселенная';
 
 function getInitialSelfPosition(cards = {}) {
   const existing = Object.values(cards).filter((card) => card && card.type !== 'self');
@@ -25,13 +26,21 @@ export async function ensurePrimarySelfNode(options = {}) {
   const storageAdapter = options.storageAdapter ?? storage;
   const state = stateStore.getState();
   const existing = getPrimarySelfNode(state.cards);
-  if (existing) return { card: existing, created: false };
+  if (existing) {
+    if (existing.title === 'Я Есмь') {
+      const renamed = { ...existing, title: PRIMARY_SELF_TITLE, updatedAt: new Date().toISOString() };
+      await storageAdapter.saveCard(renamed);
+      stateStore.setState({ cards: { ...state.cards, [renamed.id]: renamed } });
+      return { card: renamed, created: false, renamed: true };
+    }
+    return { card: existing, created: false };
+  }
 
   const position = getInitialSelfPosition(state.cards);
   const generated = createNode({
     type: 'self',
-    title: 'Я Есмь',
-    description: 'Личный центр управления жизнью и проектами',
+    title: PRIMARY_SELF_TITLE,
+    description: 'Личный центр управления жизнью, проектами и идеями',
     x: position.x,
     y: position.y,
     data: {
@@ -124,6 +133,6 @@ export function formatSelfSummary(card, state = store.getState()) {
   } else {
     lines.push('Требует внимания: явных критических сигналов нет');
   }
-  if (!summary.structured) lines.push('Структура: свяжи «Я Есмь» с целями или проектами');
+  if (!summary.structured) lines.push('Структура: свяжи «Моя вселенная» с целями или проектами');
   return lines.join('\n');
 }
