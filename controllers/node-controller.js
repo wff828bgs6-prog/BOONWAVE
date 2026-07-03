@@ -15,6 +15,15 @@ const MEDIA_ACCEPT = Object.freeze({
   documents: 'application/pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt',
   files: '*/*', attachments: '*/*',
 });
+const MEDIA_PICKER_LABELS = Object.freeze({
+  cover: 'Выбрать изображение', avatar: 'Выбрать изображение', images: 'Добавить изображения',
+  documents: 'Добавить документы', files: 'Добавить файлы', attachments: 'Добавить вложения',
+});
+const MEDIA_EMPTY_LABELS = Object.freeze({
+  cover: 'Миниатюра не настроена', avatar: 'Миниатюра не настроена', images: 'Изображения не выбраны',
+  documents: 'Документы не выбраны', files: 'Файлы не выбраны', attachments: 'Вложения не выбраны',
+});
+const MEDIA_ICONS = Object.freeze({ cover: '◎', avatar: '◎', images: 'IMG', documents: 'DOC', files: '+', attachments: '+' });
 const PRIMARY_THUMBNAIL_SLOTS = new Set(['cover', 'avatar']);
 const WIDE_SLOT_BY_PRIMARY = Object.freeze({ cover: 'coverWide', avatar: 'avatarWide' });
 const DATA_KEYS_BY_PRIMARY = Object.freeze({
@@ -28,11 +37,14 @@ function ensureMediaPickerStyles() {
   const style = document.createElement('style');
   style.id = 'boonwave-card-media-picker-styles';
   style.textContent = `
-    .media-field{display:grid;gap:8px}.media-field input[type=file]:not(.media-picker__input){width:100%}
-    .media-picker{position:relative;display:grid;grid-template-columns:auto 1fr;align-items:center;gap:12px;min-height:64px;padding:9px 12px;border:1px solid rgba(94,116,192,.36);border-radius:20px;background:rgba(13,20,48,.82);overflow:hidden}
-    .media-picker__thumb{width:46px;height:46px;border-radius:14px;border:1px solid rgba(89,207,255,.3);background:rgba(15,22,52,.72) center/cover no-repeat;display:grid;place-items:center;color:#61d7ff;font-weight:800;box-shadow:0 0 14px rgba(70,198,255,.08)}
-    .media-picker__body{min-width:0;display:grid;gap:3px}.media-picker__action{justify-self:start;max-width:100%;padding:10px 16px;border-radius:15px;background:linear-gradient(135deg,#7753ff,#21c9ff);color:#fff;font-weight:900;font-size:15px;line-height:1.05;box-shadow:0 0 20px rgba(65,154,255,.2)}
-    .media-picker__state{min-height:18px;color:#aeb7d2;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.media-picker__input{position:absolute;inset:0;opacity:0;cursor:pointer}.media-picker:focus-within{border-color:rgba(62,198,255,.72);box-shadow:0 0 0 4px rgba(63,162,255,.08)}
+    .media-field{display:grid;gap:8px;min-width:0}
+    .media-field>span{font-size:var(--bw-font-xs,12px);color:var(--bw-text-muted)}
+    .media-picker{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px;min-height:64px;padding:9px 12px;border:1px solid rgba(94,116,192,.36);border-radius:20px;background:rgba(13,20,48,.82);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.018);transition:border-color var(--bw-motion-fast,180ms),box-shadow var(--bw-motion-fast,180ms),transform var(--bw-motion-fast,180ms)}
+    .media-picker:active{transform:translateY(1px);border-color:rgba(73,205,255,.64);box-shadow:0 0 20px rgba(32,207,255,.12),inset 0 0 0 1px rgba(255,255,255,.03)}
+    .media-picker:focus-within{border-color:rgba(62,198,255,.72);box-shadow:0 0 0 4px rgba(63,162,255,.08)}
+    .media-picker__thumb{width:46px;height:46px;border-radius:14px;border:1px solid rgba(89,207,255,.3);background:rgba(15,22,52,.72) center/cover no-repeat;display:grid;place-items:center;color:#61d7ff;font-weight:800;font-size:11px;letter-spacing:.04em;box-shadow:0 0 14px rgba(70,198,255,.08)}
+    .media-picker__body{min-width:0;display:grid;gap:3px}.media-picker__action{justify-self:start;max-width:100%;padding:10px 16px;border-radius:15px;background:linear-gradient(135deg,#7753ff,#21c9ff);color:#fff;font-weight:800;font-size:14px;line-height:1.08;box-shadow:0 0 20px rgba(65,154,255,.2);white-space:normal;text-align:center}
+    .media-picker__state{min-height:18px;color:#aeb7d2;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.media-picker__input{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;margin:0!important;padding:0!important;border:0!important;opacity:0!important;cursor:pointer}.media-picker--generic .media-picker__action{background:rgba(23,29,54,.92);border:1px solid rgba(105,150,255,.28);box-shadow:none}.media-picker--generic .media-picker__thumb{color:#9bdfff}
   `;
   document.head.append(style);
 }
@@ -108,12 +120,45 @@ function getFileNameLabel(file) {
   return file?.name ? file.name : 'Миниатюра настроена';
 }
 
-function setPickerState(wrapper, { actionText = 'Выбрать изображение', stateText = '', previewUrl = '' } = {}) {
-  wrapper.querySelector('.media-picker__action').textContent = actionText;
+function formatFilesState(files, slot) {
+  const count = files.length;
+  if (!count) return MEDIA_EMPTY_LABELS[slot] ?? 'Файлы не выбраны';
+  if (count === 1) return files[0]?.name ?? '1 файл выбран';
+  if (slot === 'images') return `${count} изображений выбрано`;
+  if (slot === 'documents') return `${count} документа выбрано`;
+  if (slot === 'attachments') return `${count} вложения выбрано`;
+  return `${count} файла выбрано`;
+}
+
+function setPickerState(wrapper, { actionText, stateText = '', previewUrl = '', icon = '' } = {}) {
+  wrapper.querySelector('.media-picker__action').textContent = actionText || 'Выбрать';
   wrapper.querySelector('.media-picker__state').textContent = stateText;
   const thumb = wrapper.querySelector('.media-picker__thumb');
-  thumb.textContent = previewUrl ? '' : '◎';
+  thumb.textContent = previewUrl ? '' : icon;
   thumb.style.backgroundImage = previewUrl ? `url(${previewUrl})` : '';
+}
+
+function createPicker(input, slot, { isThumbnail = false, previewUrl = '' } = {}) {
+  const picker = document.createElement('label');
+  picker.className = `media-picker ${isThumbnail ? 'media-picker--thumbnail' : 'media-picker--generic'}`;
+  const thumb = document.createElement('span');
+  thumb.className = 'media-picker__thumb';
+  const body = document.createElement('span');
+  body.className = 'media-picker__body';
+  const action = document.createElement('span');
+  action.className = 'media-picker__action';
+  const state = document.createElement('span');
+  state.className = 'media-picker__state';
+  input.className = 'media-picker__input';
+  body.append(action, state);
+  picker.append(thumb, body, input);
+  setPickerState(picker, {
+    actionText: previewUrl ? 'Заменить изображение' : (MEDIA_PICKER_LABELS[slot] ?? 'Добавить файл'),
+    stateText: previewUrl ? 'Изображение уже добавлено' : (MEDIA_EMPTY_LABELS[slot] ?? 'Файлы не выбраны'),
+    previewUrl,
+    icon: MEDIA_ICONS[slot] ?? '+',
+  });
+  return picker;
 }
 
 function createMediaField(slot, config, type, data = {}) {
@@ -130,24 +175,10 @@ function createMediaField(slot, config, type, data = {}) {
   input.multiple = config.mode === 'multiple';
 
   if (PRIMARY_THUMBNAIL_SLOTS.has(slot) && config.mode === 'single') {
-    const picker = document.createElement('label');
-    picker.className = 'media-picker';
-    const thumb = document.createElement('span');
-    thumb.className = 'media-picker__thumb';
-    const body = document.createElement('span');
-    body.className = 'media-picker__body';
-    const action = document.createElement('span');
-    action.className = 'media-picker__action';
-    const state = document.createElement('span');
-    state.className = 'media-picker__state';
-    input.className = 'media-picker__input';
     input.dataset.thumbnailPrimarySlot = slot;
-    body.append(action, state);
-    picker.append(thumb, body, input);
-    wrapper.append(picker);
     const keys = DATA_KEYS_BY_PRIMARY[slot];
     const previewUrl = data[keys.squarePreview] || data[keys.widePreview] || '';
-    setPickerState(wrapper, { actionText: previewUrl ? 'Заменить изображение' : 'Выбрать изображение', stateText: previewUrl ? 'Изображение уже добавлено' : '', previewUrl });
+    wrapper.append(createPicker(input, slot, { isThumbnail: true, previewUrl }));
     if (data[keys.squarePreview]) addThumbnailData(wrapper, slot, keys.squarePreview, data[keys.squarePreview]);
     if (data[keys.widePreview]) addThumbnailData(wrapper, slot, keys.widePreview, data[keys.widePreview]);
     if (data[keys.crops]) addThumbnailData(wrapper, slot, keys.crops, data[keys.crops]);
@@ -163,8 +194,19 @@ function createMediaField(slot, config, type, data = {}) {
     return wrapper;
   }
 
-  wrapper.append(input);
+  wrapper.append(createPicker(input, slot));
   return wrapper;
+}
+
+function updateGenericFilePicker(input) {
+  const wrapper = input.closest('.media-field');
+  if (!wrapper || input.dataset.thumbnailPrimarySlot) return;
+  const files = [...(input.files ?? [])];
+  setPickerState(wrapper, {
+    actionText: MEDIA_PICKER_LABELS[input.dataset.mediaSlot] ?? 'Добавить файл',
+    stateText: formatFilesState(files, input.dataset.mediaSlot),
+    icon: MEDIA_ICONS[input.dataset.mediaSlot] ?? '+',
+  });
 }
 
 function createHiddenViewFields(view) {
@@ -187,29 +229,6 @@ function createHiddenViewFields(view) {
     make(`${mode}.positionY`, frame.positionY);
   }
   return fields;
-}
-
-function readViewData(container, currentView = {}) {
-  const current = normalizeNodeView(currentView);
-  const read = (key, fallback) => container.querySelector(`[data-view-field="${key}"]`)?.value ?? fallback;
-  return normalizeNodeView({
-    ...current,
-    compactLabel: read('compactLabel', current.compactLabel),
-    coverFrames: {
-      compact: {
-        shape: read('compact.shape', current.coverFrames.compact.shape),
-        scale: Number(read('compact.scale', current.coverFrames.compact.scale)),
-        positionX: Number(read('compact.positionX', current.coverFrames.compact.positionX)),
-        positionY: Number(read('compact.positionY', current.coverFrames.compact.positionY)),
-      },
-      working: {
-        shape: read('working.shape', current.coverFrames.working.shape),
-        scale: Number(read('working.scale', current.coverFrames.working.scale)),
-        positionX: Number(read('working.positionX', current.coverFrames.working.positionX)),
-        positionY: Number(read('working.positionY', current.coverFrames.working.positionY)),
-      },
-    },
-  });
 }
 
 export function collectPendingFormMedia(container) {
@@ -282,11 +301,16 @@ export class NodeController {
 
     for (const container of [e.createTypeFields, e.editTypeFields]) {
       container.addEventListener('change', (event) => {
-        const input = event.target.closest?.('[data-thumbnail-primary-slot]');
-        if (input) this.handleThumbnailFile(container, input).catch((error) => {
-          console.error('Thumbnail editor failed:', error);
-          this.showFeedback('Не удалось настроить изображение');
-        });
+        const input = event.target.closest?.('[data-media-slot]');
+        if (!input) return;
+        if (input.dataset.thumbnailPrimarySlot) {
+          this.handleThumbnailFile(container, input).catch((error) => {
+            console.error('Thumbnail editor failed:', error);
+            this.showFeedback('Не удалось настроить изображение');
+          });
+          return;
+        }
+        updateGenericFilePicker(input);
       }, { signal });
     }
 
@@ -311,13 +335,15 @@ export class NodeController {
     if (wideInput) FILE_OVERRIDES.set(wideInput, result.wide.file);
     const squarePreview = await dataUrlFromFile(result.square.file);
     const widePreview = await dataUrlFromFile(result.wide.file);
-    addThumbnailData(input.closest('.media-field'), slot, keys.squarePreview, squarePreview);
-    addThumbnailData(input.closest('.media-field'), slot, keys.widePreview, widePreview);
-    addThumbnailData(input.closest('.media-field'), slot, keys.crops, result.crops);
-    setPickerState(input.closest('.media-field'), {
+    const field = input.closest('.media-field');
+    addThumbnailData(field, slot, keys.squarePreview, squarePreview);
+    addThumbnailData(field, slot, keys.widePreview, widePreview);
+    addThumbnailData(field, slot, keys.crops, result.crops);
+    setPickerState(field, {
       actionText: 'Заменить изображение',
       stateText: getFileNameLabel(result.square.file),
       previewUrl: squarePreview,
+      icon: MEDIA_ICONS[slot] ?? '◎',
     });
   }
 
