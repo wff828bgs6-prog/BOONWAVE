@@ -20,13 +20,14 @@ function getNodeMeta(card){
   const data=card.data??{};
   if(card.type==='project')return[STATUS_LABELS[data.status]??data.status,data.address].filter(Boolean);
   if(card.type==='process'||card.type==='goal')return[STATUS_LABELS[data.status]??data.status,Number.isFinite(data.progress)?`${Math.round(data.progress)}%`:null].filter(Boolean);
-  if(card.type==='person')return[data.role,data.organization].filter(Boolean);
+  if(card.type==='person')return[data.role||data.profession,data.organization].filter(Boolean);
   if(card.type==='idea')return[STATUS_LABELS[data.status]??data.status,data.category].filter(Boolean);
   return[];
 }
 
+function shouldRenderCard(card){return !(card?.type==='person'&&card.data?.showOnCanvas===false);}
 function getCompactLabel(card,view){return view.compactLabel||String(card.title??'').trim().split(/\s+/)[0]||NODE_TYPE_LABELS[card.type];}
-function formatFullData(card){return Object.entries(card.data??{}).filter(([,value])=>value!==''&&value!==null&&value!==undefined).filter(([key])=>!['coverMediaId','avatarMediaId','images','documents','files','attachments'].includes(key)).map(([key,value])=>`${key}: ${typeof value==='object'?JSON.stringify(value):value}`).join('\n');}
+function formatFullData(card){return Object.entries(card.data??{}).filter(([,value])=>value!==''&&value!==null&&value!==undefined).filter(([key])=>!['coverMediaId','avatarMediaId','avatarPreviewUrl','avatarCrop','images','documents','files','attachments'].includes(key)).map(([key,value])=>`${key}: ${typeof value==='object'?JSON.stringify(value):value}`).join('\n');}
 function collectChangedCardIds(nextCards={},previousCards={}){const ids=new Set([...Object.keys(nextCards),...Object.keys(previousCards)]);return[...ids].filter((id)=>nextCards[id]!==previousCards[id]);}
 
 export class WorkspaceController{
@@ -62,6 +63,7 @@ export class WorkspaceController{
   async applyCover(element,card,view){
     const image=element.querySelector('.card-cover img');const fallback=element.querySelector('.card-cover-fallback');const mediaId=getCoverMediaId(card);const request=this.coverLoads.begin(card.id,mediaId);const frame=view.mode==='compact'?view.coverFrames.compact:view.coverFrames.working;
     image.style.transform=`scale(${frame.scale})`;image.style.objectPosition=`${frame.positionX}% ${frame.positionY}%`;element.dataset.coverShape=frame.shape;fallback.textContent=getCoverFallback(card);element.dataset.hasCover='false';image.removeAttribute('src');image.alt='';
+    if(card.type==='person'&&card.data?.avatarPreviewUrl){image.src=card.data.avatarPreviewUrl;image.alt=card.title?`Фото: ${card.title}`:'Фото контакта';element.dataset.hasCover='true';return;}
     if(!mediaId)return;
     let url=this.mediaUrls.get(mediaId);
     if(!url){const loaded=await loadMedia(mediaId);if(!loaded?.blob||!this.coverLoads.isCurrent(request))return;url=URL.createObjectURL(loaded.blob);this.mediaUrls.set(mediaId,url);}
@@ -89,11 +91,11 @@ export class WorkspaceController{
     const state=store.getState();const linkSourceId=this.linkSourceProvider?.()??null;
     if(cardIds===null){
       const existing=new Map([...this.world.querySelectorAll('[data-card-id]')].map((element)=>[element.dataset.cardId,element]));
-      for(const card of Object.values(state.cards)){let element=existing.get(card.id);if(!element){element=this.createCardElement();element.dataset.cardId=card.id;this.world.append(element);}existing.delete(card.id);this.updateCardElement(element,card,state,linkSourceId);}
+      for(const card of Object.values(state.cards)){if(!shouldRenderCard(card)){existing.get(card.id)?.remove();existing.delete(card.id);continue;}let element=existing.get(card.id);if(!element){element=this.createCardElement();element.dataset.cardId=card.id;this.world.append(element);}existing.delete(card.id);this.updateCardElement(element,card,state,linkSourceId);}
       for(const element of existing.values()){this.coverLoads.delete(element.dataset.cardId);element.remove();}
       this.cleanupUnusedMediaUrls(state.cards);return;
     }
-    for(const id of[...new Set(cardIds.filter(Boolean))]){const card=state.cards[id];let element=this.getCardElement(id);if(!card){this.coverLoads.delete(id);element?.remove();continue;}if(!element){element=this.createCardElement();element.dataset.cardId=card.id;this.world.append(element);}this.updateCardElement(element,card,state,linkSourceId);}
+    for(const id of[...new Set(cardIds.filter(Boolean))]){const card=state.cards[id];let element=this.getCardElement(id);if(!card||!shouldRenderCard(card)){this.coverLoads.delete(id);element?.remove();continue;}if(!element){element=this.createCardElement();element.dataset.cardId=card.id;this.world.append(element);}this.updateCardElement(element,card,state,linkSourceId);}
     this.cleanupUnusedMediaUrls(state.cards);
   }
 
@@ -120,20 +122,8 @@ export class WorkspaceController{
 
   mountCore(){
     this.detailController=new CardDetailController({root:document.body,onEdit:(card)=>this.cardEditHandler?.(card),onDisplay:(card)=>this.cardDisplayHandler?.(card)});
-    this.gestureMachine=new GestureMachine(this.canvas,{
-      allowPanFromInteractive:()=>Boolean(store.getState().cardsLocked),
-      onInteractiveTap:(cardId)=>this.handleCardTap(cardId),
-      onInteractiveLongPress:(cardId)=>this.handleCardEdit(cardId),
-      onInteractiveDoubleTap:(cardId,element)=>this.handleCardDetail(cardId,element),
-    });
-    this.cardController=new CardController(this.world,{
-      onCommit:(card)=>updateCardNode(card.id,{x:card.x,y:card.y}),
-      onTap:(card)=>this.cardTapHandler?.(card),
-      onLongPress:(card)=>{if(this.linkModeProvider?.())return false;this.gestureMachine?.cancelInteraction();return this.cardEditHandler?.(card);},
-      onDoubleTap:(card,element)=>{if(this.linkModeProvider?.())return false;this.gestureMachine?.cancelInteraction();return this.detailController.open(card,element);},
-      canOpenFullscreen:()=>!this.linkModeProvider?.(),
-      canMoveCard:()=>!store.getState().cardsLocked,
-    });
+    this.gestureMachine=new GestureMachine(this.canvas,{allowPanFromInteractive:()=>Boolean(store.getState().cardsLocked),onInteractiveTap:(cardId)=>this.handleCardTap(cardId),onInteractiveLongPress:(cardId)=>this.handleCardEdit(cardId),onInteractiveDoubleTap:(cardId,element)=>this.handleCardDetail(cardId,element)});
+    this.cardController=new CardController(this.world,{onCommit:(card)=>updateCardNode(card.id,{x:card.x,y:card.y}),onTap:(card)=>this.cardTapHandler?.(card),onLongPress:(card)=>{if(this.linkModeProvider?.())return false;this.gestureMachine?.cancelInteraction();return this.cardEditHandler?.(card);},onDoubleTap:(card,element)=>{if(this.linkModeProvider?.())return false;this.gestureMachine?.cancelInteraction();return this.detailController.open(card,element);},canOpenFullscreen:()=>!this.linkModeProvider?.(),canMoveCard:()=>!store.getState().cardsLocked});
     this.linksRenderer=createLinksRenderer(this.world);
   }
 
