@@ -59,6 +59,11 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
     beforeOpen: () => oneHandPanelController.close(),
     createContact: () => { oneHandPanelController.close(); contactEditorController.openCreate(); },
     editContact: (contactId) => { oneHandPanelController.close(); contactEditorController.openEdit(contactId); },
+    assignContact: (contactId) => {
+      oneHandPanelController.close();
+      const started = linkController.beginFrom(contactId, 'Выбери проект, процесс, цель, идею или задачу для назначения контакта');
+      if (started) workspace.renderCards();
+    },
     deleteContact: async (contactId) => {
       oneHandPanelController.close();
       store.setState({ selectedCardId: contactId });
