@@ -36,10 +36,11 @@ export const DEFAULT_CARD_VIEW_VISIBILITY = Object.freeze({
 });
 
 const DEFAULT_TITLES = Object.freeze({
-  self: 'Я Есмь',
+  self: 'Моя вселенная',
   project: 'Новый проект',
   process: 'Новый процесс',
-  person: 'Новый человек',
+  person: 'Новый контакт',
+  persona: 'Новая персона',
   idea: 'Новая идея',
   goal: 'Новая цель',
 });
@@ -50,6 +51,7 @@ const finiteNumber = (value, fallback) => {
 };
 
 const clamp = (value, min, max, fallback) => Math.min(max, Math.max(min, finiteNumber(value, fallback)));
+const makeId = (type) => `${type}_${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
 
 function normalizeCoverFrame(raw = {}, fallback = {}) {
   return {
@@ -91,7 +93,7 @@ export function createNode({ type, title, description = '', x = 0, y = 0, data, 
     throw new TypeError(`Unsupported BOONWAVE node type: ${type}`);
   }
 
-  const id = `${type}_${crypto.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
+  const id = makeId(type);
   const now = new Date().toISOString();
 
   return normalizeNode({
@@ -138,6 +140,5 @@ export function normalizeNode(raw = {}) {
   if (!validation.valid) {
     throw new TypeError(`Invalid BOONWAVE node: ${validation.errors.join(' ')}`);
   }
-
   return node;
 }
