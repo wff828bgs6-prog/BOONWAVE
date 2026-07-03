@@ -1,7 +1,13 @@
 import store from '../state/store.js';
 import { presentContactsScreen } from '../ui/contacts-screen-presenter.js';
+import { buildAssignmentTargets } from '../services/contact-assignment-service.js';
 
-function el(tag, className, text) { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = text; return node; }
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+  return node;
+}
 function initials(title = '') { return String(title).trim().split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase() || '•'; }
 function avatarNode(className, title, previewUrl) { const node = el('span', className, previewUrl ? '' : initials(title)); if (previewUrl) { const img = document.createElement('img'); img.alt = ''; img.src = previewUrl; node.append(img); node.classList.add('has-image'); } return node; }
 function messengerLabel(type = '') { return ({ telegram: 'TG', whatsapp: 'WA', max: 'MAX' })[type] ?? String(type).toUpperCase(); }
@@ -10,36 +16,195 @@ function linkUrl(type, value) { const text = String(value ?? '').trim(); if (!te
 function appendLink(parent, label, value, type) { if (!value) return; const link = el('a', 'contact-detail__linkline', `${label}: ${value}`); link.href = linkUrl(type, value); link.target = '_blank'; link.rel = 'noreferrer'; parent.append(link); }
 function filledRows(contact) { const rows = []; const add = (label, value, type = '') => { if (value) rows.push({ label, value, type }); }; add('Телефон', contact.phone?.value, 'phone'); add('Email', contact.email?.value, 'email'); for (const messenger of contact.messengers ?? []) add(messengerLabel(messenger.type), messenger.value, messenger.type); add('Сайт', contact.website, 'website'); add('Instagram', contact.instagram, 'instagram'); add('Город', contact.city); add('Адрес', contact.address); add('Профессия', contact.profession || contact.subtitle); add('Категория', contact.categoryLabel); add('Статус', contact.statusLabel); add('Теги', (contact.tags ?? []).join(', ')); add('Навыки', (contact.skills ?? []).join(', ')); add('Описание', contact.description); add('Заметки', contact.notes); return rows; }
 
+function field(label, control) {
+  const wrapper = el('label', 'contact-assign-sheet__field');
+  wrapper.append(el('span', '', label), control);
+  return wrapper;
+}
+
 export class ContactsScreenController {
   constructor({ openButton, beforeOpen, createContact, editContact, deleteContact, assignContact } = {}) {
     if (!(openButton instanceof HTMLButtonElement)) throw new TypeError('ContactsScreenController expects an open button.');
-    this.openButton = openButton; this.beforeOpen = typeof beforeOpen === 'function' ? beforeOpen : null; this.createContact = typeof createContact === 'function' ? createContact : null; this.editContact = typeof editContact === 'function' ? editContact : null; this.deleteContact = typeof deleteContact === 'function' ? deleteContact : null; this.assignContact = typeof assignContact === 'function' ? assignContact : null; this.selectedContactId = null; this.query = ''; this.showFilledFields = false; this.abortController = new AbortController(); this.build(); this.bind(); this.unsubscribe = store.subscribe(() => { if (!this.overlay.hidden) this.render(); });
+    this.openButton = openButton;
+    this.beforeOpen = typeof beforeOpen === 'function' ? beforeOpen : null;
+    this.createContact = typeof createContact === 'function' ? createContact : null;
+    this.editContact = typeof editContact === 'function' ? editContact : null;
+    this.deleteContact = typeof deleteContact === 'function' ? deleteContact : null;
+    this.assignContact = typeof assignContact === 'function' ? assignContact : null;
+    this.selectedContactId = null;
+    this.pendingAssignContactId = null;
+    this.query = '';
+    this.showFilledFields = false;
+    this.abortController = new AbortController();
+    this.build();
+    this.bind();
+    this.unsubscribe = store.subscribe(() => { if (!this.overlay.hidden) this.render(); });
   }
 
   build() {
-    this.overlay = el('section', 'contacts-screen'); this.overlay.hidden = true; this.overlay.setAttribute('aria-hidden', 'true');
-    const panel = el('div', 'contacts-screen__panel'); const head = el('div', 'contacts-screen__head'); const titleWrap = el('div'); titleWrap.append(el('div', 'contacts-screen__kicker', 'ЛЮДИ И КОМПАНИИ'), el('h2', '', 'Контакты')); this.closeButton = el('button', 'contacts-screen__close', '×'); this.closeButton.type = 'button'; this.closeButton.setAttribute('aria-label', 'Закрыть контакты'); head.append(titleWrap, this.closeButton);
-    const toolbar = el('div', 'contacts-screen__toolbar'); this.searchInput = el('input', 'contacts-screen__search'); this.searchInput.type = 'search'; this.searchInput.placeholder = 'Имя, профессия, город или тег'; this.addButton = el('button', 'contacts-screen__add', 'Добавить'); this.addButton.type = 'button'; toolbar.append(this.searchInput, this.addButton);
-    this.body = el('div', 'contacts-screen__body'); this.list = el('div', 'contacts-screen__list'); this.details = el('aside', 'contacts-screen__details'); this.body.append(this.list, this.details); panel.append(head, toolbar, this.body); this.overlay.append(panel); document.body.append(this.overlay);
-    this.assignSheet = el('section', 'contact-assign-sheet'); this.assignSheet.hidden = true; this.assignSheet.setAttribute('aria-hidden', 'true'); const assignPanel = el('div', 'contact-assign-sheet__panel'); const assignHead = el('div', 'contact-assign-sheet__head'); assignHead.append(el('h3', '', 'Назначить контакт')); this.assignCloseButton = el('button', '', '×'); this.assignCloseButton.type = 'button'; this.assignCloseButton.setAttribute('aria-label', 'Закрыть выбор назначения'); assignHead.append(this.assignCloseButton); const copy = el('p', '', 'Выбери, что сделать с контактом. Можно просто назначить его в проект или процесс без отдельной карточки на рабочем столе.'); this.assignLibraryButton = el('button', 'contact-assign-sheet__primary', 'Просто назначить'); this.assignLibraryButton.type = 'button'; this.assignCanvasButton = el('button', 'contact-assign-sheet__secondary', 'Добавить карточку на стол'); this.assignCanvasButton.type = 'button'; assignPanel.append(assignHead, copy, this.assignLibraryButton, this.assignCanvasButton); this.assignSheet.append(assignPanel); document.body.append(this.assignSheet);
+    this.overlay = el('section', 'contacts-screen');
+    this.overlay.hidden = true;
+    this.overlay.setAttribute('aria-hidden', 'true');
+    const panel = el('div', 'contacts-screen__panel');
+    const head = el('div', 'contacts-screen__head');
+    const titleWrap = el('div');
+    titleWrap.append(el('div', 'contacts-screen__kicker', 'ЛЮДИ И КОМПАНИИ'), el('h2', '', 'Контакты'));
+    this.closeButton = el('button', 'contacts-screen__close', '×');
+    this.closeButton.type = 'button';
+    this.closeButton.setAttribute('aria-label', 'Закрыть контакты');
+    head.append(titleWrap, this.closeButton);
+    const toolbar = el('div', 'contacts-screen__toolbar');
+    this.searchInput = el('input', 'contacts-screen__search');
+    this.searchInput.type = 'search';
+    this.searchInput.placeholder = 'Имя, профессия, город или тег';
+    this.addButton = el('button', 'contacts-screen__add', 'Добавить');
+    this.addButton.type = 'button';
+    toolbar.append(this.searchInput, this.addButton);
+    this.body = el('div', 'contacts-screen__body');
+    this.list = el('div', 'contacts-screen__list');
+    this.details = el('aside', 'contacts-screen__details');
+    this.body.append(this.list, this.details);
+    panel.append(head, toolbar, this.body);
+    this.overlay.append(panel);
+    document.body.append(this.overlay);
+
+    this.assignSheet = el('section', 'contact-assign-sheet');
+    this.assignSheet.hidden = true;
+    this.assignSheet.setAttribute('aria-hidden', 'true');
+    this.assignForm = el('form', 'contact-assign-sheet__panel');
+    const assignHead = el('div', 'contact-assign-sheet__head');
+    assignHead.append(el('h3', '', 'Назначить контакт'));
+    this.assignCloseButton = el('button', '', '×');
+    this.assignCloseButton.type = 'button';
+    this.assignCloseButton.setAttribute('aria-label', 'Закрыть назначение');
+    assignHead.append(this.assignCloseButton);
+    const copy = el('p', '', 'Назначение — это управленческая роль контакта. Оно не создаёт карточку на рабочем столе и не рисует связь автоматически.');
+    this.targetSelect = document.createElement('select');
+    this.targetSelect.name = 'target';
+    this.roleInput = document.createElement('input');
+    this.roleInput.name = 'role';
+    this.roleInput.placeholder = 'Например: монтажник, дизайнер, подрядчик';
+    this.responsibilityInput = document.createElement('textarea');
+    this.responsibilityInput.name = 'responsibility';
+    this.responsibilityInput.placeholder = 'За что отвечает';
+    this.statusSelect = document.createElement('select');
+    this.statusSelect.name = 'status';
+    for (const [value, label] of [['active', 'Активен'], ['planned', 'Запланирован'], ['paused', 'На паузе'], ['completed', 'Завершён']]) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      this.statusSelect.append(option);
+    }
+    this.dateInput = document.createElement('input');
+    this.dateInput.type = 'date';
+    this.dateInput.name = 'date';
+    this.assignSubmitButton = el('button', 'contact-assign-sheet__primary', 'Назначить');
+    this.assignSubmitButton.type = 'submit';
+    this.assignCanvasButton = el('button', 'contact-assign-sheet__secondary', 'Добавить карточку на рабочий стол');
+    this.assignCanvasButton.type = 'button';
+    this.assignForm.append(assignHead, copy, field('Куда назначить', this.targetSelect), field('Роль', this.roleInput), field('Ответственность', this.responsibilityInput), field('Статус', this.statusSelect), field('Дата', this.dateInput), this.assignSubmitButton, this.assignCanvasButton);
+    this.assignSheet.append(this.assignForm);
+    document.body.append(this.assignSheet);
   }
 
   bind() {
     const signal = this.abortController.signal;
-    this.openButton.addEventListener('click', () => this.open(), { signal }); this.closeButton.addEventListener('click', () => this.selectedContactId ? this.backToList() : this.close(), { signal }); this.overlay.addEventListener('click', (event) => { if (event.target === this.overlay) this.close(); }, { signal }); this.searchInput.addEventListener('input', () => { this.query = this.searchInput.value; this.render(); }, { signal }); this.addButton.addEventListener('click', () => { this.createContact?.(); }, { signal }); this.assignCloseButton.addEventListener('click', () => this.closeAssignChoice(), { signal }); this.assignLibraryButton.addEventListener('click', () => this.commitAssignChoice('library'), { signal }); this.assignCanvasButton.addEventListener('click', () => this.commitAssignChoice('canvas'), { signal }); document.addEventListener('keydown', (event) => { if (event.key !== 'Escape') return; if (!this.assignSheet.hidden) { this.closeAssignChoice(); return; } if (this.overlay.hidden) return; if (this.selectedContactId) this.backToList(); else this.close(); }, { signal });
+    this.openButton.addEventListener('click', () => this.open(), { signal });
+    this.closeButton.addEventListener('click', () => this.selectedContactId ? this.backToList() : this.close(), { signal });
+    this.overlay.addEventListener('click', (event) => { if (event.target === this.overlay) this.close(); }, { signal });
+    this.searchInput.addEventListener('input', () => { this.query = this.searchInput.value; this.render(); }, { signal });
+    this.addButton.addEventListener('click', () => { this.createContact?.(); }, { signal });
+    this.assignCloseButton.addEventListener('click', () => this.closeAssignChoice(), { signal });
+    this.assignCanvasButton.addEventListener('click', () => this.commitCanvasChoice(), { signal });
+    this.assignForm.addEventListener('submit', (event) => this.submitAssignment(event), { signal });
+    document.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      if (!this.assignSheet.hidden) { this.closeAssignChoice(); return; }
+      if (this.overlay.hidden) return;
+      if (this.selectedContactId) this.backToList(); else this.close();
+    }, { signal });
   }
 
   open() { this.beforeOpen?.(); this.overlay.hidden = false; this.overlay.setAttribute('aria-hidden', 'false'); this.openButton.setAttribute('aria-expanded', 'true'); this.render(); }
   close() { this.closeAssignChoice(); this.selectedContactId = null; this.showFilledFields = false; this.overlay.hidden = true; this.overlay.setAttribute('aria-hidden', 'true'); this.openButton.setAttribute('aria-expanded', 'false'); }
   backToList() { this.selectedContactId = null; this.showFilledFields = false; this.render(); }
-  openAssignChoice(contactId) { this.pendingAssignContactId = contactId; this.assignSheet.hidden = false; this.assignSheet.setAttribute('aria-hidden', 'false'); }
-  closeAssignChoice() { this.pendingAssignContactId = null; if (this.assignSheet) { this.assignSheet.hidden = true; this.assignSheet.setAttribute('aria-hidden', 'true'); } }
-  commitAssignChoice(mode) { const contactId = this.pendingAssignContactId; if (!contactId) return; this.closeAssignChoice(); this.close(); this.assignContact?.(contactId, mode); }
 
-  renderFilledFields(contact) { const section = el('div', 'contact-detail__filled'); section.hidden = !this.showFilledFields; section.append(el('h4', '', 'Заполненные поля')); for (const row of filledRows(contact)) { const item = el('div', 'contact-detail__filled-row'); item.append(el('span', '', row.label)); if (row.type === 'website' || row.type === 'instagram') { const link = el('a', '', row.value); link.href = linkUrl(row.type, row.value); link.target = '_blank'; link.rel = 'noreferrer'; item.append(link); } else item.append(el('strong', '', row.value)); section.append(item); } return section; }
+  openAssignChoice(contactId) {
+    this.pendingAssignContactId = contactId;
+    this.assignForm.reset();
+    this.dateInput.value = new Date().toISOString().slice(0, 10);
+    this.targetSelect.replaceChildren();
+    const targets = buildAssignmentTargets(store.getState().cards);
+    for (const target of targets) {
+      const option = document.createElement('option');
+      option.value = target.id;
+      option.textContent = target.label;
+      option.dataset.cardId = target.cardId;
+      option.dataset.scope = target.scope;
+      if (target.stageId) option.dataset.stageId = target.stageId;
+      if (target.taskId) option.dataset.taskId = target.taskId;
+      this.targetSelect.append(option);
+    }
+    this.assignSubmitButton.disabled = targets.length === 0;
+    this.assignSheet.hidden = false;
+    this.assignSheet.setAttribute('aria-hidden', 'false');
+  }
+
+  closeAssignChoice() { this.pendingAssignContactId = null; if (this.assignSheet) { this.assignSheet.hidden = true; this.assignSheet.setAttribute('aria-hidden', 'true'); } }
+
+  async submitAssignment(event) {
+    event.preventDefault();
+    const contactId = this.pendingAssignContactId;
+    const selected = this.targetSelect.selectedOptions[0];
+    if (!contactId || !selected) return;
+    await this.assignContact?.(contactId, {
+      mode: 'library',
+      targetCardId: selected.dataset.cardId,
+      scope: selected.dataset.scope,
+      stageId: selected.dataset.stageId || '',
+      taskId: selected.dataset.taskId || '',
+      role: this.roleInput.value.trim(),
+      responsibility: this.responsibilityInput.value.trim(),
+      status: this.statusSelect.value,
+      date: this.dateInput.value,
+    });
+    this.closeAssignChoice();
+    this.render();
+  }
+
+  commitCanvasChoice() {
+    const contactId = this.pendingAssignContactId;
+    if (!contactId) return;
+    this.closeAssignChoice();
+    this.close();
+    this.assignContact?.(contactId, { mode: 'canvas' });
+  }
+
+  renderFilledFields(contact) {
+    const section = el('div', 'contact-detail__filled');
+    section.hidden = !this.showFilledFields;
+    section.append(el('h4', '', 'Заполненные поля'));
+    for (const row of filledRows(contact)) {
+      const item = el('div', 'contact-detail__filled-row');
+      item.append(el('span', '', row.label));
+      if (row.type === 'website' || row.type === 'instagram') {
+        const link = el('a', '', row.value);
+        link.href = linkUrl(row.type, row.value);
+        link.target = '_blank';
+        link.rel = 'noreferrer';
+        item.append(link);
+      } else item.append(el('strong', '', row.value));
+      section.append(item);
+    }
+    return section;
+  }
 
   render() {
-    const model = presentContactsScreen({ stateStore: store, query: this.query, selectedContactId: this.selectedContactId }); this.list.replaceChildren(); this.details.replaceChildren(); this.closeButton.textContent = this.selectedContactId ? '‹' : '×'; this.closeButton.setAttribute('aria-label', this.selectedContactId ? 'Назад к списку контактов' : 'Закрыть контакты');
+    const model = presentContactsScreen({ stateStore: store, query: this.query, selectedContactId: this.selectedContactId });
+    this.list.replaceChildren();
+    this.details.replaceChildren();
+    this.closeButton.textContent = this.selectedContactId ? '‹' : '×';
+    this.closeButton.setAttribute('aria-label', this.selectedContactId ? 'Назад к списку контактов' : 'Закрыть контакты');
     if (model.emptyState) { const empty = el('div', 'contacts-screen__empty'); empty.append(el('div', 'contacts-screen__empty-mark', '◎'), el('h3', '', model.emptyState.title), el('p', '', 'Добавляйте людей и компании и связывайте их с проектами, процессами и задачами.')); this.list.append(empty); this.details.hidden = true; return; }
     for (const item of model.items) { const row = el('button', `contact-row${item.id === this.selectedContactId ? ' is-selected' : ''}`); row.type = 'button'; row.addEventListener('click', () => { this.selectedContactId = item.id; this.showFilledFields = false; this.render(); }, { signal: this.abortController.signal }); row.append(avatarNode('contact-row__avatar', item.title, item.avatarPreviewUrl)); const copy = el('span', 'contact-row__copy'); copy.append(el('strong', '', item.title), el('small', '', item.company || item.subtitle || 'Контакт')); const meta = el('span', 'contact-row__meta'); if (item.phone?.value) meta.append(el('span', 'contact-row__phone', item.phone.value)); const messengerWrap = el('span', 'contact-row__messengers'); for (const messenger of item.messengers ?? []) messengerWrap.append(el('span', `messenger-badge messenger-badge--${messenger.type}`, messengerLabel(messenger.type))); meta.append(messengerWrap); copy.append(meta, el('span', '', `${item.activeTaskCount} активных задач · ${item.processCount} процессов`)); row.append(copy, el('span', 'contact-row__arrow', '›')); this.list.append(row); }
     const contact = model.selectedContact; if (!contact) { this.details.hidden = true; return; } this.details.hidden = false;
