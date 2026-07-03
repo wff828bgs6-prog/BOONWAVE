@@ -12,6 +12,18 @@ function initials(title = '') {
   return String(title).trim().split(/\s+/).slice(0, 2).map((part) => part[0] || '').join('').toUpperCase() || '•';
 }
 
+function avatarNode(className, title, previewUrl) {
+  const node = el('span', className, previewUrl ? '' : initials(title));
+  if (previewUrl) {
+    const img = document.createElement('img');
+    img.alt = '';
+    img.src = previewUrl;
+    node.append(img);
+    node.classList.add('has-image');
+  }
+  return node;
+}
+
 function messengerLabel(type = '') {
   return ({ telegram: 'TG', whatsapp: 'WA', max: 'MAX' })[type] ?? String(type).toUpperCase();
 }
@@ -85,21 +97,8 @@ export class ContactsScreenController {
     }, { signal });
   }
 
-  open() {
-    this.beforeOpen?.();
-    this.overlay.hidden = false;
-    this.overlay.setAttribute('aria-hidden', 'false');
-    this.openButton.setAttribute('aria-expanded', 'true');
-    this.render();
-  }
-
-  close() {
-    this.selectedContactId = null;
-    this.overlay.hidden = true;
-    this.overlay.setAttribute('aria-hidden', 'true');
-    this.openButton.setAttribute('aria-expanded', 'false');
-  }
-
+  open() { this.beforeOpen?.(); this.overlay.hidden = false; this.overlay.setAttribute('aria-hidden', 'false'); this.openButton.setAttribute('aria-expanded', 'true'); this.render(); }
+  close() { this.selectedContactId = null; this.overlay.hidden = true; this.overlay.setAttribute('aria-hidden', 'true'); this.openButton.setAttribute('aria-expanded', 'false'); }
   backToList() { this.selectedContactId = null; this.render(); }
 
   render() {
@@ -121,7 +120,7 @@ export class ContactsScreenController {
       const row = el('button', `contact-row${item.id === this.selectedContactId ? ' is-selected' : ''}`);
       row.type = 'button';
       row.addEventListener('click', () => { this.selectedContactId = item.id; this.render(); }, { signal: this.abortController.signal });
-      row.append(el('span', 'contact-row__avatar', initials(item.title)));
+      row.append(avatarNode('contact-row__avatar', item.title, item.avatarPreviewUrl));
       const copy = el('span', 'contact-row__copy');
       copy.append(el('strong', '', item.title), el('small', '', item.subtitle || 'Контакт'));
       const meta = el('span', 'contact-row__meta');
@@ -136,7 +135,6 @@ export class ContactsScreenController {
 
     const contact = model.selectedContact;
     if (!contact) { this.details.hidden = true; return; }
-
     this.details.hidden = false;
     const detailHead = el('div', 'contact-detail__topbar');
     const backButton = el('button', 'contact-detail__back', '‹ Назад');
@@ -146,9 +144,8 @@ export class ContactsScreenController {
     editButton.type = 'button';
     editButton.addEventListener('click', () => { this.editContact?.(contact.id); }, { signal: this.abortController.signal });
     detailHead.append(backButton, editButton);
-
     const hero = el('div', 'contact-detail__hero');
-    hero.append(el('div', 'contact-detail__avatar', initials(contact.title)));
+    hero.append(avatarNode('contact-detail__avatar', contact.title, contact.avatarPreviewUrl));
     const heroCopy = el('div');
     heroCopy.append(el('div', 'contacts-screen__kicker', contact.kind === 'company' ? 'КОМПАНИЯ' : 'КОНТАКТ'), el('h3', '', contact.title), el('p', '', [contact.subtitle, contact.city].filter(Boolean).join(' · ')));
     const methods = el('div', 'contact-detail__methods');
@@ -161,30 +158,22 @@ export class ContactsScreenController {
     }
     heroCopy.append(methods);
     hero.append(heroCopy);
-
     const actions = el('div', 'contact-detail__actions');
     const callButton = el('button', '', 'Позвонить');
     callButton.disabled = !contact.canCall;
     callButton.addEventListener('click', () => { if (contact.phone?.value) window.location.href = `tel:${contact.phone.value}`; }, { signal: this.abortController.signal });
     const messageButton = el('button', '', 'Написать');
     messageButton.disabled = !(contact.canMessage || contact.canEmail);
-    messageButton.addEventListener('click', () => {
-      if (!openMessenger(contact.messenger) && contact.email?.value) window.location.href = `mailto:${contact.email.value}`;
-    }, { signal: this.abortController.signal });
+    messageButton.addEventListener('click', () => { if (!openMessenger(contact.messenger) && contact.email?.value) window.location.href = `mailto:${contact.email.value}`; }, { signal: this.abortController.signal });
     const assignButton = el('button', 'contact-detail__assign', 'Назначить');
     assignButton.disabled = false;
     assignButton.addEventListener('click', () => { this.close(); this.assignContact?.(contact.id); }, { signal: this.abortController.signal });
     actions.append(callButton, messageButton, assignButton);
-
     const stats = el('div', 'contact-detail__stats');
     for (const [value, label] of [[contact.history?.processes?.length ?? 0, 'Процессы'], [contact.history?.tasks?.length ?? 0, 'Задачи'], [contact.history?.projects?.length ?? 0, 'Проекты']]) {
       const stat = el('button', 'contact-detail__stat');
-      stat.type = 'button';
-      stat.disabled = value === 0;
-      stat.append(el('strong', '', String(value)), el('span', '', label));
-      stats.append(stat);
+      stat.type = 'button'; stat.disabled = value === 0; stat.append(el('strong', '', String(value)), el('span', '', label)); stats.append(stat);
     }
-
     const manage = el('div', 'contact-detail__manage');
     const deleteButton = el('button', 'contact-detail__delete', 'Удалить контакт');
     deleteButton.type = 'button';
