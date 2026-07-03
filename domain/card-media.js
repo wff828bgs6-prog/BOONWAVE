@@ -18,6 +18,10 @@ export const CARD_MEDIA_SLOTS = Object.freeze({
     avatarWide: Object.freeze({ field: 'avatarWideMediaId', mode: 'single', kinds: ['image'] }),
     attachments: Object.freeze({ field: 'attachments', mode: 'multiple', kinds: ['image', 'document', 'file'] }),
   }),
+  persona: Object.freeze({
+    cover: Object.freeze({ field: 'coverMediaId', mode: 'single', kinds: ['image'] }),
+    attachments: Object.freeze({ field: 'attachments', mode: 'multiple', kinds: ['image', 'document', 'file'] }),
+  }),
   idea: Object.freeze({
     cover: Object.freeze({ field: 'coverMediaId', mode: 'single', kinds: ['image'] }),
     attachments: Object.freeze({ field: 'attachments', mode: 'multiple', kinds: ['image', 'document', 'file'] }),
@@ -31,7 +35,6 @@ export const CARD_MEDIA_SLOTS = Object.freeze({
 export function getCardMediaIds(card = {}) {
   const config = CARD_MEDIA_SLOTS[card.type] ?? {};
   const ids = [];
-
   for (const slot of Object.values(config)) {
     const value = card.data?.[slot.field];
     if (slot.mode === 'single') {
@@ -40,6 +43,5 @@ export function getCardMediaIds(card = {}) {
       ids.push(...value.filter((id) => typeof id === 'string' && id));
     }
   }
-
   return [...new Set(ids)];
 }
