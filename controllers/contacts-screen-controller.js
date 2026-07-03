@@ -66,7 +66,7 @@ export class ContactsScreenController {
     this.closeButton.addEventListener('click', () => this.selectedContactId ? this.backToList() : this.close(), { signal });
     this.overlay.addEventListener('click', (event) => { if (event.target === this.overlay) this.close(); }, { signal });
     this.searchInput.addEventListener('input', () => { this.query = this.searchInput.value; this.render(); }, { signal });
-    this.addButton.addEventListener('click', () => { this.close(); this.createContact?.(); }, { signal });
+    this.addButton.addEventListener('click', () => { this.createContact?.(); }, { signal });
     document.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape' || this.overlay.hidden) return;
       if (this.selectedContactId) this.backToList(); else this.close();
@@ -132,7 +132,7 @@ export class ContactsScreenController {
     backButton.addEventListener('click', () => this.backToList(), { signal: this.abortController.signal });
     const editButton = el('button', 'contact-detail__edit', 'Редактировать');
     editButton.type = 'button';
-    editButton.addEventListener('click', () => { this.close(); this.editContact?.(contact.id); }, { signal: this.abortController.signal });
+    editButton.addEventListener('click', () => { this.editContact?.(contact.id); }, { signal: this.abortController.signal });
     detailHead.append(backButton, editButton);
 
     const hero = el('div', 'contact-detail__hero');
