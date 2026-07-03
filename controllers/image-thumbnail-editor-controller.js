@@ -20,9 +20,9 @@ function loadImage(src) {
   });
 }
 
-function makeFileName(file) {
+function makeFileName(file, shape) {
   const base = String(file?.name || 'thumbnail').replace(/\.[^.]+$/, '');
-  return `${base}-thumbnail.jpg`;
+  return `${base}-${shape}-thumbnail.jpg`;
 }
 
 function distance(a, b) {
@@ -33,21 +33,42 @@ function midpoint(a, b) {
   return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
 }
 
+const SHAPES = Object.freeze({
+  square: { label: 'Квадратная', width: 512, height: 512, aspect: '1 / 1' },
+  wide: { label: 'Прямоугольная', width: 768, height: 432, aspect: '16 / 9' },
+});
+
+function normalizeCrop(crop = {}) {
+  return {
+    scale: clamp(Number(crop.scale ?? 1), 0.8, 4),
+    x: clamp(Number(crop.x ?? 0), -100, 100),
+    y: clamp(Number(crop.y ?? 0), -100, 100),
+  };
+}
+
 export class ImageThumbnailEditorController {
-  constructor({ title = 'Настройка миниатюры', outputSize = 512 } = {}) {
+  constructor({ title = 'Настройка миниатюры' } = {}) {
     this.titleText = title;
-    this.outputSize = outputSize;
     this.abortController = new AbortController();
     this.resolve = null;
     this.reject = null;
     this.file = null;
     this.image = null;
     this.imageSrc = '';
-    this.state = { scale: 1, x: 0, y: 0 };
+    this.activeShape = 'square';
+    this.states = { square: normalizeCrop(), wide: normalizeCrop() };
     this.pointerMap = new Map();
     this.gesture = null;
     this.build();
     this.bind();
+  }
+
+  get state() {
+    return this.states[this.activeShape];
+  }
+
+  set state(value) {
+    this.states[this.activeShape] = normalizeCrop(value);
   }
 
   build() {
@@ -69,6 +90,18 @@ export class ImageThumbnailEditorController {
     this.closeButton.setAttribute('aria-label', 'Закрыть настройку миниатюры');
     head.append(this.title, this.closeButton);
 
+    this.shapeSwitch = document.createElement('div');
+    this.shapeSwitch.className = 'thumbnail-editor__shape-switch';
+    this.shapeButtons = {};
+    for (const [shape, config] of Object.entries(SHAPES)) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = config.label;
+      button.dataset.shape = shape;
+      this.shapeButtons[shape] = button;
+      this.shapeSwitch.append(button);
+    }
+
     this.preview = document.createElement('div');
     this.preview.className = 'thumbnail-editor__preview';
     this.previewInner = document.createElement('div');
@@ -80,7 +113,7 @@ export class ImageThumbnailEditorController {
 
     const hint = document.createElement('p');
     hint.className = 'thumbnail-editor__hint';
-    hint.textContent = 'Двигай фото пальцем. Сведи или разведи два пальца для масштаба.';
+    hint.textContent = 'Настрой квадратную и прямоугольную миниатюры. Двигай фото пальцем, масштабируй двумя пальцами.';
 
     const controls = document.createElement('div');
     controls.className = 'thumbnail-editor__controls';
@@ -97,10 +130,10 @@ export class ImageThumbnailEditorController {
     this.confirmButton = document.createElement('button');
     this.confirmButton.type = 'button';
     this.confirmButton.className = 'thumbnail-editor__confirm';
-    this.confirmButton.textContent = 'Подтвердить миниатюру';
+    this.confirmButton.textContent = 'Сохранить миниатюры';
     actions.append(this.cancelButton, this.confirmButton);
 
-    this.panel.append(head, this.preview, hint, controls, actions);
+    this.panel.append(head, this.shapeSwitch, this.preview, hint, controls, actions);
     this.overlay.append(this.panel);
     document.body.append(this.overlay);
   }
@@ -128,6 +161,9 @@ export class ImageThumbnailEditorController {
     this.zoom.input.addEventListener('input', () => this.syncFromControls(), { signal });
     this.x.input.addEventListener('input', () => this.syncFromControls(), { signal });
     this.y.input.addEventListener('input', () => this.syncFromControls(), { signal });
+    for (const [shape, button] of Object.entries(this.shapeButtons)) {
+      button.addEventListener('click', () => this.setShape(shape), { signal });
+    }
     this.preview.addEventListener('pointerdown', (event) => this.onPointerDown(event), { signal });
     this.preview.addEventListener('pointermove', (event) => this.onPointerMove(event), { signal });
     this.preview.addEventListener('pointerup', (event) => this.onPointerEnd(event), { signal });
@@ -139,15 +175,13 @@ export class ImageThumbnailEditorController {
     this.file = file;
     this.imageSrc = await readFileAsDataUrl(file);
     this.image = await loadImage(this.imageSrc);
-    const crop = options.crop && typeof options.crop === 'object' ? options.crop : null;
-    this.state = {
-      scale: clamp(Number(crop?.scale ?? 1), 0.8, 4),
-      x: clamp(Number(crop?.x ?? 0), -100, 100),
-      y: clamp(Number(crop?.y ?? 0), -100, 100),
+    const crops = options.crops && typeof options.crops === 'object' ? options.crops : {};
+    this.states = {
+      square: normalizeCrop(crops.square ?? options.crop),
+      wide: normalizeCrop(crops.wide ?? options.crop),
     };
-    this.syncControlsFromState();
     this.previewImage.src = this.imageSrc;
-    this.applyPreview();
+    this.setShape('square');
     this.overlay.hidden = false;
     this.overlay.setAttribute('aria-hidden', 'false');
     return new Promise((resolve, reject) => {
@@ -156,10 +190,22 @@ export class ImageThumbnailEditorController {
     });
   }
 
+  setShape(shape) {
+    if (!SHAPES[shape]) return;
+    this.activeShape = shape;
+    this.preview.dataset.shape = shape;
+    this.preview.style.aspectRatio = SHAPES[shape].aspect;
+    for (const [key, button] of Object.entries(this.shapeButtons)) button.dataset.active = String(key === shape);
+    this.syncControlsFromState();
+    this.applyPreview();
+  }
+
   syncFromControls() {
-    this.state.scale = clamp(Number(this.zoom.input.value), 0.8, 4);
-    this.state.x = clamp(Number(this.x.input.value), -100, 100);
-    this.state.y = clamp(Number(this.y.input.value), -100, 100);
+    this.states[this.activeShape] = normalizeCrop({
+      scale: this.zoom.input.value,
+      x: this.x.input.value,
+      y: this.y.input.value,
+    });
     this.applyPreview();
   }
 
@@ -194,20 +240,22 @@ export class ImageThumbnailEditorController {
     this.pointerMap.set(event.pointerId, event);
     if (!this.gesture) return;
     const rect = this.preview.getBoundingClientRect();
+    const nextState = { ...this.state };
     if (this.gesture.type === 'pan' && this.pointerMap.size === 1) {
       const dx = ((event.clientX - this.gesture.start.clientX) / rect.width) * 100;
       const dy = ((event.clientY - this.gesture.start.clientY) / rect.height) * 100;
-      this.state.x = clamp(this.gesture.initial.x + dx, -100, 100);
-      this.state.y = clamp(this.gesture.initial.y + dy, -100, 100);
+      nextState.x = this.gesture.initial.x + dx;
+      nextState.y = this.gesture.initial.y + dy;
     } else if (this.pointerMap.size >= 2) {
       const points = [...this.pointerMap.values()].slice(0, 2);
       const nextDistance = distance(points[0], points[1]);
       const nextMidpoint = midpoint(points[0], points[1]);
       const ratio = this.gesture.startDistance ? nextDistance / this.gesture.startDistance : 1;
-      this.state.scale = clamp(this.gesture.initial.scale * ratio, 0.8, 4);
-      this.state.x = clamp(this.gesture.initial.x + ((nextMidpoint.x - this.gesture.startMidpoint.x) / rect.width) * 100, -100, 100);
-      this.state.y = clamp(this.gesture.initial.y + ((nextMidpoint.y - this.gesture.startMidpoint.y) / rect.height) * 100, -100, 100);
+      nextState.scale = this.gesture.initial.scale * ratio;
+      nextState.x = this.gesture.initial.x + ((nextMidpoint.x - this.gesture.startMidpoint.x) / rect.width) * 100;
+      nextState.y = this.gesture.initial.y + ((nextMidpoint.y - this.gesture.startMidpoint.y) / rect.height) * 100;
     }
+    this.state = nextState;
     this.syncControlsFromState();
     this.applyPreview();
   }
@@ -231,11 +279,21 @@ export class ImageThumbnailEditorController {
 
   async confirm() {
     try {
-      const file = await this.renderCroppedFile();
-      const crop = { ...this.state, outputSize: this.outputSize, shape: 'square' };
+      const squareFile = await this.renderCroppedFile('square');
+      const wideFile = await this.renderCroppedFile('wide');
       this.overlay.hidden = true;
       this.overlay.setAttribute('aria-hidden', 'true');
-      this.resolve?.({ file, previewUrl: URL.createObjectURL(file), crop });
+      this.resolve?.({
+        file: squareFile,
+        previewUrl: URL.createObjectURL(squareFile),
+        crop: { ...this.states.square, outputSize: SHAPES.square.width, shape: 'square' },
+        square: { file: squareFile, crop: { ...this.states.square, outputSize: SHAPES.square.width, shape: 'square' } },
+        wide: { file: wideFile, previewUrl: URL.createObjectURL(wideFile), crop: { ...this.states.wide, width: SHAPES.wide.width, height: SHAPES.wide.height, shape: 'wide' } },
+        crops: {
+          square: { ...this.states.square, outputSize: SHAPES.square.width, shape: 'square' },
+          wide: { ...this.states.wide, width: SHAPES.wide.width, height: SHAPES.wide.height, shape: 'wide' },
+        },
+      });
     } catch (error) {
       this.reject?.(error);
     } finally {
@@ -243,32 +301,33 @@ export class ImageThumbnailEditorController {
     }
   }
 
-  async renderCroppedFile() {
+  async renderCroppedFile(shape = 'square') {
+    const config = SHAPES[shape] ?? SHAPES.square;
+    const state = this.states[shape] ?? this.states.square;
     const canvas = document.createElement('canvas');
-    canvas.width = this.outputSize;
-    canvas.height = this.outputSize;
+    canvas.width = config.width;
+    canvas.height = config.height;
     const context = canvas.getContext('2d');
-    const size = this.outputSize;
     context.fillStyle = '#050816';
-    context.fillRect(0, 0, size, size);
+    context.fillRect(0, 0, config.width, config.height);
     context.save();
     context.beginPath();
-    context.rect(0, 0, size, size);
+    context.rect(0, 0, config.width, config.height);
     context.clip();
 
     const image = this.image;
-    const coverScale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
-    const scale = coverScale * clamp(this.state.scale, 0.8, 4);
+    const coverScale = Math.max(config.width / image.naturalWidth, config.height / image.naturalHeight);
+    const scale = coverScale * clamp(state.scale, 0.8, 4);
     const drawWidth = image.naturalWidth * scale;
     const drawHeight = image.naturalHeight * scale;
-    const x = (size - drawWidth) / 2 + (this.state.x / 100) * size;
-    const y = (size - drawHeight) / 2 + (this.state.y / 100) * size;
+    const x = (config.width - drawWidth) / 2 + (state.x / 100) * config.width;
+    const y = (config.height - drawHeight) / 2 + (state.y / 100) * config.height;
     context.drawImage(image, x, y, drawWidth, drawHeight);
     context.restore();
 
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88));
     if (!blob) throw new Error('Thumbnail could not be created.');
-    return new File([blob], makeFileName(this.file), { type: 'image/jpeg' });
+    return new File([blob], makeFileName(this.file, shape), { type: 'image/jpeg' });
   }
 
   cleanup() {
