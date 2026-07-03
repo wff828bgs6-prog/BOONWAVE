@@ -6,6 +6,7 @@ import { CardDisplayController } from '../controllers/card-display-controller.js
 import { ZoomController } from '../controllers/zoom-controller.js';
 import { UtilityRailController } from '../controllers/utility-rail-controller.js';
 import { OneHandPanelController } from '../controllers/one-hand-panel-controller.js';
+import { ContactsScreenController } from '../controllers/contacts-screen-controller.js';
 import { storagePlatform } from '../storage/index.js';
 
 function getRequiredElement(root, id) {
@@ -84,6 +85,14 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
     getViewportCenter: () => workspace.getViewportCenter(),
   });
 
+  const contactsScreenController = new ContactsScreenController({
+    openButton: getRequiredElement(root, 'contactsButton'),
+    createContact: () => {
+      nodeController.openCreate();
+      root.querySelector('[data-node-type="person"]')?.click();
+    },
+  });
+
   const displayController = new CardDisplayController({
     root: document.body,
     getCardElement: (cardId) => workspace.getCardElement(cardId),
@@ -109,6 +118,7 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
     linkController,
     utilityRailController,
     oneHandPanelController,
+    contactsScreenController,
     nodeController,
     displayController,
     zoomController,
@@ -116,6 +126,7 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
     destroy() {
       zoomController.destroy();
       displayController.destroy();
+      contactsScreenController.destroy();
       nodeController.destroy();
       oneHandPanelController.destroy();
       utilityRailController.destroy();
