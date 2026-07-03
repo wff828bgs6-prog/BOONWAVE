@@ -23,7 +23,7 @@
   <svg width="0" height="0" aria-hidden="true" focusable="false"><defs><linearGradient id="bwIconGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a14cff"/><stop offset="1" stop-color="#22bfff"/></linearGradient></defs></svg>
 
   <main class="app-shell">
-    <header class="app-header"><div class="app-badge"><strong>BOONWAVE</strong><span>Production Core</span></div></header>
+    <header class="app-header"><div class="app-badge"><img src="icon-192.png" alt="BOONWAVE" class="app-logo"><div><strong>BOONWAVE</strong><span>Production Core</span></div></div></header>
 
     <aside class="one-hand-rail" id="utilityRail" data-position="right" aria-label="Управление одной рукой, справа">
       <button class="utility-button rail-home" id="homeSelfButton" type="button" aria-label="Вернуться к карточке Моя вселенная">
@@ -64,11 +64,10 @@
       <div class="tools-head"><h2 id="toolsTitle">Дополнительные действия</h2><button class="tools-close" id="closeToolsButton" type="button" aria-label="Закрыть дополнительные действия">×</button></div>
       <div class="tools-grid">
         <button class="tools-action" id="linkButton" type="button" aria-label="Связать или отвязать карточки" aria-pressed="false" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg><span>Связь</span></button>
-        <button class="tools-action" id="deleteButton" type="button" aria-label="Переместить карточку в корзину" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg><span>В корзину</span></button>
+        <button class="tools-action" id="archiveButton" type="button" aria-label="Переместить карточку в архив" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg><span>В архив</span></button>
+        <button class="tools-action" id="deleteButton" type="button" aria-label="Удалить выбранную карточку" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg><span>Удалить</span></button>
         <button class="tools-action" id="undoButton" type="button" aria-label="Отменить действие" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M16 7H9a5 5 0 0 0 0 10h6"/><path d="m12 4 4 3-4 3"/></svg><span>Отменить</span></button>
         <button class="tools-action" id="redoButton" type="button" aria-label="Повторить действие" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M8 7h7a5 5 0 0 1 0 10H9"/><path d="m12 4-4 3 4 3"/></svg><span>Повторить</span></button>
-        <button class="tools-action" type="button" aria-label="Контакты уже вынесены на панель" disabled><svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Контакты</span></button>
-        <button class="tools-action" type="button" aria-label="Архив" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg><span>Архив</span></button>
       </div>
 
       <div class="rail-position-section">
