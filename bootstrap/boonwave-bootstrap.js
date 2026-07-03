@@ -8,7 +8,7 @@ import { UtilityRailController } from '../controllers/utility-rail-controller.js
 import { OneHandPanelController } from '../controllers/one-hand-panel-controller.js';
 import { ContactsScreenController } from '../controllers/contacts-screen-controller.js';
 import { ContactEditorController } from '../controllers/contact-editor-controller.js';
-import { updateCardNode } from '../services/node-service.js';
+import { archiveCardNode, updateCardNode } from '../services/node-service.js';
 import { assignContactToEntity } from '../services/contact-assignment-service.js';
 import { storagePlatform } from '../storage/index.js';
 
@@ -49,6 +49,21 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
   const oneHandPanelController = new OneHandPanelController({ openButton: getRequiredElement(root, 'moreToolsButton'), sheet: getRequiredElement(root, 'toolsSheet'), closeButton: getRequiredElement(root, 'closeToolsButton') });
 
   const nodeController = new NodeController({ addButton: getRequiredElement(root, 'addCardButton'), editButton: createDetachedEditTrigger(), deleteButton: getRequiredElement(root, 'deleteButton'), createSheet: getRequiredElement(root, 'createSheet'), closeCreateButton: getRequiredElement(root, 'closeSheetButton'), createForm: getRequiredElement(root, 'createCardForm'), typeGrid: getRequiredElement(root, 'typeGrid'), titleInput: getRequiredElement(root, 'cardTitle'), descriptionInput: getRequiredElement(root, 'cardDescription'), createTypeFields: getRequiredElement(root, 'createTypeFields'), editSheet: getRequiredElement(root, 'editSheet'), closeEditButton: getRequiredElement(root, 'closeEditSheetButton'), editForm: getRequiredElement(root, 'editCardForm'), editTitleInput: getRequiredElement(root, 'editCardTitle'), editDescriptionInput: getRequiredElement(root, 'editCardDescription'), editTypeFields: getRequiredElement(root, 'editTypeFields'), hint, getViewportCenter: () => workspace.getViewportCenter() });
+
+  const archiveButton = getRequiredElement(root, 'archiveButton');
+  archiveButton.addEventListener('click', async () => {
+    const cardId = store.getState().selectedCardId;
+    if (!cardId) { hint.textContent = 'Сначала выбери карточку'; return; }
+    try {
+      await archiveCardNode(cardId);
+      oneHandPanelController.close();
+      hint.textContent = 'Карточка перемещена в архив';
+      workspace.renderCards();
+    } catch (error) {
+      console.error('Archive failed:', error);
+      hint.textContent = 'Эту карточку нельзя переместить в архив';
+    }
+  });
 
   let contactsScreenController = null;
   const contactEditorController = new ContactEditorController({
