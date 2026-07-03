@@ -16,14 +16,26 @@ function messengerLabel(type = '') {
   return ({ telegram: 'TG', whatsapp: 'WA', max: 'MAX' })[type] ?? String(type).toUpperCase();
 }
 
+function openMessenger(messenger) {
+  if (!messenger?.value) return false;
+  const value = String(messenger.value).trim();
+  if (!value) return false;
+  if (/^https?:\/\//i.test(value)) window.location.href = value;
+  else if (messenger.type === 'telegram') window.location.href = `https://t.me/${value.replace(/^@/, '')}`;
+  else if (messenger.type === 'whatsapp') window.location.href = `https://wa.me/${value.replace(/\D/g, '')}`;
+  else window.location.href = value;
+  return true;
+}
+
 export class ContactsScreenController {
-  constructor({ openButton, beforeOpen, createContact, editContact, deleteContact } = {}) {
+  constructor({ openButton, beforeOpen, createContact, editContact, deleteContact, assignContact } = {}) {
     if (!(openButton instanceof HTMLButtonElement)) throw new TypeError('ContactsScreenController expects an open button.');
     this.openButton = openButton;
     this.beforeOpen = typeof beforeOpen === 'function' ? beforeOpen : null;
     this.createContact = typeof createContact === 'function' ? createContact : null;
     this.editContact = typeof editContact === 'function' ? editContact : null;
     this.deleteContact = typeof deleteContact === 'function' ? deleteContact : null;
+    this.assignContact = typeof assignContact === 'function' ? assignContact : null;
     this.selectedContactId = null;
     this.query = '';
     this.abortController = new AbortController();
@@ -141,7 +153,12 @@ export class ContactsScreenController {
     heroCopy.append(el('div', 'contacts-screen__kicker', contact.kind === 'company' ? 'КОМПАНИЯ' : 'КОНТАКТ'), el('h3', '', contact.title), el('p', '', [contact.subtitle, contact.city].filter(Boolean).join(' · ')));
     const methods = el('div', 'contact-detail__methods');
     if (contact.phone?.value) methods.append(el('span', 'contact-detail__phone', contact.phone.value));
-    for (const messenger of contact.messengers ?? []) methods.append(el('span', `messenger-badge messenger-badge--${messenger.type}`, messengerLabel(messenger.type)));
+    for (const messenger of contact.messengers ?? []) {
+      const badge = el('button', `messenger-badge messenger-badge--${messenger.type}`, messengerLabel(messenger.type));
+      badge.type = 'button';
+      badge.addEventListener('click', () => openMessenger(messenger), { signal: this.abortController.signal });
+      methods.append(badge);
+    }
     heroCopy.append(methods);
     hero.append(heroCopy);
 
@@ -152,11 +169,11 @@ export class ContactsScreenController {
     const messageButton = el('button', '', 'Написать');
     messageButton.disabled = !(contact.canMessage || contact.canEmail);
     messageButton.addEventListener('click', () => {
-      if (contact.messenger?.value) window.location.href = contact.messenger.value;
-      else if (contact.email?.value) window.location.href = `mailto:${contact.email.value}`;
+      if (!openMessenger(contact.messenger) && contact.email?.value) window.location.href = `mailto:${contact.email.value}`;
     }, { signal: this.abortController.signal });
-    const assignButton = el('button', '', 'Назначить');
-    assignButton.disabled = true;
+    const assignButton = el('button', 'contact-detail__assign', 'Назначить');
+    assignButton.disabled = false;
+    assignButton.addEventListener('click', () => { this.close(); this.assignContact?.(contact.id); }, { signal: this.abortController.signal });
     actions.append(callButton, messageButton, assignButton);
 
     const stats = el('div', 'contact-detail__stats');
