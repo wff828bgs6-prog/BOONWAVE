@@ -114,9 +114,12 @@ export class ContactEditorController {
     this.onSaved = typeof onSaved === 'function' ? onSaved : null;
     this.editingId = null;
     this.pendingAvatarFile = null;
+    this.pendingAvatarWideFile = null;
     this.avatarPreviewDataUrl = '';
-    this.avatarCrop = null;
+    this.avatarWidePreviewDataUrl = '';
+    this.avatarCrops = null;
     this.previewUrl = null;
+    this.widePreviewUrl = null;
     this.thumbnailEditor = new ImageThumbnailEditorController({ title: 'Настройка миниатюры' });
     this.abortController = new AbortController();
     this.build();
@@ -179,23 +182,31 @@ export class ContactEditorController {
       event.target.value = '';
       if (!file) return;
       const current = this.editingId ? store.getState().cards[this.editingId]?.data : null;
-      const result = await this.thumbnailEditor.open(file, { crop: current?.avatarCrop });
+      const result = await this.thumbnailEditor.open(file, { crops: current?.avatarCrops, crop: current?.avatarCrop });
       if (!result) return;
-      this.pendingAvatarFile = result.file;
-      this.avatarCrop = result.crop;
-      this.avatarPreviewDataUrl = await dataUrlFromFile(result.file);
+      this.pendingAvatarFile = result.square.file;
+      this.pendingAvatarWideFile = result.wide.file;
+      this.avatarCrops = result.crops;
+      this.avatarPreviewDataUrl = await dataUrlFromFile(result.square.file);
+      this.avatarWidePreviewDataUrl = await dataUrlFromFile(result.wide.file);
       if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
+      if (this.widePreviewUrl) URL.revokeObjectURL(this.widePreviewUrl);
       this.previewUrl = result.previewUrl;
+      this.widePreviewUrl = result.wide.previewUrl;
       setFileControlState(this.form, { actionText: 'Изменить фото', previewUrl: this.previewUrl });
     }, { signal });
   }
 
   resetAvatarState() {
     this.pendingAvatarFile = null;
+    this.pendingAvatarWideFile = null;
     this.avatarPreviewDataUrl = '';
-    this.avatarCrop = null;
+    this.avatarWidePreviewDataUrl = '';
+    this.avatarCrops = null;
     if (this.previewUrl) URL.revokeObjectURL(this.previewUrl);
+    if (this.widePreviewUrl) URL.revokeObjectURL(this.widePreviewUrl);
     this.previewUrl = null;
+    this.widePreviewUrl = null;
   }
 
   openCreate() {
@@ -238,7 +249,7 @@ export class ContactEditorController {
     set('description', data.description);
     set('notes', data.notes);
     setFileControlState(this.form, { actionText: data.avatarMediaId ? 'Заменить фото' : 'Выбрать фото', previewUrl: data.avatarPreviewUrl || null });
-    this.avatarCrop = data.avatarCrop ?? null;
+    this.avatarCrops = data.avatarCrops ?? (data.avatarCrop ? { square: data.avatarCrop } : null);
     this.title.textContent = 'Редактировать контакт';
     this.submitButton.textContent = 'Сохранить изменения';
     this.overlay.hidden = false;
@@ -287,8 +298,11 @@ export class ContactEditorController {
       showOnCanvas: current?.data?.showOnCanvas ?? false,
     };
     if (this.avatarPreviewDataUrl) data.avatarPreviewUrl = this.avatarPreviewDataUrl;
-    if (this.avatarCrop) data.avatarCrop = this.avatarCrop;
-    const pendingMedia = this.pendingAvatarFile ? [{ slot: 'avatar', file: this.pendingAvatarFile }] : [];
+    if (this.avatarWidePreviewDataUrl) data.avatarWidePreviewUrl = this.avatarWidePreviewDataUrl;
+    if (this.avatarCrops) data.avatarCrops = this.avatarCrops;
+    const pendingMedia = [];
+    if (this.pendingAvatarFile) pendingMedia.push({ slot: 'avatar', file: this.pendingAvatarFile });
+    if (this.pendingAvatarWideFile) pendingMedia.push({ slot: 'avatarWide', file: this.pendingAvatarWideFile });
     const title = data.fullName || data.organization || 'Новый контакт';
     this.submitButton.disabled = true;
     try {
