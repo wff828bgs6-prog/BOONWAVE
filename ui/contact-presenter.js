@@ -17,6 +17,7 @@ export function presentContactSummary(card) {
     statusLabel: STATUS_LABELS[data.status] ?? data.status,
     city: data.city || '',
     avatarMediaId: data.avatarMediaId || null,
+    avatarPreviewUrl: data.avatarPreviewUrl || '',
     favorite: Boolean(data.favorite),
     rating: data.rating ?? null,
     tags: data.tags ?? [],
