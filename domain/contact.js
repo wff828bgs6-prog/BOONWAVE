@@ -15,9 +15,14 @@ function uniq(values) {
     : [];
 }
 
+function makeChannelId(type) {
+  const randomUUID = globalThis.crypto?.randomUUID;
+  return `${type}_${typeof randomUUID === 'function' ? randomUUID.call(globalThis.crypto) : `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
+}
+
 function normalizeChannel(item = {}, fallbackType = '') {
   return {
-    id: String(item.id ?? '').trim() || `${fallbackType}_${crypto.randomUUID?.() ?? Date.now()}`,
+    id: String(item.id ?? '').trim() || makeChannelId(fallbackType),
     type: String(item.type ?? fallbackType).trim(),
     value: String(item.value ?? item.phone ?? item.email ?? item.url ?? '').trim(),
     label: String(item.label ?? '').trim(),
@@ -25,24 +30,36 @@ function normalizeChannel(item = {}, fallbackType = '') {
   };
 }
 
+function normalizeChannels(items, fallbackType, legacyValue = '') {
+  const normalized = (Array.isArray(items) ? items : [])
+    .map((item) => normalizeChannel(item, fallbackType))
+    .filter((item) => item.value);
+
+  if (normalized.length === 0 && legacyValue) {
+    normalized.push(normalizeChannel({ value: legacyValue, primary: true }, fallbackType));
+  }
+
+  if (normalized.length > 0 && !normalized.some((item) => item.primary)) {
+    normalized[0] = { ...normalized[0], primary: true };
+  }
+
+  let primarySeen = false;
+  return normalized.map((item) => {
+    if (!item.primary) return item;
+    if (primarySeen) return { ...item, primary: false };
+    primarySeen = true;
+    return item;
+  });
+}
+
 export function normalizeContactData(raw = {}) {
   const legacyPhone = String(raw.phone ?? '').trim();
   const legacyEmail = String(raw.email ?? '').trim();
-  const legacyWebsites = Array.isArray(raw.websites) ? raw.websites : [];
-  const legacyMessengers = Array.isArray(raw.messengers) ? raw.messengers : [];
 
-  const phones = Array.isArray(raw.phones)
-    ? raw.phones.map((item) => normalizeChannel(item, 'phone')).filter((item) => item.value)
-    : (legacyPhone ? [normalizeChannel({ value: legacyPhone, primary: true }, 'phone')] : []);
-  const emails = Array.isArray(raw.emails)
-    ? raw.emails.map((item) => normalizeChannel(item, 'email')).filter((item) => item.value)
-    : (legacyEmail ? [normalizeChannel({ value: legacyEmail, primary: true }, 'email')] : []);
-  const messengers = legacyMessengers
-    .map((item) => typeof item === 'string' ? normalizeChannel({ value: item }, 'messenger') : normalizeChannel(item, 'messenger'))
-    .filter((item) => item.value);
-  const websites = legacyWebsites
-    .map((item) => typeof item === 'string' ? normalizeChannel({ value: item }, 'website') : normalizeChannel(item, 'website'))
-    .filter((item) => item.value);
+  const phones = normalizeChannels(raw.phones, 'phone', legacyPhone);
+  const emails = normalizeChannels(raw.emails, 'email', legacyEmail);
+  const messengers = normalizeChannels(raw.messengers, 'messenger');
+  const websites = normalizeChannels(raw.websites, 'website');
 
   return {
     ...raw,
