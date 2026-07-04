@@ -5,8 +5,8 @@ const POSITION_SETTING_KEY = 'utilityRailPosition';
 const LEGACY_SIDE_SETTING_KEY = 'utilityRailSide';
 const LOCK_SETTING_KEY = 'cardsLocked';
 const VALID_POSITIONS = new Set(['right', 'left', 'bottom']);
-const POSITION_FADE_OUT_MS = 500;
-const POSITION_FADE_IN_MS = 500;
+const POSITION_FADE_OUT_MS = 260;
+const POSITION_FADE_IN_MS = 320;
 
 export class UtilityRailController {
   constructor({ rail, lockButton, homeButton, positionButtons = [], hint, onHome, onPositionChange } = {}) {
@@ -101,8 +101,12 @@ export class UtilityRailController {
     return normalized;
   }
 
-  clearTransitionClasses() {
+  resetPositionTransitionStyles() {
     this.rail.classList.remove('is-position-transitioning', 'is-position-fading', 'is-position-visible');
+    this.rail.style.removeProperty('visibility');
+    this.rail.style.removeProperty('opacity');
+    this.rail.style.removeProperty('transition');
+    this.rail.style.setProperty('transform', 'none', 'important');
   }
 
   setPosition(position, { persist = true, announce = false, animate = false } = {}) {
@@ -112,20 +116,30 @@ export class UtilityRailController {
     clearTimeout(this.positionEndTimer);
 
     if (animate && !reduceMotion && this.rail.dataset.position !== normalized) {
-      this.clearTransitionClasses();
-      requestAnimationFrame(() => {
-        this.rail.classList.add('is-position-fading');
-        this.positionTimer = setTimeout(() => {
-          this.applyPosition(normalized);
-          this.rail.classList.remove('is-position-fading');
-          this.rail.classList.add('is-position-visible');
-          this.positionEndTimer = setTimeout(() => {
-            this.rail.classList.remove('is-position-visible');
-          }, POSITION_FADE_IN_MS);
-        }, POSITION_FADE_OUT_MS);
-      });
+      this.resetPositionTransitionStyles();
+      this.rail.style.transition = `opacity ${POSITION_FADE_OUT_MS}ms ease`;
+      this.rail.style.opacity = '1';
+      this.rail.style.visibility = 'visible';
+      this.rail.offsetHeight;
+      this.rail.style.opacity = '0';
+
+      this.positionTimer = setTimeout(() => {
+        this.rail.style.visibility = 'hidden';
+        this.rail.style.transition = 'none';
+        this.applyPosition(normalized);
+        this.rail.offsetHeight;
+        this.rail.style.opacity = '0';
+        this.rail.style.visibility = 'visible';
+        this.rail.style.transition = `opacity ${POSITION_FADE_IN_MS}ms ease`;
+        requestAnimationFrame(() => {
+          this.rail.style.opacity = '1';
+        });
+        this.positionEndTimer = setTimeout(() => {
+          this.resetPositionTransitionStyles();
+        }, POSITION_FADE_IN_MS + 40);
+      }, POSITION_FADE_OUT_MS + 20);
     } else {
-      this.clearTransitionClasses();
+      this.resetPositionTransitionStyles();
       this.applyPosition(normalized);
     }
 
@@ -168,6 +182,7 @@ export class UtilityRailController {
     clearTimeout(this.feedbackTimer);
     clearTimeout(this.positionTimer);
     clearTimeout(this.positionEndTimer);
+    this.resetPositionTransitionStyles();
     this.unsubscribe?.();
     this.abortController.abort();
   }
