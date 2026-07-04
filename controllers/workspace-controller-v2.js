@@ -13,7 +13,6 @@ function clearDocumentSelection() {
 export class WorkspaceController extends BaseWorkspaceController {
   renderCards() {
     this.world.querySelectorAll('[data-card-id]').forEach((element) => element.remove());
-    this.linksRenderer?.render?.([]);
   }
 
   focusSelfCard() {
