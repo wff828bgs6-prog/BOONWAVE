@@ -1,0 +1,26 @@
+.one-hand-rail{
+  --rail-visual-width:58px;
+  --rail-hit-size:44px;
+  padding:10px 6px;
+  border-radius:30px;
+  gap:8px;
+}
+.one-hand-rail .utility-button,
+.one-hand-rail .rail-button{
+  margin-inline:0;
+}
+.one-hand-rail .bw-icon{
+  width:21px;
+  height:21px;
+}
+.one-hand-rail .rail-focus-icon{
+  width:22px;
+  height:22px;
+}
+@media(max-width:390px){
+  .one-hand-rail{
+    --rail-visual-width:56px;
+    --rail-hit-size:42px;
+    padding:9px 6px;
+  }
+}
