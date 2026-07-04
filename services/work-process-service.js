@@ -31,9 +31,13 @@ function getProcessCard(stateStore, processId) {
   return card;
 }
 
+function isActiveLifecycle(item) {
+  return (item?.lifecycleStatus ?? 'active') === 'active';
+}
+
 function assertStage(card, stageId, { activeOnly = false } = {}) {
   const stage = card.data.stages.find((item) => item.id === stageId);
-  if (!stage || (activeOnly && stage.lifecycleStatus !== 'active')) {
+  if (!stage || (activeOnly && !isActiveLifecycle(stage))) {
     const error = new Error(`Stage not found: ${stageId}`);
     error.code = PROCESS_STAGE_NOT_FOUND_ERROR;
     throw error;
@@ -81,11 +85,10 @@ export async function selectProcessStage(processId, stageId, options = {}) {
 
 export async function addProcessStage(processId, input = {}, options = {}) {
   return commitProcessData(processId, (data) => {
-    const activeStages = data.stages.filter((stage) => stage.lifecycleStatus === 'active');
     const stage = normalizeStage({
       ...input,
       processId,
-      order: input.order ?? data.stages.length,
+      order: input.order ?? data.stages.filter(isActiveLifecycle).length,
       lifecycleStatus: 'active',
     }, processId);
     return {
@@ -137,7 +140,7 @@ export async function addProcessTask(processId, input = {}, options = {}) {
       throw error;
     }
     assertStage(card, stageId, { activeOnly: true });
-    const stageTasks = data.tasks.filter((task) => task.stageId === stageId);
+    const stageTasks = data.tasks.filter((task) => task.stageId === stageId && isActiveLifecycle(task));
     const task = createTask({
       ...input,
       processId,
