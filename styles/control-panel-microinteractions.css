@@ -6,7 +6,8 @@
 .one-hand-rail.is-position-fading,
 .one-hand-rail.is-position-visible,
 .one-hand-rail.is-position-transitioning,
-.one-hand-rail.is-switching-position{
+.one-hand-rail.is-switching-position,
+.one-hand-rail.is-rail-fade-in{
   transform:none!important;
 }
 .rail-transition-ghost{
@@ -25,6 +26,13 @@
 }
 .one-hand-rail[style*="opacity"]{
   transition-timing-function:cubic-bezier(.37,0,.63,1)!important;
+}
+.one-hand-rail.is-rail-fade-in .zoom-visual,
+.one-hand-rail.is-rail-fade-in .zoom-fill,
+.one-hand-rail.is-rail-fade-in .zoom-thumb{
+  opacity:0!important;
+  visibility:hidden!important;
+  transition:none!important;
 }
 .one-hand-rail .rail-button{
   position:relative;
