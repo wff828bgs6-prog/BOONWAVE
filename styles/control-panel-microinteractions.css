@@ -80,7 +80,12 @@
 }
 .one-hand-rail .rail-button.bw-press-feedback .bw-icon{
   filter:drop-shadow(0 0 12px rgba(var(--bw-brand-cyan),.62)) drop-shadow(0 0 22px rgba(var(--bw-brand-violet),.42));
-  stroke-width:2.08;
+}
+.one-hand-rail[data-position="bottom"] .rail-button,
+.one-hand-rail[data-position="bottom"] .rail-button:active,
+.one-hand-rail[data-position="bottom"] .rail-button.bw-press-feedback,
+.one-hand-rail[data-position="bottom"] .bw-icon{
+  transform:none!important;
 }
 .tools-action,.tools-close,.archive-close,.rail-position-button,.archive-row-restore{
   position:relative;
