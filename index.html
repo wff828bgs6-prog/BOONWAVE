@@ -24,7 +24,7 @@
 
     <aside class="one-hand-rail" id="utilityRail" data-position="right" aria-label="Управление одной рукой, справа">
       <button class="rail-button rail-home" id="homeSelfButton" type="button" aria-label="Вернуться к главному обзору рабочего стола">
-        <svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 12h6"/><path d="m8 9 3 3-3 3"/><path d="M20 12h-6"/><path d="m16 9-3 3 3 3"/><path d="M12 4v6"/><path d="m9 8 3 3 3-3"/><path d="M12 20v-6"/><path d="m9 16 3-3 3 3"/></svg>
+        <svg class="bw-icon" viewBox="0 0 24 24"><path d="M5 5l5 5"/><path d="M6 10h4V6"/><path d="M19 5l-5 5"/><path d="M14 6v4h4"/><path d="M5 19l5-5"/><path d="M10 18v-4H6"/><path d="M19 19l-5-5"/><path d="M18 14h-4v4"/></svg>
       </button>
 
       <button class="rail-button rail-add" id="addCardButton" type="button" aria-label="Создать карточку">
@@ -107,7 +107,7 @@
         <button class="type-button" type="button" data-node-type="goal" aria-pressed="false">Цель</button>
       </div>
       <label class="field"><span>Название</span><input id="cardTitle" name="title" maxlength="80" required></label>
-      <label class="field"><span>Описание</span><textarea id="cardDescription" name="description" maxlength="240"></textarea></label>
+      <label class="field"><span>Описание</span><textarea id="cardDescription" maxlength="240" name="description"></textarea></label>
       <div class="typed-fields" id="createTypeFields"></div>
       <button class="submit-button" type="submit">Создать карточку</button>
     </form>
