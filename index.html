@@ -10,18 +10,18 @@
   <title>BOONWAVE</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles/boonwave-tokens.css?v=unified-luxury-sheets-20260705-4">
-  <link rel="stylesheet" href="styles/production-shell.css?v=unified-luxury-sheets-20260705-4">
-  <link rel="stylesheet" href="styles/card-views.css?v=unified-luxury-sheets-20260705-4">
-  <link rel="stylesheet" href="styles/one-hand-rail-v3.css?v=unified-luxury-sheets-20260705-4">
-  <link rel="stylesheet" href="styles/control-panel-microinteractions.css?v=unified-luxury-sheets-20260705-4">
-  <link rel="stylesheet" href="styles/contacts.css?v=unified-luxury-sheets-20260705-4">
+  <link rel="stylesheet" href="styles/boonwave-tokens.css?v=lux-final-pass-20260705-5">
+  <link rel="stylesheet" href="styles/production-shell.css?v=lux-final-pass-20260705-5">
+  <link rel="stylesheet" href="styles/card-views.css?v=lux-final-pass-20260705-5">
+  <link rel="stylesheet" href="styles/one-hand-rail-v3.css?v=lux-final-pass-20260705-5">
+  <link rel="stylesheet" href="styles/control-panel-microinteractions.css?v=lux-final-pass-20260705-5">
+  <link rel="stylesheet" href="styles/contacts.css?v=lux-final-pass-20260705-5">
 </head>
 <body>
   <svg width="0" height="0" aria-hidden="true" focusable="false"><defs><linearGradient id="bwIconGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a14cff"/><stop offset="1" stop-color="#22bfff"/></linearGradient></defs></svg>
 
   <main class="app-shell">
-    <header class="app-header"><div class="app-badge"><strong>BOONWAVE</strong><span>Production Core</span></div></header>
+    <header class="app-header"><div class="app-badge"><strong>BOONWAVE</strong><img class="app-brand-mark" src="assets/boonwave-wordmark.svg?v=lux-final-pass-20260705-5" alt="BOONWAVE" draggable="false" decoding="async"><span>Production Core</span></div></header>
 
     <aside class="one-hand-rail" id="utilityRail" data-position="right" aria-label="Управление одной рукой, справа">
       <button class="rail-button rail-home" id="homeSelfButton" type="button" aria-label="Вернуться к главному обзору рабочего стола">
@@ -107,8 +107,8 @@
         <button class="type-button" type="button" data-node-type="idea" aria-pressed="false">Идея</button>
         <button class="type-button" type="button" data-node-type="goal" aria-pressed="false">Цель</button>
       </div>
-      <label class="field"><span>Название</span><input id="cardTitle" name="title" maxlength="80" required></label>
-      <label class="field"><span>Описание</span><textarea id="cardDescription" maxlength="240" name="description"></textarea></label>
+      <label class="field"><span>Название</span><input id="cardTitle" name="title" maxlength="80" placeholder="Введите название" required></label>
+      <label class="field"><span>Описание</span><textarea id="cardDescription" maxlength="240" name="description" placeholder="Добавьте описание (необязательно)"></textarea></label>
       <div class="typed-fields" id="createTypeFields"></div>
       <button class="submit-button" type="submit">Создать карточку</button>
     </form>
@@ -117,13 +117,13 @@
   <section class="sheet" id="editSheet" hidden>
     <form class="sheet-panel" id="editCardForm">
       <div class="sheet-head"><h2>Редактирование</h2><button class="close-button" id="closeEditSheetButton" type="button" aria-label="Закрыть редактирование карточки">×</button></div>
-      <label class="field"><span>Название</span><input id="editCardTitle" maxlength="80" required></label>
-      <label class="field"><span>Описание</span><textarea id="editCardDescription" maxlength="240"></textarea></label>
+      <label class="field"><span>Название</span><input id="editCardTitle" maxlength="80" placeholder="Введите название" required></label>
+      <label class="field"><span>Описание</span><textarea id="editCardDescription" maxlength="240" placeholder="Добавьте описание (необязательно)"></textarea></label>
       <div class="typed-fields" id="editTypeFields"></div>
       <button class="submit-button" type="submit">Сохранить изменения</button>
     </form>
   </section>
 
-  <script type="module" src="app.js?v=unified-luxury-sheets-20260705-4"></script>
+  <script type="module" src="app.js?v=lux-final-pass-20260705-5"></script>
 </body>
 </html>
