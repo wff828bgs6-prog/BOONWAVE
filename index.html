@@ -61,10 +61,11 @@
       <div class="tools-head"><h2 id="toolsTitle">Дополнительные действия</h2><button class="tools-close" id="closeToolsButton" type="button" aria-label="Закрыть дополнительные действия">×</button></div>
       <div class="tools-grid">
         <button class="tools-action" id="linkButton" type="button" aria-label="Связать карточки" aria-pressed="false" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg><span>Связь</span></button>
-        <button class="tools-action" id="deleteButton" type="button" aria-label="Архивировать выбранную карточку" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16v13H4z"/><path d="M3 4h18v3H3z"/><path d="M9 11h6"/></svg><span>Архивировать</span></button>
-        <button class="tools-action" id="archiveLibraryButton" type="button" aria-label="Открыть архив" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M5 6h14"/><path d="M7 6v14h10V6"/><path d="M9 10h6M9 14h6"/></svg><span>Архив</span></button>
+        <button class="tools-action" id="archiveSelectedButton" type="button" aria-label="Архивировать выбранную карточку" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16v13H4z"/><path d="M3 4h18v3H3z"/><path d="M9 11h6"/></svg><span>Архивировать</span></button>
+        <button class="tools-action" id="archiveLibraryButton" type="button" aria-label="Открыть архив" aria-expanded="false" aria-controls="archiveSheet"><svg class="bw-icon" viewBox="0 0 24 24"><path d="M5 6h14"/><path d="M7 6v14h10V6"/><path d="M9 10h6M9 14h6"/></svg><span>Архив</span></button>
         <button class="tools-action" id="undoButton" type="button" aria-label="Отменить действие" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M16 7H9a5 5 0 0 0 0 10h6"/><path d="m12 4 4 3-4 3"/></svg><span>Отменить</span></button>
         <button class="tools-action" id="redoButton" type="button" aria-label="Повторить действие" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M8 7h7a5 5 0 0 1 0 10H9"/><path d="m12 4-4 3 4 3"/></svg><span>Повторить</span></button>
+        <button id="deleteButton" type="button" hidden aria-hidden="true" tabindex="-1"></button>
       </div>
 
       <div class="rail-position-section">
@@ -75,6 +76,14 @@
           <button class="rail-position-button" type="button" data-rail-position="bottom" aria-pressed="false"><span aria-hidden="true">↓</span><span>Снизу</span></button>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="archive-sheet" id="archiveSheet" hidden aria-hidden="true">
+    <div class="archive-panel" role="dialog" aria-modal="true" aria-labelledby="archiveTitle">
+      <div class="archive-head"><h2 id="archiveTitle">Архив</h2><button class="archive-close" id="closeArchiveButton" type="button" aria-label="Закрыть архив">×</button></div>
+      <div class="archive-list" id="archiveList"></div>
+      <div class="archive-empty" id="archiveEmpty">В архиве пока нет карточек.</div>
     </div>
   </section>
 
