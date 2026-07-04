@@ -11,7 +11,7 @@ const PANEL_FADE_EASING = 'cubic-bezier(.37,0,.63,1)';
 const PANEL_FADE_FLOOR = '0.08';
 const THUMB_HIDDEN_CLASS = 'is-zoom-thumb-hidden';
 const THUMB_APPEARING_CLASS = 'is-zoom-thumb-appearing';
-const THUMB_REVEAL_DELAY_MS = 306;
+const THUMB_REVEAL_DELAY_MS = 36;
 const THUMB_REVEAL_END_MS = 316;
 
 export class UtilityRailController {
