@@ -9,7 +9,6 @@ const GHOST_FADE_OUT_MS = 308;
 const REAL_FADE_IN_MS = 376;
 const PANEL_FADE_EASING = 'cubic-bezier(.37,0,.63,1)';
 const PANEL_FADE_FLOOR = '0.08';
-const ZOOM_REVEAL_DELAY_MS = 90;
 
 export class UtilityRailController {
   constructor({ rail, lockButton, homeButton, positionButtons = [], hint, onHome, onPositionChange } = {}) {
@@ -27,7 +26,6 @@ export class UtilityRailController {
     this.feedbackTimer = null;
     this.switchTimer = null;
     this.switchEndTimer = null;
-    this.zoomRevealTimer = null;
     this.transitionGhost = null;
     this.unsubscribe = null;
     this.abortController = new AbortController();
@@ -153,7 +151,6 @@ export class UtilityRailController {
     const current = this.rail.dataset.position;
     clearTimeout(this.switchTimer);
     clearTimeout(this.switchEndTimer);
-    clearTimeout(this.zoomRevealTimer);
     this.removeTransitionGhost();
 
     if (animate && current !== normalized) {
@@ -180,9 +177,6 @@ export class UtilityRailController {
         requestAnimationFrame(() => {
           this.rail.style.opacity = '1';
         });
-        this.zoomRevealTimer = setTimeout(() => {
-          this.rail.classList.remove('is-rail-fade-in');
-        }, ZOOM_REVEAL_DELAY_MS);
         this.switchEndTimer = setTimeout(() => {
           this.resetPanelStyles();
         }, REAL_FADE_IN_MS + 68);
@@ -231,7 +225,6 @@ export class UtilityRailController {
     clearTimeout(this.feedbackTimer);
     clearTimeout(this.switchTimer);
     clearTimeout(this.switchEndTimer);
-    clearTimeout(this.zoomRevealTimer);
     this.removeTransitionGhost();
     this.resetPanelStyles();
     this.unsubscribe?.();
