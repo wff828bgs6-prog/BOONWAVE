@@ -34,7 +34,7 @@
 .one-hand-rail .rail-button::before{
   content:"";
   position:absolute;
-  inset:6px;
+  inset:7px;
   border:1px solid transparent;
   border-radius:50%;
   background:transparent;
@@ -47,21 +47,21 @@
   box-shadow:none;
 }
 .one-hand-rail .rail-button[aria-pressed="true"]::before{
-  opacity:1;
-  border-color:rgba(var(--bw-brand-violet),.42);
-  background:rgba(var(--bw-brand-violet),.09);
-  box-shadow:0 0 10px rgba(var(--bw-brand-violet),.13);
+  opacity:.72;
+  border-color:rgba(var(--bw-brand-violet),.22);
+  background:rgba(var(--bw-brand-violet),.055);
+  box-shadow:0 0 14px rgba(var(--bw-brand-violet),.08);
 }
 .one-hand-rail .rail-button.bw-press-feedback::before{
-  opacity:1;
-  border-color:rgba(var(--bw-brand-cyan),.42);
-  background:rgba(var(--bw-brand-cyan),.105);
-  box-shadow:0 0 14px rgba(var(--bw-brand-cyan),.22),0 0 24px rgba(var(--bw-brand-violet),.16);
+  opacity:.78;
+  border-color:rgba(var(--bw-brand-cyan),.24);
+  background:rgba(var(--bw-brand-cyan),.06);
+  box-shadow:0 0 18px rgba(var(--bw-brand-cyan),.11),0 0 30px rgba(var(--bw-brand-violet),.075);
 }
 .one-hand-rail .rail-button[aria-pressed="true"].bw-press-feedback::before{
-  border-color:rgba(var(--bw-brand-cyan),.52);
-  background:rgba(var(--bw-brand-violet),.12);
-  box-shadow:0 0 16px rgba(var(--bw-brand-cyan),.25),0 0 26px rgba(var(--bw-brand-violet),.2);
+  border-color:rgba(var(--bw-brand-cyan),.28);
+  background:rgba(var(--bw-brand-violet),.07);
+  box-shadow:0 0 20px rgba(var(--bw-brand-cyan),.12),0 0 32px rgba(var(--bw-brand-violet),.09);
 }
 .one-hand-rail .bw-icon,.tools-panel .bw-icon{
   position:relative;
@@ -79,7 +79,7 @@
   content:none!important;
 }
 .one-hand-rail .rail-button.bw-press-feedback .bw-icon{
-  filter:drop-shadow(0 0 12px rgba(var(--bw-brand-cyan),.62)) drop-shadow(0 0 22px rgba(var(--bw-brand-violet),.42));
+  filter:drop-shadow(0 0 8px rgba(var(--bw-brand-cyan),.34)) drop-shadow(0 0 16px rgba(var(--bw-brand-violet),.2));
 }
 .one-hand-rail[data-position="bottom"] .rail-button,
 .one-hand-rail[data-position="bottom"] .rail-button:active,
