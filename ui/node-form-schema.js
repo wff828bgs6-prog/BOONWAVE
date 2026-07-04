@@ -14,8 +14,12 @@ export const NODE_FORM_SCHEMA = Object.freeze({
     { key: 'progress', label: 'Прогресс, %', type: 'number', min: 0, max: 100, step: 1, required: true },
   ],
   person: [
+    { key: 'phone', label: 'Телефон', type: 'tel', maxlength: 40 },
+    { key: 'email', label: 'Email', type: 'email', maxlength: 120 },
+    { key: 'telegram', label: 'Telegram', type: 'text', maxlength: 80 },
     { key: 'role', label: 'Роль', type: 'text', maxlength: 80 },
     { key: 'organization', label: 'Организация', type: 'text', maxlength: 100 },
+    { key: 'notes', label: 'Заметки', type: 'text', maxlength: 180 },
   ],
   idea: [
     { key: 'status', label: 'Статус', type: 'select', required: true, options: [['draft', 'Черновик'], ['active', 'Активно'], ['completed', 'Реализовано']] },
