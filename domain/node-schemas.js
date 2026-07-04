@@ -5,7 +5,7 @@ export const NODE_SCHEMA_VERSION = 5;
 export const NODE_TYPES = Object.freeze(['self', 'project', 'process', 'person', 'idea', 'goal']);
 
 export const NODE_TYPE_LABELS = Object.freeze({
-  self: 'Я Есмь',
+  self: 'Моя Вселенная',
   project: 'Проект',
   process: 'Процесс',
   person: 'Человек',
