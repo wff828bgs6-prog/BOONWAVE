@@ -18,9 +18,13 @@
   -webkit-touch-callout:none!important;
   transform:none!important;
   will-change:opacity;
+  transition-timing-function:cubic-bezier(.37,0,.63,1)!important;
 }
 .rail-transition-ghost *{
   pointer-events:none!important;
+}
+.one-hand-rail[style*="opacity"]{
+  transition-timing-function:cubic-bezier(.37,0,.63,1)!important;
 }
 .one-hand-rail .rail-button{
   position:relative;
