@@ -13,7 +13,10 @@
 .contacts-create{width:100%;min-height:50px;margin-top:14px;border:0;border-radius:16px;background:linear-gradient(135deg,rgb(var(--bw-brand-violet)),rgb(var(--bw-brand-cyan)));color:#fff;font-weight:700}
 .one-hand-rail{transform:none!important;transform-origin:center;transition:none}
 .one-hand-rail.is-position-fading,.one-hand-rail.is-position-visible,.one-hand-rail.is-position-transitioning{transform:none!important}
-.one-hand-rail.is-switching-position .rail-zoom,.one-hand-rail.is-switching-position .zoom-touch-area,.one-hand-rail.is-switching-position .zoom-visual,.one-hand-rail.is-switching-position .zoom-fill,.one-hand-rail.is-switching-position .zoom-thumb,.one-hand-rail.is-switching-position .zoom-accessible-range{opacity:0!important;visibility:hidden!important;pointer-events:none!important;transition:none!important}
+.one-hand-rail.is-switching-position{grid-template-areas:"home" "add" "contacts" "lock" "more";grid-template-rows:auto auto auto auto auto}
+.one-hand-rail.is-switching-position .rail-zoom{display:none!important}
+.one-hand-rail.is-switching-position .zoom-touch-area,.one-hand-rail.is-switching-position .zoom-visual,.one-hand-rail.is-switching-position .zoom-fill,.one-hand-rail.is-switching-position .zoom-thumb,.one-hand-rail.is-switching-position .zoom-accessible-range{display:none!important;opacity:0!important;visibility:hidden!important;pointer-events:none!important;transition:none!important}
+.one-hand-rail[data-position="bottom"].is-switching-position{grid-template-areas:"home add contacts lock more";grid-template-rows:41px}
 .one-hand-rail .rail-button{position:relative;overflow:visible;transform:none!important}
 .one-hand-rail .rail-button::before{content:"";position:absolute;inset:6px;border:1px solid transparent;border-radius:50%;background:transparent;opacity:0;transition:opacity var(--bw-motion-fast),background var(--bw-motion-fast),border-color var(--bw-motion-fast),box-shadow var(--bw-motion-fast)}
 .one-hand-rail .rail-button[aria-pressed="true"]{border-color:transparent;background:transparent;box-shadow:none}
