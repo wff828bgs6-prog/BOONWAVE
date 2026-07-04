@@ -8,7 +8,7 @@ const FEEDBACK_SELECTOR = [
 ].join(',');
 
 const FEEDBACK_CLASS = 'bw-press-feedback';
-const FEEDBACK_DURATION_MS = 280;
+const FEEDBACK_DURATION_MS = 620;
 const VIBRATION_PATTERN = 8;
 
 function canUseHaptics() {
@@ -22,13 +22,6 @@ function triggerHaptic() {
   } catch {
     // Haptics are optional. Unsupported browsers should silently fall back to visual feedback.
   }
-}
-
-function isBottomRailButton(button) {
-  const rail = button.closest('.one-hand-rail');
-  return rail instanceof HTMLElement
-    && rail.dataset.position === 'bottom'
-    && button.classList.contains('rail-button');
 }
 
 export class PanelFeedbackController {
@@ -55,12 +48,6 @@ export class PanelFeedbackController {
 
   play(button) {
     triggerHaptic();
-
-    if (isBottomRailButton(button)) {
-      this.clear(button);
-      return;
-    }
-
     this.clear(button);
     void button.offsetWidth;
     button.classList.add(FEEDBACK_CLASS);
