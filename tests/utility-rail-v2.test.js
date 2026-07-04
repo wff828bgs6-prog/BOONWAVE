@@ -17,11 +17,16 @@ test('one-hand rail supports right left and bottom positions',()=>{
   assert.doesNotMatch(index,/class="mobile-dock"/);
 });
 
-test('rail is visually thin while preserving touch targets and preventing iOS selection',()=>{
+test('rail keeps every control on one centered axis and contains active states',()=>{
   const css=read('styles/one-hand-rail-v3.css');
-  assert.match(css,/--rail-visual-width:40px/);
-  assert.match(css,/--rail-hit-size:44px/);
-  assert.match(css,/\.zoom-visual\{[^}]*width:22px/);
+  assert.match(css,/--rail-visual-width:54px/);
+  assert.match(css,/--rail-hit-size:40px/);
+  assert.match(css,/place-items:center/);
+  assert.match(css,/justify-self:center/);
+  assert.match(css,/align-self:center/);
+  assert.match(css,/overflow:hidden/);
+  assert.match(css,/\.zoom-visual\{[^}]*left:50%/);
+  assert.match(css,/\.zoom-visual\{[^}]*width:24px/);
   assert.match(css,/\.zoom-thumb\{[^}]*width:18px/);
   assert.match(css,/-webkit-touch-callout:none/);
   assert.match(css,/data-position="bottom"/);
@@ -40,11 +45,12 @@ test('locked card gestures have one pointer owner and no long-press edit path',(
   assert.match(workspace,/activateCard/);
 });
 
-test('primary rail order is home add zoom lock more and history lives in tools',()=>{
+test('primary rail order is home add contacts zoom lock more and history lives in tools',()=>{
   const index=read('index.html');
   const rail=index.slice(index.indexOf('<aside class="one-hand-rail"'),index.indexOf('</aside>')+8);
   assert.ok(rail.indexOf('rail-home')<rail.indexOf('rail-add'));
-  assert.ok(rail.indexOf('rail-add')<rail.indexOf('rail-zoom'));
+  assert.ok(rail.indexOf('rail-add')<rail.indexOf('rail-contacts'));
+  assert.ok(rail.indexOf('rail-contacts')<rail.indexOf('rail-zoom'));
   assert.ok(rail.indexOf('rail-zoom')<rail.indexOf('rail-lock'));
   assert.ok(rail.indexOf('rail-lock')<rail.indexOf('rail-more'));
   assert.doesNotMatch(rail,/id="undoButton"|id="redoButton"/);
