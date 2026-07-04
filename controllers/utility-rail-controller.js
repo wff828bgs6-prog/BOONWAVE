@@ -7,7 +7,7 @@ const LOCK_SETTING_KEY = 'cardsLocked';
 const VALID_POSITIONS = new Set(['right', 'left', 'bottom']);
 const GHOST_FADE_OUT_MS = 360;
 const REAL_FADE_IN_MS = 440;
-const PANEL_FADE_EASING = 'cubic-bezier(.22,1,.36,1)';
+const PANEL_FADE_EASING = 'cubic-bezier(.37,0,.63,1)';
 
 export class UtilityRailController {
   constructor({ rail, lockButton, homeButton, positionButtons = [], hint, onHome, onPositionChange } = {}) {
