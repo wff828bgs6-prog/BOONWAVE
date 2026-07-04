@@ -41,9 +41,10 @@
   display:grid;
   place-items:center;
   touch-action:manipulation;
-  transition:filter var(--bw-motion-fast),transform var(--bw-motion-fast);
+  transform:none;
+  transition:filter var(--bw-motion-fast);
 }
-.one-hand-rail .rail-button:active{background:transparent;box-shadow:none;transform:scale(.985)}
+.one-hand-rail .rail-button:active{background:transparent;box-shadow:none;transform:none}
 .one-hand-rail .rail-button[aria-pressed="true"]{border-color:transparent;background:transparent;box-shadow:none}
 .one-hand-rail .bw-icon,.tools-panel .bw-icon{width:20px;height:20px;fill:none;stroke:url(#bwIconGradient);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .one-hand-rail .bw-icon circle,.tools-panel .bw-icon circle{fill:none;stroke:url(#bwIconGradient)}
