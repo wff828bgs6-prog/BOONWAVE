@@ -100,6 +100,16 @@ export class UtilityRailController {
     this.rail.style.setProperty('transform', 'none', 'important');
   }
 
+  syncGhostLockIcons(ghost) {
+    const lockButton = ghost.querySelector('.rail-lock');
+    if (!(lockButton instanceof HTMLElement)) return;
+    const locked = lockButton.getAttribute('aria-pressed') === 'true';
+    const closed = lockButton.querySelector('.lock-closed');
+    const open = lockButton.querySelector('.lock-open');
+    if (closed instanceof HTMLElement) closed.style.setProperty('display', locked ? 'block' : 'none', 'important');
+    if (open instanceof HTMLElement) open.style.setProperty('display', locked ? 'none' : 'block', 'important');
+  }
+
   createTransitionGhost() {
     const rect = this.rail.getBoundingClientRect();
     const ghost = this.rail.cloneNode(true);
@@ -111,6 +121,7 @@ export class UtilityRailController {
       element.setAttribute('tabindex', '-1');
       element.setAttribute('disabled', 'true');
     });
+    this.syncGhostLockIcons(ghost);
     Object.assign(ghost.style, {
       position: 'fixed',
       left: `${rect.left}px`,
