@@ -48,7 +48,7 @@
 .one-hand-rail .rail-button[aria-pressed="true"]{border-color:transparent;background:transparent;box-shadow:none}
 .one-hand-rail .bw-icon,.tools-panel .bw-icon{width:20px;height:20px;fill:none;stroke:url(#bwIconGradient);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .one-hand-rail .bw-icon circle,.tools-panel .bw-icon circle{fill:none;stroke:url(#bwIconGradient)}
-#cardLockButton .lock-closed{display:none}#cardLockButton .lock-open{display:block}#cardLockButton[aria-pressed="true"] .lock-closed{display:block}#cardLockButton[aria-pressed="true"] .lock-open{display:none}
+.one-hand-rail .rail-lock .lock-closed{display:none}.one-hand-rail .rail-lock .lock-open{display:block}.one-hand-rail .rail-lock[aria-pressed="true"] .lock-closed{display:block}.one-hand-rail .rail-lock[aria-pressed="true"] .lock-open{display:none}
 
 .rail-zoom{width:100%;height:100%;min-height:144px;padding:8px 0;display:grid;place-items:center}
 .zoom-touch-area{position:relative;width:var(--rail-hit-size);height:100%;min-height:110px;touch-action:none}
