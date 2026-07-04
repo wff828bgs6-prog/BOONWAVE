@@ -24,7 +24,7 @@ function triggerHaptic() {
   }
 }
 
-function shouldSkipVisualFeedback(button) {
+function isBottomRailButton(button) {
   const rail = button.closest('.one-hand-rail');
   return rail instanceof HTMLElement
     && rail.dataset.position === 'bottom'
@@ -47,16 +47,24 @@ export class PanelFeedbackController {
     return this;
   }
 
+  clear(button) {
+    const previousTimer = this.timers.get(button);
+    clearTimeout(previousTimer);
+    button.classList.remove(FEEDBACK_CLASS);
+  }
+
   play(button) {
     triggerHaptic();
-    if (shouldSkipVisualFeedback(button)) return;
 
-    button.classList.remove(FEEDBACK_CLASS);
+    if (isBottomRailButton(button)) {
+      this.clear(button);
+      return;
+    }
+
+    this.clear(button);
     void button.offsetWidth;
     button.classList.add(FEEDBACK_CLASS);
 
-    const previousTimer = this.timers.get(button);
-    clearTimeout(previousTimer);
     const timer = setTimeout(() => button.classList.remove(FEEDBACK_CLASS), FEEDBACK_DURATION_MS);
     this.timers.set(button, timer);
   }
