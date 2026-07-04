@@ -1,7 +1,7 @@
 /* Stable BOONWAVE header wordmark. No bitmap layer: prevents Safari rectangle/fallback artifacts. */
 .app-header{
-  left:14px!important;
-  right:14px!important;
+  left:10px!important;
+  right:10px!important;
   width:auto!important;
 }
 .app-badge{
@@ -29,10 +29,8 @@
   background-clip:text!important;
   filter:drop-shadow(0 0 10px rgba(var(--bw-brand-cyan),.12)) drop-shadow(0 0 14px rgba(var(--bw-brand-violet),.1))!important;
 }
-.app-subtitle{
-  display:none!important;
-}
 @media(max-width:390px){
+  .app-header{left:7px!important;right:7px!important}
   .app-badge{min-height:56px!important;padding:11px 20px!important}
   .app-wordmark{font-size:28px!important}
 }
