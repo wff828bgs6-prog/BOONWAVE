@@ -2,6 +2,7 @@
    Rollback-safe: remove this stylesheet link to return to the saved control-panel baseline. */
 
 .app-badge{
+  position:relative!important;
   border-color:rgba(164,202,255,.16)!important;
   background:linear-gradient(180deg,rgba(17,21,43,.9),rgba(8,12,28,.82))!important;
   box-shadow:0 18px 46px rgba(0,0,0,.34),0 0 34px rgba(var(--bw-brand-cyan),.035),inset 0 1px 0 rgba(255,255,255,.065),inset 0 0 34px rgba(var(--bw-brand-violet),.026)!important;
