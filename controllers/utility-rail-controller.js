@@ -9,6 +9,10 @@ const GHOST_FADE_OUT_MS = 308;
 const REAL_FADE_IN_MS = 376;
 const PANEL_FADE_EASING = 'cubic-bezier(.37,0,.63,1)';
 const PANEL_FADE_FLOOR = '0.08';
+const THUMB_HIDDEN_CLASS = 'is-zoom-thumb-hidden';
+const THUMB_APPEARING_CLASS = 'is-zoom-thumb-appearing';
+const THUMB_REVEAL_DELAY_MS = 186;
+const THUMB_REVEAL_END_MS = 256;
 
 export class UtilityRailController {
   constructor({ rail, lockButton, homeButton, positionButtons = [], hint, onHome, onPositionChange } = {}) {
@@ -26,6 +30,8 @@ export class UtilityRailController {
     this.feedbackTimer = null;
     this.switchTimer = null;
     this.switchEndTimer = null;
+    this.thumbRevealTimer = null;
+    this.thumbRevealEndTimer = null;
     this.transitionGhost = null;
     this.unsubscribe = null;
     this.abortController = new AbortController();
@@ -91,8 +97,32 @@ export class UtilityRailController {
     this.transitionGhost = null;
   }
 
+  clearThumbTimers() {
+    clearTimeout(this.thumbRevealTimer);
+    clearTimeout(this.thumbRevealEndTimer);
+    this.thumbRevealTimer = null;
+    this.thumbRevealEndTimer = null;
+  }
+
+  hideZoomThumbEarly(target = this.rail) {
+    target?.classList?.remove(THUMB_APPEARING_CLASS);
+    target?.classList?.add(THUMB_HIDDEN_CLASS);
+  }
+
+  revealZoomThumbLate() {
+    this.rail.classList.remove(THUMB_APPEARING_CLASS);
+    this.rail.classList.add(THUMB_HIDDEN_CLASS);
+    this.thumbRevealTimer = setTimeout(() => {
+      this.rail.classList.add(THUMB_APPEARING_CLASS);
+      this.rail.classList.remove(THUMB_HIDDEN_CLASS);
+      this.thumbRevealEndTimer = setTimeout(() => {
+        this.rail.classList.remove(THUMB_APPEARING_CLASS);
+      }, THUMB_REVEAL_END_MS);
+    }, THUMB_REVEAL_DELAY_MS);
+  }
+
   resetPanelStyles() {
-    this.rail.classList.remove('is-position-transitioning', 'is-position-fading', 'is-position-visible', 'is-switching-position');
+    this.rail.classList.remove('is-position-transitioning', 'is-position-fading', 'is-position-visible', 'is-switching-position', THUMB_HIDDEN_CLASS, THUMB_APPEARING_CLASS);
     this.rail.style.removeProperty('display');
     this.rail.style.removeProperty('visibility');
     this.rail.style.removeProperty('opacity');
@@ -116,6 +146,7 @@ export class UtilityRailController {
     ghost.removeAttribute('id');
     ghost.setAttribute('aria-hidden', 'true');
     ghost.classList.add('rail-transition-ghost');
+    this.hideZoomThumbEarly(ghost);
     ghost.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'));
     ghost.querySelectorAll('button,input').forEach((element) => {
       element.setAttribute('tabindex', '-1');
@@ -162,10 +193,12 @@ export class UtilityRailController {
     const current = this.rail.dataset.position;
     clearTimeout(this.switchTimer);
     clearTimeout(this.switchEndTimer);
+    this.clearThumbTimers();
     this.removeTransitionGhost();
 
     if (animate && current !== normalized) {
       this.resetPanelStyles();
+      this.hideZoomThumbEarly(this.rail);
       const ghost = this.createTransitionGhost();
 
       this.rail.style.visibility = 'hidden';
@@ -186,10 +219,11 @@ export class UtilityRailController {
         this.rail.offsetHeight;
         requestAnimationFrame(() => {
           this.rail.style.opacity = '1';
+          this.revealZoomThumbLate();
         });
         this.switchEndTimer = setTimeout(() => {
           this.resetPanelStyles();
-        }, REAL_FADE_IN_MS + 68);
+        }, REAL_FADE_IN_MS + THUMB_REVEAL_DELAY_MS + THUMB_REVEAL_END_MS + 68);
       }, GHOST_FADE_OUT_MS + 51);
     } else {
       this.resetPanelStyles();
@@ -235,6 +269,7 @@ export class UtilityRailController {
     clearTimeout(this.feedbackTimer);
     clearTimeout(this.switchTimer);
     clearTimeout(this.switchEndTimer);
+    this.clearThumbTimers();
     this.removeTransitionGhost();
     this.resetPanelStyles();
     this.unsubscribe?.();
