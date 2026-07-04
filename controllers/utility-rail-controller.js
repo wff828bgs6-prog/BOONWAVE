@@ -8,6 +8,7 @@ const VALID_POSITIONS = new Set(['right', 'left', 'bottom']);
 const GHOST_FADE_OUT_MS = 360;
 const REAL_FADE_IN_MS = 440;
 const PANEL_FADE_EASING = 'cubic-bezier(.37,0,.63,1)';
+const PANEL_FADE_FLOOR = '0.08';
 
 export class UtilityRailController {
   constructor({ rail, lockButton, homeButton, positionButtons = [], hint, onHome, onPositionChange } = {}) {
@@ -157,19 +158,19 @@ export class UtilityRailController {
       const ghost = this.createTransitionGhost();
 
       this.rail.style.visibility = 'hidden';
-      this.rail.style.opacity = '0';
+      this.rail.style.opacity = PANEL_FADE_FLOOR;
       this.rail.style.setProperty('transition', 'none', 'important');
       this.applyPosition(normalized);
       this.rail.offsetHeight;
 
       requestAnimationFrame(() => {
-        ghost.style.opacity = '0';
+        ghost.style.opacity = PANEL_FADE_FLOOR;
       });
 
       this.switchTimer = setTimeout(() => {
         this.removeTransitionGhost();
         this.rail.style.visibility = 'visible';
-        this.rail.style.opacity = '0';
+        this.rail.style.opacity = PANEL_FADE_FLOOR;
         this.rail.style.setProperty('transition', `opacity ${REAL_FADE_IN_MS}ms ${PANEL_FADE_EASING}`, 'important');
         this.rail.offsetHeight;
         requestAnimationFrame(() => {
