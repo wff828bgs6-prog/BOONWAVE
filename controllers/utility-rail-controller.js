@@ -5,6 +5,7 @@ const POSITION_SETTING_KEY = 'utilityRailPosition';
 const LEGACY_SIDE_SETTING_KEY = 'utilityRailSide';
 const LOCK_SETTING_KEY = 'cardsLocked';
 const VALID_POSITIONS = new Set(['right', 'left', 'bottom']);
+const SWITCH_SETTLE_MS = 140;
 
 export class UtilityRailController {
   constructor({ rail, lockButton, homeButton, positionButtons = [], hint, onHome, onPositionChange } = {}) {
@@ -20,6 +21,7 @@ export class UtilityRailController {
     this.onHome = typeof onHome === 'function' ? onHome : null;
     this.onPositionChange = typeof onPositionChange === 'function' ? onPositionChange : null;
     this.feedbackTimer = null;
+    this.switchTimer = null;
     this.unsubscribe = null;
     this.abortController = new AbortController();
   }
@@ -35,7 +37,7 @@ export class UtilityRailController {
       ? savedPosition
       : legacySide === 'left' ? 'left' : 'right';
 
-    this.setPosition(initialPosition, { persist: false, announce: false });
+    this.setPosition(initialPosition, { persist: false, announce: false, settle: false });
     store.setState({ cardsLocked: savedLock === true });
     this.bind();
     this.syncLockState(store.getState().cardsLocked);
@@ -74,22 +76,37 @@ export class UtilityRailController {
     for (const button of this.positionButtons) {
       button.addEventListener('click', () => {
         const position = button.dataset.railPosition;
-        if (VALID_POSITIONS.has(position)) this.setPosition(position, { persist: true, announce: true });
+        if (VALID_POSITIONS.has(position)) this.setPosition(position, { persist: true, announce: true, settle: true });
       }, { signal });
     }
   }
 
   clearTransitionStyles() {
-    this.rail.classList.remove('is-position-transitioning', 'is-position-fading', 'is-position-visible', 'is-switching-position');
+    this.rail.classList.remove('is-position-transitioning', 'is-position-fading', 'is-position-visible');
     this.rail.style.removeProperty('visibility');
     this.rail.style.removeProperty('opacity');
     this.rail.style.removeProperty('transition');
     this.rail.style.setProperty('transform', 'none', 'important');
   }
 
-  applyPosition(position) {
-    const normalized = VALID_POSITIONS.has(position) ? position : 'right';
+  beginPositionSwitch() {
+    clearTimeout(this.switchTimer);
     this.clearTransitionStyles();
+    this.rail.classList.add('is-switching-position');
+  }
+
+  endPositionSwitch() {
+    clearTimeout(this.switchTimer);
+    this.switchTimer = setTimeout(() => {
+      this.rail.classList.remove('is-switching-position');
+    }, SWITCH_SETTLE_MS);
+  }
+
+  applyPosition(position, { settle = false } = {}) {
+    const normalized = VALID_POSITIONS.has(position) ? position : 'right';
+    if (settle && this.rail.dataset.position !== normalized) this.beginPositionSwitch();
+    else this.clearTransitionStyles();
+
     this.rail.dataset.position = normalized;
     this.rail.removeAttribute('data-side');
     const label = normalized === 'bottom'
@@ -103,12 +120,13 @@ export class UtilityRailController {
     }
 
     this.onPositionChange?.(normalized);
+    if (settle) this.endPositionSwitch();
     return normalized;
   }
 
-  setPosition(position, { persist = true, announce = false } = {}) {
+  setPosition(position, { persist = true, announce = false, settle = false } = {}) {
     const normalized = VALID_POSITIONS.has(position) ? position : 'right';
-    this.applyPosition(normalized);
+    this.applyPosition(normalized, { settle });
 
     if (persist) {
       storage.saveSetting(POSITION_SETTING_KEY, normalized).catch((error) => {
@@ -147,7 +165,9 @@ export class UtilityRailController {
 
   destroy() {
     clearTimeout(this.feedbackTimer);
+    clearTimeout(this.switchTimer);
     this.clearTransitionStyles();
+    this.rail.classList.remove('is-switching-position');
     this.unsubscribe?.();
     this.abortController.abort();
   }
