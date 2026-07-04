@@ -24,6 +24,13 @@ function triggerHaptic() {
   }
 }
 
+function shouldSkipVisualFeedback(button) {
+  const rail = button.closest('.one-hand-rail');
+  return rail instanceof HTMLElement
+    && rail.dataset.position === 'bottom'
+    && button.classList.contains('rail-button');
+}
+
 export class PanelFeedbackController {
   constructor({ root = document } = {}) {
     this.root = root;
@@ -42,6 +49,8 @@ export class PanelFeedbackController {
 
   play(button) {
     triggerHaptic();
+    if (shouldSkipVisualFeedback(button)) return;
+
     button.classList.remove(FEEDBACK_CLASS);
     void button.offsetWidth;
     button.classList.add(FEEDBACK_CLASS);
