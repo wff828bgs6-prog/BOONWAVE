@@ -1,1 +1,15 @@
-export { CardDetailController, default } from './card-detail-controller-v3.js';
+export class CardDetailController {
+  constructor() {
+    this.isCleanPlaceholder = true;
+  }
+
+  open() {
+    return false;
+  }
+
+  close() {}
+
+  destroy() {}
+}
+
+export default CardDetailController;
