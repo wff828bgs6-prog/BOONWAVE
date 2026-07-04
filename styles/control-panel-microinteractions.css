@@ -41,19 +41,19 @@
   position:absolute;
   left:50%;
   top:50%;
-  width:42px;
-  height:42px;
+  width:44px;
+  height:44px;
   border-radius:999px;
-  transform:translate(-50%,-50%) scale(.58);
+  transform:translate(-50%,-50%) scale(.56);
   transform-origin:center;
   pointer-events:none;
   opacity:0;
   z-index:0;
   background:
-    radial-gradient(circle, rgba(var(--bw-brand-violet),.16) 0 23%, rgba(var(--bw-brand-violet),.095) 24% 43%, transparent 44% 100%),
-    radial-gradient(circle, transparent 0 50%, rgba(var(--bw-brand-violet),.16) 51% 53%, transparent 54% 100%),
-    radial-gradient(circle, transparent 0 66%, rgba(var(--bw-brand-violet),.13) 67% 69%, transparent 70% 100%);
-  box-shadow:0 0 20px rgba(var(--bw-brand-violet),.12),0 0 38px rgba(var(--bw-brand-violet),.08);
+    radial-gradient(circle, rgba(var(--bw-brand-violet),.24) 0 22%, rgba(var(--bw-brand-violet),.15) 23% 42%, transparent 43% 100%),
+    radial-gradient(circle, transparent 0 49%, rgba(var(--bw-brand-violet),.28) 50% 52%, transparent 53% 100%),
+    radial-gradient(circle, transparent 0 65%, rgba(var(--bw-brand-violet),.22) 66% 68%, transparent 69% 100%);
+  box-shadow:0 0 24px rgba(var(--bw-brand-violet),.18),0 0 46px rgba(var(--bw-brand-violet),.12);
 }
 .one-hand-rail .rail-button.bw-press-feedback::after{
   animation:bwRailWaterRipple 620ms cubic-bezier(.16,1,.3,1) both;
@@ -64,10 +64,10 @@
   box-shadow:none;
 }
 .one-hand-rail .rail-button[aria-pressed="true"]::after{
-  opacity:.42;
+  opacity:.52;
   transform:translate(-50%,-50%) scale(.76);
-  background:radial-gradient(circle, rgba(var(--bw-brand-violet),.13) 0 42%, rgba(var(--bw-brand-violet),.08) 43% 55%, transparent 56% 100%);
-  box-shadow:0 0 22px rgba(var(--bw-brand-violet),.11);
+  background:radial-gradient(circle, rgba(var(--bw-brand-violet),.2) 0 41%, rgba(var(--bw-brand-violet),.13) 42% 55%, transparent 56% 100%);
+  box-shadow:0 0 26px rgba(var(--bw-brand-violet),.16);
 }
 .one-hand-rail .rail-button[aria-pressed="true"].bw-press-feedback::after{
   animation:bwRailWaterRippleActive 620ms cubic-bezier(.16,1,.3,1) both;
@@ -108,29 +108,29 @@
   line-height:0!important;
 }
 .one-hand-rail[data-position="bottom"] .rail-button::after{
-  width:44px;
-  height:44px;
+  width:46px;
+  height:46px;
 }
 .tools-action,.tools-close,.archive-close,.rail-position-button,.archive-row-restore{
   position:relative;
   overflow:hidden;
 }
 .tools-action.bw-press-feedback,.tools-close.bw-press-feedback,.archive-close.bw-press-feedback,.rail-position-button.bw-press-feedback,.archive-row-restore.bw-press-feedback{
-  box-shadow:0 0 18px rgba(var(--bw-brand-violet),.16),inset 0 1px 0 rgba(255,255,255,.04)!important;
+  box-shadow:0 0 20px rgba(var(--bw-brand-violet),.2),inset 0 1px 0 rgba(255,255,255,.04)!important;
 }
 @keyframes bwRailWaterRipple{
-  0%{opacity:0;transform:translate(-50%,-50%) scale(.52)}
-  18%{opacity:.66;transform:translate(-50%,-50%) scale(.72)}
-  100%{opacity:0;transform:translate(-50%,-50%) scale(1.28)}
+  0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}
+  18%{opacity:.82;transform:translate(-50%,-50%) scale(.74)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.34)}
 }
 @keyframes bwRailWaterRippleActive{
-  0%{opacity:.22;transform:translate(-50%,-50%) scale(.58)}
-  20%{opacity:.74;transform:translate(-50%,-50%) scale(.78)}
-  100%{opacity:.42;transform:translate(-50%,-50%) scale(.88)}
+  0%{opacity:.28;transform:translate(-50%,-50%) scale(.58)}
+  20%{opacity:.86;transform:translate(-50%,-50%) scale(.8)}
+  100%{opacity:.52;transform:translate(-50%,-50%) scale(.9)}
 }
 @media(prefers-reduced-motion:reduce){
   .one-hand-rail{transition:none}
   .rail-transition-ghost{transition:none!important}
-  .one-hand-rail .rail-button.bw-press-feedback::after{animation:none;opacity:.35}
+  .one-hand-rail .rail-button.bw-press-feedback::after{animation:none;opacity:.45}
   .bw-press-feedback{transform:none}
 }
