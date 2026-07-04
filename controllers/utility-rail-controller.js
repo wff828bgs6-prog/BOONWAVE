@@ -5,8 +5,6 @@ const POSITION_SETTING_KEY = 'utilityRailPosition';
 const LEGACY_SIDE_SETTING_KEY = 'utilityRailSide';
 const LOCK_SETTING_KEY = 'cardsLocked';
 const VALID_POSITIONS = new Set(['right', 'left', 'bottom']);
-const POSITION_FADE_OUT_MS = 260;
-const POSITION_FADE_IN_MS = 320;
 
 export class UtilityRailController {
   constructor({ rail, lockButton, homeButton, positionButtons = [], hint, onHome, onPositionChange } = {}) {
@@ -22,8 +20,6 @@ export class UtilityRailController {
     this.onHome = typeof onHome === 'function' ? onHome : null;
     this.onPositionChange = typeof onPositionChange === 'function' ? onPositionChange : null;
     this.feedbackTimer = null;
-    this.positionTimer = null;
-    this.positionEndTimer = null;
     this.unsubscribe = null;
     this.abortController = new AbortController();
   }
@@ -39,7 +35,7 @@ export class UtilityRailController {
       ? savedPosition
       : legacySide === 'left' ? 'left' : 'right';
 
-    this.setPosition(initialPosition, { persist: false, announce: false, animate: false });
+    this.setPosition(initialPosition, { persist: false, announce: false });
     store.setState({ cardsLocked: savedLock === true });
     this.bind();
     this.syncLockState(store.getState().cardsLocked);
@@ -78,13 +74,22 @@ export class UtilityRailController {
     for (const button of this.positionButtons) {
       button.addEventListener('click', () => {
         const position = button.dataset.railPosition;
-        if (VALID_POSITIONS.has(position)) this.setPosition(position, { persist: true, announce: true, animate: true });
+        if (VALID_POSITIONS.has(position)) this.setPosition(position, { persist: true, announce: true });
       }, { signal });
     }
   }
 
+  clearTransitionStyles() {
+    this.rail.classList.remove('is-position-transitioning', 'is-position-fading', 'is-position-visible', 'is-switching-position');
+    this.rail.style.removeProperty('visibility');
+    this.rail.style.removeProperty('opacity');
+    this.rail.style.removeProperty('transition');
+    this.rail.style.setProperty('transform', 'none', 'important');
+  }
+
   applyPosition(position) {
     const normalized = VALID_POSITIONS.has(position) ? position : 'right';
+    this.clearTransitionStyles();
     this.rail.dataset.position = normalized;
     this.rail.removeAttribute('data-side');
     const label = normalized === 'bottom'
@@ -101,47 +106,9 @@ export class UtilityRailController {
     return normalized;
   }
 
-  resetPositionTransitionStyles() {
-    this.rail.classList.remove('is-position-transitioning', 'is-position-fading', 'is-position-visible');
-    this.rail.style.removeProperty('visibility');
-    this.rail.style.removeProperty('opacity');
-    this.rail.style.removeProperty('transition');
-    this.rail.style.setProperty('transform', 'none', 'important');
-  }
-
-  setPosition(position, { persist = true, announce = false, animate = false } = {}) {
+  setPosition(position, { persist = true, announce = false } = {}) {
     const normalized = VALID_POSITIONS.has(position) ? position : 'right';
-    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    clearTimeout(this.positionTimer);
-    clearTimeout(this.positionEndTimer);
-
-    if (animate && !reduceMotion && this.rail.dataset.position !== normalized) {
-      this.resetPositionTransitionStyles();
-      this.rail.style.transition = `opacity ${POSITION_FADE_OUT_MS}ms ease`;
-      this.rail.style.opacity = '1';
-      this.rail.style.visibility = 'visible';
-      this.rail.offsetHeight;
-      this.rail.style.opacity = '0';
-
-      this.positionTimer = setTimeout(() => {
-        this.rail.style.visibility = 'hidden';
-        this.rail.style.transition = 'none';
-        this.applyPosition(normalized);
-        this.rail.offsetHeight;
-        this.rail.style.opacity = '0';
-        this.rail.style.visibility = 'visible';
-        this.rail.style.transition = `opacity ${POSITION_FADE_IN_MS}ms ease`;
-        requestAnimationFrame(() => {
-          this.rail.style.opacity = '1';
-        });
-        this.positionEndTimer = setTimeout(() => {
-          this.resetPositionTransitionStyles();
-        }, POSITION_FADE_IN_MS + 40);
-      }, POSITION_FADE_OUT_MS + 20);
-    } else {
-      this.resetPositionTransitionStyles();
-      this.applyPosition(normalized);
-    }
+    this.applyPosition(normalized);
 
     if (persist) {
       storage.saveSetting(POSITION_SETTING_KEY, normalized).catch((error) => {
@@ -180,9 +147,7 @@ export class UtilityRailController {
 
   destroy() {
     clearTimeout(this.feedbackTimer);
-    clearTimeout(this.positionTimer);
-    clearTimeout(this.positionEndTimer);
-    this.resetPositionTransitionStyles();
+    this.clearTransitionStyles();
     this.unsubscribe?.();
     this.abortController.abort();
   }
