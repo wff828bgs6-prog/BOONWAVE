@@ -42,7 +42,7 @@
   place-items:center;
   touch-action:manipulation;
   transform:none;
-  transition:filter var(--bw-motion-fast);
+  transition:none;
 }
 .one-hand-rail .rail-button:active{background:transparent;box-shadow:none;transform:none}
 .one-hand-rail .rail-button[aria-pressed="true"]{border-color:transparent;background:transparent;box-shadow:none}
@@ -55,7 +55,7 @@
 .zoom-visual{position:absolute;top:0;bottom:0;left:50%;width:22px;transform:translateX(-50%);border:1px solid rgba(255,255,255,.11);border-radius:14px;background:rgba(5,8,19,.72);box-shadow:inset 0 1px 0 rgba(255,255,255,.06);pointer-events:none}
 .zoom-visual::before{content:"";position:absolute;top:12px;bottom:12px;left:50%;width:2px;transform:translateX(-50%);border-radius:999px;background:rgba(143,151,184,.24)}
 .zoom-fill{position:absolute;left:50%;bottom:12px;width:2px;height:0;transform:translateX(-50%);border-radius:999px;background:linear-gradient(0deg,rgb(var(--bw-brand-violet)),rgb(var(--bw-brand-cyan)))}
-.zoom-thumb{position:absolute;left:50%;bottom:12px;width:18px;height:18px;transform:translate(-50%,50%);border:3px solid rgba(38,42,66,.98);border-radius:50%;background:#f7f8ff;box-shadow:0 3px 12px rgba(0,0,0,.5);opacity:1;visibility:visible}
+.zoom-thumb{position:absolute;left:50%;bottom:12px;width:20px;height:20px;transform:translate(-50%,50%);border:2px solid rgba(207,185,255,.68);border-radius:50%;background:radial-gradient(circle at 34% 26%,rgba(255,255,255,.96) 0 11%,rgba(220,203,255,.94) 12% 22%,rgba(151,92,255,.96) 42%,rgba(82,48,181,.98) 72%,rgba(31,25,76,1) 100%);box-shadow:inset -3px -5px 8px rgba(22,14,58,.72),inset 2px 3px 5px rgba(255,255,255,.28),0 4px 14px rgba(0,0,0,.48),0 0 18px rgba(var(--bw-brand-violet),.42);opacity:1;visibility:visible}
 .zoom-accessible-range{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;border:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important}
 
 .one-hand-rail[data-position="bottom"]{
