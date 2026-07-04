@@ -1,4 +1,4 @@
-const CACHE = 'boonwave-core-34';
+const CACHE = 'boonwave-core-35';
 const CORE = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const CORE = [
   './styles/production-shell.css',
   './styles/production-shell-v2.css',
   './styles/card-detail-overrides.css',
+  './styles/card-detail-v3.css',
   './styles/card-views.css',
   './styles/one-hand-rail-v3.css',
   './styles/contacts-screen.css',
