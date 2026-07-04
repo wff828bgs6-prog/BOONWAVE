@@ -5,7 +5,8 @@ const POSITION_SETTING_KEY = 'utilityRailPosition';
 const LEGACY_SIDE_SETTING_KEY = 'utilityRailSide';
 const LOCK_SETTING_KEY = 'cardsLocked';
 const VALID_POSITIONS = new Set(['right', 'left', 'bottom']);
-const POSITION_TRANSITION_MS = 120;
+const POSITION_FADE_OUT_MS = 500;
+const POSITION_FADE_IN_MS = 500;
 
 export class UtilityRailController {
   constructor({ rail, lockButton, homeButton, positionButtons = [], hint, onHome, onPositionChange } = {}) {
@@ -22,6 +23,7 @@ export class UtilityRailController {
     this.onPositionChange = typeof onPositionChange === 'function' ? onPositionChange : null;
     this.feedbackTimer = null;
     this.positionTimer = null;
+    this.positionEndTimer = null;
     this.unsubscribe = null;
     this.abortController = new AbortController();
   }
@@ -103,15 +105,21 @@ export class UtilityRailController {
     const normalized = VALID_POSITIONS.has(position) ? position : 'right';
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     clearTimeout(this.positionTimer);
+    clearTimeout(this.positionEndTimer);
 
     if (animate && !reduceMotion && this.rail.dataset.position !== normalized) {
-      this.rail.classList.add('is-position-transitioning');
+      this.rail.classList.remove('is-position-visible');
+      this.rail.classList.add('is-position-fading');
       this.positionTimer = setTimeout(() => {
         this.applyPosition(normalized);
-        requestAnimationFrame(() => this.rail.classList.remove('is-position-transitioning'));
-      }, POSITION_TRANSITION_MS);
+        this.rail.classList.remove('is-position-fading');
+        this.rail.classList.add('is-position-visible');
+        this.positionEndTimer = setTimeout(() => {
+          this.rail.classList.remove('is-position-visible');
+        }, POSITION_FADE_IN_MS);
+      }, POSITION_FADE_OUT_MS);
     } else {
-      this.rail.classList.remove('is-position-transitioning');
+      this.rail.classList.remove('is-position-fading', 'is-position-visible');
       this.applyPosition(normalized);
     }
 
@@ -153,6 +161,7 @@ export class UtilityRailController {
   destroy() {
     clearTimeout(this.feedbackTimer);
     clearTimeout(this.positionTimer);
+    clearTimeout(this.positionEndTimer);
     this.unsubscribe?.();
     this.abortController.abort();
   }
