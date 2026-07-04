@@ -5,8 +5,8 @@ const POSITION_SETTING_KEY = 'utilityRailPosition';
 const LEGACY_SIDE_SETTING_KEY = 'utilityRailSide';
 const LOCK_SETTING_KEY = 'cardsLocked';
 const VALID_POSITIONS = new Set(['right', 'left', 'bottom']);
-const GHOST_FADE_OUT_MS = 180;
-const REAL_FADE_IN_MS = 220;
+const GHOST_FADE_OUT_MS = 360;
+const REAL_FADE_IN_MS = 440;
 
 export class UtilityRailController {
   constructor({ rail, lockButton, homeButton, positionButtons = [], hint, onHome, onPositionChange } = {}) {
@@ -176,8 +176,8 @@ export class UtilityRailController {
         });
         this.switchEndTimer = setTimeout(() => {
           this.resetPanelStyles();
-        }, REAL_FADE_IN_MS + 60);
-      }, GHOST_FADE_OUT_MS + 30);
+        }, REAL_FADE_IN_MS + 80);
+      }, GHOST_FADE_OUT_MS + 60);
     } else {
       this.resetPanelStyles();
       this.applyPosition(normalized);
