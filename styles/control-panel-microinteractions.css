@@ -48,6 +48,17 @@
   background:rgba(var(--bw-brand-violet),.09);
   box-shadow:0 0 10px rgba(var(--bw-brand-violet),.13);
 }
+.one-hand-rail .rail-button.bw-press-feedback::before{
+  opacity:1;
+  border-color:rgba(var(--bw-brand-cyan),.42);
+  background:rgba(var(--bw-brand-cyan),.105);
+  box-shadow:0 0 14px rgba(var(--bw-brand-cyan),.22),0 0 24px rgba(var(--bw-brand-violet),.16);
+}
+.one-hand-rail .rail-button[aria-pressed="true"].bw-press-feedback::before{
+  border-color:rgba(var(--bw-brand-cyan),.52);
+  background:rgba(var(--bw-brand-violet),.12);
+  box-shadow:0 0 16px rgba(var(--bw-brand-cyan),.25),0 0 26px rgba(var(--bw-brand-violet),.2);
+}
 .one-hand-rail .bw-icon,.tools-panel .bw-icon{
   position:relative;
   z-index:1;
