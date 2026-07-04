@@ -41,10 +41,10 @@
   display:grid;
   place-items:center;
   touch-action:manipulation;
-  transition:background var(--bw-motion-fast),border-color var(--bw-motion-fast),box-shadow var(--bw-motion-fast),transform var(--bw-motion-fast);
+  transition:filter var(--bw-motion-fast),transform var(--bw-motion-fast);
 }
-.one-hand-rail .rail-button:active{background:rgba(255,255,255,.07);transform:scale(.98)}
-.one-hand-rail .rail-button[aria-pressed="true"]{border-color:rgba(var(--bw-brand-violet),.48);background:rgba(var(--bw-brand-violet),.13);box-shadow:0 0 14px rgba(var(--bw-brand-violet),.16)}
+.one-hand-rail .rail-button:active{background:transparent;box-shadow:none;transform:scale(.985)}
+.one-hand-rail .rail-button[aria-pressed="true"]{border-color:transparent;background:transparent;box-shadow:none}
 .one-hand-rail .bw-icon,.tools-panel .bw-icon{width:20px;height:20px;fill:none;stroke:url(#bwIconGradient);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .one-hand-rail .bw-icon circle,.tools-panel .bw-icon circle{fill:none;stroke:url(#bwIconGradient)}
 #cardLockButton .lock-closed{display:none}#cardLockButton .lock-open{display:block}#cardLockButton[aria-pressed="true"] .lock-closed{display:block}#cardLockButton[aria-pressed="true"] .lock-open{display:none}
