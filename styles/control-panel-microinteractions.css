@@ -102,7 +102,16 @@
 .one-hand-rail[data-position="bottom"] .rail-button{
   line-height:0!important;
 }
-.one-hand-rail[data-position="bottom"] .rail-button.bw-press-feedback .bw-icon{
+.one-hand-rail[data-position="bottom"] .rail-button.bw-press-feedback::before,
+.one-hand-rail[data-position="bottom"] .rail-button:active::before{
+  opacity:0!important;
+  border-color:transparent!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  transition:none!important;
+}
+.one-hand-rail[data-position="bottom"] .rail-button.bw-press-feedback .bw-icon,
+.one-hand-rail[data-position="bottom"] .rail-button:active .bw-icon{
   filter:none!important;
 }
 .one-hand-rail[data-position="bottom"] .rail-button::before{
