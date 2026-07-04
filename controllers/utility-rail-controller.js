@@ -5,7 +5,8 @@ const POSITION_SETTING_KEY = 'utilityRailPosition';
 const LEGACY_SIDE_SETTING_KEY = 'utilityRailSide';
 const LOCK_SETTING_KEY = 'cardsLocked';
 const VALID_POSITIONS = new Set(['right', 'left', 'bottom']);
-const SWITCH_SETTLE_MS = 140;
+const FADE_OUT_MS = 180;
+const FADE_IN_MS = 220;
 
 export class UtilityRailController {
   constructor({ rail, lockButton, homeButton, positionButtons = [], hint, onHome, onPositionChange } = {}) {
@@ -22,6 +23,7 @@ export class UtilityRailController {
     this.onPositionChange = typeof onPositionChange === 'function' ? onPositionChange : null;
     this.feedbackTimer = null;
     this.switchTimer = null;
+    this.switchEndTimer = null;
     this.unsubscribe = null;
     this.abortController = new AbortController();
   }
@@ -37,7 +39,7 @@ export class UtilityRailController {
       ? savedPosition
       : legacySide === 'left' ? 'left' : 'right';
 
-    this.setPosition(initialPosition, { persist: false, announce: false, settle: false });
+    this.setPosition(initialPosition, { persist: false, announce: false, animate: false });
     store.setState({ cardsLocked: savedLock === true });
     this.bind();
     this.syncLockState(store.getState().cardsLocked);
@@ -76,37 +78,22 @@ export class UtilityRailController {
     for (const button of this.positionButtons) {
       button.addEventListener('click', () => {
         const position = button.dataset.railPosition;
-        if (VALID_POSITIONS.has(position)) this.setPosition(position, { persist: true, announce: true, settle: true });
+        if (VALID_POSITIONS.has(position)) this.setPosition(position, { persist: true, announce: true, animate: true });
       }, { signal });
     }
   }
 
-  clearTransitionStyles() {
-    this.rail.classList.remove('is-position-transitioning', 'is-position-fading', 'is-position-visible');
+  resetPanelStyles() {
+    this.rail.classList.remove('is-position-transitioning', 'is-position-fading', 'is-position-visible', 'is-switching-position');
+    this.rail.style.removeProperty('display');
     this.rail.style.removeProperty('visibility');
     this.rail.style.removeProperty('opacity');
     this.rail.style.removeProperty('transition');
     this.rail.style.setProperty('transform', 'none', 'important');
   }
 
-  beginPositionSwitch() {
-    clearTimeout(this.switchTimer);
-    this.clearTransitionStyles();
-    this.rail.classList.add('is-switching-position');
-  }
-
-  endPositionSwitch() {
-    clearTimeout(this.switchTimer);
-    this.switchTimer = setTimeout(() => {
-      this.rail.classList.remove('is-switching-position');
-    }, SWITCH_SETTLE_MS);
-  }
-
-  applyPosition(position, { settle = false } = {}) {
+  applyPosition(position) {
     const normalized = VALID_POSITIONS.has(position) ? position : 'right';
-    if (settle && this.rail.dataset.position !== normalized) this.beginPositionSwitch();
-    else this.clearTransitionStyles();
-
     this.rail.dataset.position = normalized;
     this.rail.removeAttribute('data-side');
     const label = normalized === 'bottom'
@@ -120,13 +107,45 @@ export class UtilityRailController {
     }
 
     this.onPositionChange?.(normalized);
-    if (settle) this.endPositionSwitch();
     return normalized;
   }
 
-  setPosition(position, { persist = true, announce = false, settle = false } = {}) {
+  setPosition(position, { persist = true, announce = false, animate = false } = {}) {
     const normalized = VALID_POSITIONS.has(position) ? position : 'right';
-    this.applyPosition(normalized, { settle });
+    const current = this.rail.dataset.position;
+    clearTimeout(this.switchTimer);
+    clearTimeout(this.switchEndTimer);
+
+    if (animate && current !== normalized) {
+      this.resetPanelStyles();
+      this.rail.classList.add('is-switching-position');
+      this.rail.style.display = 'grid';
+      this.rail.style.visibility = 'visible';
+      this.rail.style.opacity = '1';
+      this.rail.style.transition = `opacity ${FADE_OUT_MS}ms ease`;
+      this.rail.offsetHeight;
+      this.rail.style.opacity = '0';
+
+      this.switchTimer = setTimeout(() => {
+        this.rail.style.visibility = 'hidden';
+        this.rail.style.display = 'none';
+        this.rail.style.transition = 'none';
+        this.applyPosition(normalized);
+        this.rail.offsetHeight;
+        this.rail.style.display = 'grid';
+        this.rail.style.visibility = 'visible';
+        this.rail.style.opacity = '0';
+        this.rail.offsetHeight;
+        this.rail.style.transition = `opacity ${FADE_IN_MS}ms ease`;
+        this.rail.style.opacity = '1';
+        this.switchEndTimer = setTimeout(() => {
+          this.resetPanelStyles();
+        }, FADE_IN_MS + 60);
+      }, FADE_OUT_MS + 30);
+    } else {
+      this.resetPanelStyles();
+      this.applyPosition(normalized);
+    }
 
     if (persist) {
       storage.saveSetting(POSITION_SETTING_KEY, normalized).catch((error) => {
@@ -166,8 +185,8 @@ export class UtilityRailController {
   destroy() {
     clearTimeout(this.feedbackTimer);
     clearTimeout(this.switchTimer);
-    this.clearTransitionStyles();
-    this.rail.classList.remove('is-switching-position');
+    clearTimeout(this.switchEndTimer);
+    this.resetPanelStyles();
     this.unsubscribe?.();
     this.abortController.abort();
   }
