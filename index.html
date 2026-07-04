@@ -23,12 +23,16 @@
     <header class="app-header"><div class="app-badge"><strong>BOONWAVE</strong><span>Production Core</span></div></header>
 
     <aside class="one-hand-rail" id="utilityRail" data-position="right" aria-label="Управление одной рукой, справа">
-      <button class="utility-button rail-home" id="homeSelfButton" type="button" aria-label="Вернуться к карточке Я Есмь">
-        <svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M6 19c.8-3.3 2.8-5 6-5s5.2 1.7 6 5"/></svg>
+      <button class="rail-button rail-home" id="homeSelfButton" type="button" aria-label="Вернуться к главному обзору рабочего стола">
+        <svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 12h6"/><path d="m8 9 3 3-3 3"/><path d="M20 12h-6"/><path d="m16 9-3 3 3 3"/><path d="M12 4v6"/><path d="m9 8 3 3 3-3"/><path d="M12 20v-6"/><path d="m9 16 3-3 3 3"/></svg>
       </button>
 
       <button class="rail-button rail-add" id="addCardButton" type="button" aria-label="Создать карточку">
         <svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg>
+      </button>
+
+      <button class="rail-button rail-contacts" id="contactsButton" type="button" aria-label="Открыть контакты" aria-expanded="false" aria-controls="contactsSheet">
+        <svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
       </button>
 
       <div class="rail-zoom" id="zoomControl">
@@ -38,7 +42,7 @@
         </div>
       </div>
 
-      <button class="utility-button rail-lock" id="cardLockButton" type="button" aria-label="Зафиксировать расположение карточек" aria-pressed="false">
+      <button class="rail-button rail-lock" id="cardLockButton" type="button" aria-label="Зафиксировать расположение карточек" aria-pressed="false">
         <svg class="bw-icon lock-closed" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v2"/></svg>
         <svg class="bw-icon lock-open" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M16 10V7a4 4 0 0 0-7.5-2"/><path d="M12 14v2"/></svg>
       </button>
@@ -56,12 +60,11 @@
     <div class="tools-panel" role="dialog" aria-modal="true" aria-labelledby="toolsTitle">
       <div class="tools-head"><h2 id="toolsTitle">Дополнительные действия</h2><button class="tools-close" id="closeToolsButton" type="button" aria-label="Закрыть дополнительные действия">×</button></div>
       <div class="tools-grid">
-        <button class="tools-action" id="linkButton" type="button" aria-label="Связать или отвязать карточки" aria-pressed="false" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg><span>Связь</span></button>
-        <button class="tools-action" id="deleteButton" type="button" aria-label="Переместить карточку в корзину" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg><span>В корзину</span></button>
+        <button class="tools-action" id="linkButton" type="button" aria-label="Связать карточки" aria-pressed="false" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg><span>Связь</span></button>
+        <button class="tools-action" id="deleteButton" type="button" aria-label="Архивировать выбранную карточку" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16v13H4z"/><path d="M3 4h18v3H3z"/><path d="M9 11h6"/></svg><span>Архивировать</span></button>
+        <button class="tools-action" id="archiveLibraryButton" type="button" aria-label="Открыть архив" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M5 6h14"/><path d="M7 6v14h10V6"/><path d="M9 10h6M9 14h6"/></svg><span>Архив</span></button>
         <button class="tools-action" id="undoButton" type="button" aria-label="Отменить действие" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M16 7H9a5 5 0 0 0 0 10h6"/><path d="m12 4 4 3-4 3"/></svg><span>Отменить</span></button>
         <button class="tools-action" id="redoButton" type="button" aria-label="Повторить действие" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M8 7h7a5 5 0 0 1 0 10H9"/><path d="m12 4-4 3 4 3"/></svg><span>Повторить</span></button>
-        <button class="tools-action" id="contactsButton" type="button" aria-label="Открыть контакты" aria-expanded="false" aria-controls="contactsSheet" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Контакты</span></button>
-        <button class="tools-action" type="button" aria-label="Архив" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg><span>Архив</span></button>
       </div>
 
       <div class="rail-position-section">
@@ -79,7 +82,7 @@
     <div class="contacts-panel" role="dialog" aria-modal="true" aria-labelledby="contactsTitle">
       <div class="contacts-head"><h2 id="contactsTitle">Контакты</h2><button class="contacts-close" id="closeContactsButton" type="button" aria-label="Закрыть контакты">×</button></div>
       <div class="contacts-list" id="contactsList"></div>
-      <div class="contacts-empty" id="contactsEmpty">Контактов пока нет. Создай карточку типа «Человек», и она появится здесь.</div>
+      <div class="contacts-empty" id="contactsEmpty">Контактов пока нет. Раздел будет отделён от карточки «Человек» в следующем этапе.</div>
       <button class="contacts-create" id="createContactButton" type="button">Новый контакт</button>
     </div>
   </section>
