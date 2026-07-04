@@ -67,6 +67,18 @@
   position:relative;
   z-index:1;
 }
+.one-hand-rail .rail-lock .lock-closed{
+  display:none!important;
+}
+.one-hand-rail .rail-lock .lock-open{
+  display:block!important;
+}
+.one-hand-rail .rail-lock[aria-pressed="true"] .lock-closed{
+  display:block!important;
+}
+.one-hand-rail .rail-lock[aria-pressed="true"] .lock-open{
+  display:none!important;
+}
 .one-hand-rail .rail-button:active{
   background:transparent;
   transform:none!important;
