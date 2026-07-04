@@ -101,6 +101,10 @@ export class UtilityRailController {
     return normalized;
   }
 
+  clearTransitionClasses() {
+    this.rail.classList.remove('is-position-transitioning', 'is-position-fading', 'is-position-visible');
+  }
+
   setPosition(position, { persist = true, announce = false, animate = false } = {}) {
     const normalized = VALID_POSITIONS.has(position) ? position : 'right';
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
@@ -108,18 +112,20 @@ export class UtilityRailController {
     clearTimeout(this.positionEndTimer);
 
     if (animate && !reduceMotion && this.rail.dataset.position !== normalized) {
-      this.rail.classList.remove('is-position-visible');
-      this.rail.classList.add('is-position-fading');
-      this.positionTimer = setTimeout(() => {
-        this.applyPosition(normalized);
-        this.rail.classList.remove('is-position-fading');
-        this.rail.classList.add('is-position-visible');
-        this.positionEndTimer = setTimeout(() => {
-          this.rail.classList.remove('is-position-visible');
-        }, POSITION_FADE_IN_MS);
-      }, POSITION_FADE_OUT_MS);
+      this.clearTransitionClasses();
+      requestAnimationFrame(() => {
+        this.rail.classList.add('is-position-fading');
+        this.positionTimer = setTimeout(() => {
+          this.applyPosition(normalized);
+          this.rail.classList.remove('is-position-fading');
+          this.rail.classList.add('is-position-visible');
+          this.positionEndTimer = setTimeout(() => {
+            this.rail.classList.remove('is-position-visible');
+          }, POSITION_FADE_IN_MS);
+        }, POSITION_FADE_OUT_MS);
+      });
     } else {
-      this.rail.classList.remove('is-position-fading', 'is-position-visible');
+      this.clearTransitionClasses();
       this.applyPosition(normalized);
     }
 
