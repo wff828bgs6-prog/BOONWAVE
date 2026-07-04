@@ -92,7 +92,7 @@ export class UtilityRailController {
   }
 
   resetPanelStyles() {
-    this.rail.classList.remove('is-position-transitioning', 'is-position-fading', 'is-position-visible', 'is-switching-position', 'is-rail-fade-in');
+    this.rail.classList.remove('is-position-transitioning', 'is-position-fading', 'is-position-visible', 'is-switching-position');
     this.rail.style.removeProperty('display');
     this.rail.style.removeProperty('visibility');
     this.rail.style.removeProperty('opacity');
@@ -169,7 +169,6 @@ export class UtilityRailController {
 
       this.switchTimer = setTimeout(() => {
         this.removeTransitionGhost();
-        this.rail.classList.add('is-rail-fade-in');
         this.rail.style.visibility = 'visible';
         this.rail.style.opacity = PANEL_FADE_FLOOR;
         this.rail.style.setProperty('transition', `opacity ${REAL_FADE_IN_MS}ms ${PANEL_FADE_EASING}`, 'important');
