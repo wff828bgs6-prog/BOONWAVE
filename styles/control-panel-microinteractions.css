@@ -1,18 +1,12 @@
 .one-hand-rail{
+  transform:none!important;
   transform-origin:center;
-  transition:opacity 500ms ease,box-shadow 500ms ease;
+  transition:none;
 }
-.one-hand-rail.is-position-fading{
-  opacity:0;
-  transform:none;
-}
-.one-hand-rail.is-position-visible{
-  opacity:1;
-  transform:none;
-}
+.one-hand-rail.is-position-fading,
+.one-hand-rail.is-position-visible,
 .one-hand-rail.is-position-transitioning{
-  opacity:1;
-  transform:none;
+  transform:none!important;
 }
 .one-hand-rail .rail-button{
   position:relative;
@@ -51,6 +45,5 @@
 }
 @media(prefers-reduced-motion:reduce){
   .one-hand-rail{transition:none}
-  .one-hand-rail.is-position-fading,.one-hand-rail.is-position-visible,.one-hand-rail.is-position-transitioning{opacity:1;transform:none}
   .bw-press-feedback{transform:none}
 }
