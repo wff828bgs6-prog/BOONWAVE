@@ -26,6 +26,16 @@
 .one-hand-rail[style*="opacity"]{
   transition-timing-function:cubic-bezier(.37,0,.63,1)!important;
 }
+.one-hand-rail.is-zoom-thumb-hidden .zoom-thumb,
+.rail-transition-ghost.is-zoom-thumb-hidden .zoom-thumb{
+  opacity:0!important;
+  filter:saturate(.8) brightness(.72)!important;
+  transition:opacity 112ms cubic-bezier(.32,0,.67,0),filter 112ms cubic-bezier(.32,0,.67,0)!important;
+}
+.one-hand-rail.is-zoom-thumb-appearing .zoom-thumb{
+  opacity:1!important;
+  transition:opacity 256ms cubic-bezier(.16,1,.3,1),filter 256ms cubic-bezier(.16,1,.3,1),box-shadow 256ms cubic-bezier(.16,1,.3,1)!important;
+}
 .one-hand-rail .rail-button{
   position:relative;
   overflow:visible;
