@@ -10,136 +10,31 @@ import { getPrimarySelfNode } from '../services/self-node-service.js';
 import { loadMedia } from '../services/media-service.js';
 import { loadWorkspace, saveCamera } from '../services/workspace-service.js';
 import { HOME_CAMERA_DURATION_MS, getCameraForCard, interpolateCamera } from '../canvas/camera-navigation.js';
-import { getCoverMediaId, collectActiveCoverMediaIds, getCoverFallback, getCardProgress } from '../ui/card-presentation.js';
+import { getCoverMediaId, getCoverPreviewUrl, collectActiveCoverMediaIds, getCoverFallback, getCardProgress } from '../ui/card-presentation.js';
 import { CoverLoadCoordinator } from '../ui/cover-load-coordinator.js';
 
 const STATUS_LABELS=Object.freeze({preparation:'Подготовка',planned:'Запланировано',active:'Активно',draft:'Черновик',in_progress:'В работе',paused:'На паузе',completed:'Завершено'});
 const visibilityKey=(section)=>`show${section[0].toUpperCase()}${section.slice(1)}`;
-
-function getNodeMeta(card){
-  const data=card.data??{};
-  if(card.type==='project')return[STATUS_LABELS[data.status]??data.status,data.address].filter(Boolean);
-  if(card.type==='process'||card.type==='goal')return[STATUS_LABELS[data.status]??data.status,Number.isFinite(data.progress)?`${Math.round(data.progress)}%`:null].filter(Boolean);
-  if(card.type==='person')return[data.role,data.organization].filter(Boolean);
-  if(card.type==='idea')return[STATUS_LABELS[data.status]??data.status,data.category].filter(Boolean);
-  return[];
-}
-
+function getNodeMeta(card){const data=card.data??{};if(card.type==='project')return[STATUS_LABELS[data.status]??data.status,data.address].filter(Boolean);if(card.type==='process'||card.type==='goal')return[STATUS_LABELS[data.status]??data.status,Number.isFinite(data.progress)?`${Math.round(data.progress)}%`:null].filter(Boolean);if(card.type==='person')return[data.role||data.profession,data.organization].filter(Boolean);if(card.type==='idea')return[STATUS_LABELS[data.status]??data.status,data.category].filter(Boolean);return[];}
+function shouldRenderCard(card){return !(card?.lifecycleStatus==='archived'||card?.lifecycleStatus==='trashed'||(card?.type==='person'&&card.data?.showOnCanvas===false));}
 function getCompactLabel(card,view){return view.compactLabel||String(card.title??'').trim().split(/\s+/)[0]||NODE_TYPE_LABELS[card.type];}
-function formatFullData(card){return Object.entries(card.data??{}).filter(([,value])=>value!==''&&value!==null&&value!==undefined).filter(([key])=>!['coverMediaId','avatarMediaId','images','documents','files','attachments'].includes(key)).map(([key,value])=>`${key}: ${typeof value==='object'?JSON.stringify(value):value}`).join('\n');}
+function formatFullData(card){return Object.entries(card.data??{}).filter(([,value])=>value!==''&&value!==null&&value!==undefined).filter(([key])=>!['coverMediaId','coverWideMediaId','coverPreviewUrl','coverWidePreviewUrl','coverCrops','avatarMediaId','avatarWideMediaId','avatarPreviewUrl','avatarWidePreviewUrl','avatarCrop','avatarCrops','images','documents','files','attachments'].includes(key)).map(([key,value])=>`${key}: ${typeof value==='object'?JSON.stringify(value):value}`).join('\n');}
 function collectChangedCardIds(nextCards={},previousCards={}){const ids=new Set([...Object.keys(nextCards),...Object.keys(previousCards)]);return[...ids].filter((id)=>nextCards[id]!==previousCards[id]);}
 
 export class WorkspaceController{
-  constructor({canvas,world,initialSelectedCardId=null}){
-    if(!(canvas instanceof Element)||!(world instanceof Element))throw new TypeError('WorkspaceController expects canvas and world elements.');
-    this.canvas=canvas;this.world=world;this.initialSelectedCardId=initialSelectedCardId;this.cardTapHandler=null;this.cardEditHandler=null;this.cardDisplayHandler=null;this.backgroundTapHandler=null;this.linkSourceProvider=null;this.linkModeProvider=null;this.cameraSaveTimer=null;this.cameraAnimationFrame=null;this.gestureMachine=null;this.cardController=null;this.detailController=null;this.linksRenderer=null;this.unsubscribe=null;this.mediaUrls=new Map();this.coverLoads=new CoverLoadCoordinator();this.abortController=new AbortController();
-  }
-
-  setCardTapHandler(handler){this.cardTapHandler=typeof handler==='function'?handler:null;}
-  setCardEditHandler(handler){this.cardEditHandler=typeof handler==='function'?handler:null;}
-  setCardDisplayHandler(handler){this.cardDisplayHandler=typeof handler==='function'?handler:null;}
-  setBackgroundTapHandler(handler){this.backgroundTapHandler=typeof handler==='function'?handler:null;}
-  setLinkSourceProvider(provider){this.linkSourceProvider=typeof provider==='function'?provider:null;}
-  setLinkModeProvider(provider){this.linkModeProvider=typeof provider==='function'?provider:null;}
-
-  async init({onEmpty}={}){
-    await loadWorkspace();
-    if(Object.keys(store.getState().cards).length===0&&typeof onEmpty==='function'){await onEmpty();await loadWorkspace();}
-    const cards=store.getState().cards;
-    const selectedCardId=this.initialSelectedCardId&&cards[this.initialSelectedCardId]?this.initialSelectedCardId:null;
-    store.setState({selectedCardId});
-    this.renderCards();this.applyCamera();this.mountCore();this.bindStore();this.bindCanvas();
-    return this;
-  }
-
-  createCardElement(){
-    const element=document.createElement('article');
-    element.className='card';
-    element.innerHTML='<div class="card-cover"><img alt=""><div class="card-cover-fallback" aria-hidden="true"></div></div><div class="card-head"><div class="card-type"></div><div class="card-status"></div></div><h2></h2><p></p><div class="card-meta"></div><div class="card-full"></div><div class="card-progress"><span></span></div>';
-    return element;
-  }
-
-  async applyCover(element,card,view){
-    const image=element.querySelector('.card-cover img');const fallback=element.querySelector('.card-cover-fallback');const mediaId=getCoverMediaId(card);const request=this.coverLoads.begin(card.id,mediaId);const frame=view.mode==='compact'?view.coverFrames.compact:view.coverFrames.working;
-    image.style.transform=`scale(${frame.scale})`;image.style.objectPosition=`${frame.positionX}% ${frame.positionY}%`;element.dataset.coverShape=frame.shape;fallback.textContent=getCoverFallback(card);element.dataset.hasCover='false';image.removeAttribute('src');image.alt='';
-    if(!mediaId)return;
-    let url=this.mediaUrls.get(mediaId);
-    if(!url){const loaded=await loadMedia(mediaId);if(!loaded?.blob||!this.coverLoads.isCurrent(request))return;url=URL.createObjectURL(loaded.blob);this.mediaUrls.set(mediaId,url);}
-    const currentCard=store.getState().cards[card.id];
-    if(!this.coverLoads.isCurrent(request)||element.dataset.cardId!==card.id||getCoverMediaId(currentCard)!==mediaId)return;
-    image.src=url;image.alt=card.title?`Обложка: ${card.title}`:'Обложка карточки';element.dataset.hasCover='true';
-  }
-
-  cleanupUnusedMediaUrls(cards=store.getState().cards){
-    const activeIds=collectActiveCoverMediaIds(cards);
-    for(const[mediaId,url]of this.mediaUrls){if(activeIds.has(mediaId))continue;URL.revokeObjectURL(url);this.mediaUrls.delete(mediaId);}
-  }
-
-  updateCardElement(element,card,state,linkSourceId){
-    const meta=getNodeMeta(card);const view=normalizeNodeView(card.view);const progress=getCardProgress(card);const visible=view.visible[view.mode];
-    element.dataset.nodeType=card.type;element.dataset.viewMode=view.mode;element.dataset.selected=String(state.selectedCardId===card.id);element.dataset.linkSource=String(linkSourceId===card.id);element.dataset.positionLocked=String(Boolean(state.cardsLocked));
-    for(const section of CARD_VIEW_SECTIONS)element.dataset[visibilityKey(section)]=String(Boolean(visible[section]));
-    element.style.transform=`translate3d(${card.x}px, ${card.y}px, 0)`;element.tabIndex=0;element.setAttribute('role','group');element.setAttribute('aria-keyshortcuts','Space Enter');element.setAttribute('aria-label',`${NODE_TYPE_LABELS[card.type]??card.type}: ${card.title}. Удерживайте для редактирования. Двойное нажатие открывает карточку полностью.`);
-    element.querySelector('.card-type').textContent=NODE_TYPE_LABELS[card.type]??card.type;element.querySelector('.card-status').textContent=meta[0]??'';element.querySelector('h2').textContent=view.mode==='compact'?getCompactLabel(card,view):card.title;element.querySelector('p').textContent=card.description;element.querySelector('.card-meta').textContent=meta.slice(1).join(' • ');element.querySelector('.card-full').textContent=formatFullData(card)||'Дополнительная информация пока не заполнена';
-    const progressElement=element.querySelector('.card-progress');progressElement.hidden=progress===null;progressElement.querySelector('span').style.width=`${progress??0}%`;
-    this.applyCover(element,card,view).catch((error)=>console.error('Cover render failed:',error));
-  }
-
-  renderCards(cardIds=null){
-    const state=store.getState();const linkSourceId=this.linkSourceProvider?.()??null;
-    if(cardIds===null){
-      const existing=new Map([...this.world.querySelectorAll('[data-card-id]')].map((element)=>[element.dataset.cardId,element]));
-      for(const card of Object.values(state.cards)){let element=existing.get(card.id);if(!element){element=this.createCardElement();element.dataset.cardId=card.id;this.world.append(element);}existing.delete(card.id);this.updateCardElement(element,card,state,linkSourceId);}
-      for(const element of existing.values()){this.coverLoads.delete(element.dataset.cardId);element.remove();}
-      this.cleanupUnusedMediaUrls(state.cards);return;
-    }
-    for(const id of[...new Set(cardIds.filter(Boolean))]){const card=state.cards[id];let element=this.getCardElement(id);if(!card){this.coverLoads.delete(id);element?.remove();continue;}if(!element){element=this.createCardElement();element.dataset.cardId=card.id;this.world.append(element);}this.updateCardElement(element,card,state,linkSourceId);}
-    this.cleanupUnusedMediaUrls(state.cards);
-  }
-
-  getCardElement(cardId){return this.world.querySelector(`[data-card-id="${CSS.escape(cardId)}"]`);}
-  getCard(cardId){return store.getState().cards[cardId]??null;}
-  applyCamera(){const{camera}=store.getState();this.world.style.transform=`translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`;}
-  scheduleCameraSave(camera){clearTimeout(this.cameraSaveTimer);this.cameraSaveTimer=setTimeout(()=>saveCamera(camera).catch((error)=>console.error('Camera save failed:',error)),180);}
-  getViewportCenter(){const{camera}=store.getState();return{x:(window.innerWidth/2-camera.x)/camera.zoom-115,y:(window.innerHeight/2-camera.y)/camera.zoom-69};}
-  cancelCameraAnimation(){if(this.cameraAnimationFrame!==null)cancelAnimationFrame(this.cameraAnimationFrame);this.cameraAnimationFrame=null;}
-  getHomeTargetPoint(){const header=document.querySelector('.app-header')?.getBoundingClientRect();const top=Math.max(70,(header?.bottom??70)+12);const bottom=Math.max(top+120,window.innerHeight-28);return{x:window.innerWidth/2,y:top+(bottom-top)/2};}
-
-  focusSelfCard(){
-    const state=store.getState();const selfCard=getPrimarySelfNode(state.cards);if(!selfCard)return false;const element=this.getCardElement(selfCard.id);const point=this.getHomeTargetPoint();const target=getCameraForCard({card:selfCard,cardWidth:element?.offsetWidth??selfCard.width,cardHeight:element?.offsetHeight??selfCard.height,targetX:point.x,targetY:point.y});const from={...state.camera};
-    this.gestureMachine?.cancelInteraction();this.cancelCameraAnimation();
-    if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){store.setState({camera:target,selectedCardId:selfCard.id});return true;}
-    const startedAt=performance.now();
-    const animate=(now)=>{const progress=Math.min(1,(now-startedAt)/HOME_CAMERA_DURATION_MS);store.setState({camera:interpolateCamera(from,target,progress),selectedCardId:selfCard.id});if(progress<1)this.cameraAnimationFrame=requestAnimationFrame(animate);else{this.cameraAnimationFrame=null;store.setState({camera:target,selectedCardId:selfCard.id});}};
-    this.cameraAnimationFrame=requestAnimationFrame(animate);return true;
-  }
-
-  handleCardTap(cardId){const card=this.getCard(cardId);if(!card)return false;store.setState({selectedCardId:card.id});return this.cardTapHandler?.(card);}
-  handleCardEdit(cardId){const card=this.getCard(cardId);if(!card||this.linkModeProvider?.())return false;store.setState({selectedCardId:card.id});return this.cardEditHandler?.(card);}
-  handleCardDetail(cardId,element){const card=this.getCard(cardId);if(!card||this.linkModeProvider?.()||!(element instanceof Element))return false;store.setState({selectedCardId:card.id});return this.detailController.open(card,element);}
-
-  mountCore(){
-    this.detailController=new CardDetailController({root:document.body,onEdit:(card)=>this.cardEditHandler?.(card),onDisplay:(card)=>this.cardDisplayHandler?.(card)});
-    this.gestureMachine=new GestureMachine(this.canvas,{
-      allowPanFromInteractive:()=>Boolean(store.getState().cardsLocked),
-      onInteractiveTap:(cardId)=>this.handleCardTap(cardId),
-      onInteractiveLongPress:(cardId)=>this.handleCardEdit(cardId),
-      onInteractiveDoubleTap:(cardId,element)=>this.handleCardDetail(cardId,element),
-    });
-    this.cardController=new CardController(this.world,{
-      onCommit:(card)=>updateCardNode(card.id,{x:card.x,y:card.y}),
-      onTap:(card)=>this.cardTapHandler?.(card),
-      onLongPress:(card)=>{if(this.linkModeProvider?.())return false;this.gestureMachine?.cancelInteraction();return this.cardEditHandler?.(card);},
-      onDoubleTap:(card,element)=>{if(this.linkModeProvider?.())return false;this.gestureMachine?.cancelInteraction();return this.detailController.open(card,element);},
-      canOpenFullscreen:()=>!this.linkModeProvider?.(),
-      canMoveCard:()=>!store.getState().cardsLocked,
-    });
-    this.linksRenderer=createLinksRenderer(this.world);
-  }
-
-  bindStore(){this.unsubscribe=store.subscribe((next,previous)=>{const changedIds=new Set();if(next.cards!==previous.cards)for(const id of collectChangedCardIds(next.cards,previous.cards))changedIds.add(id);if(next.selectedCardId!==previous.selectedCardId){if(previous.selectedCardId)changedIds.add(previous.selectedCardId);if(next.selectedCardId)changedIds.add(next.selectedCardId);}if(next.cardsLocked!==previous.cardsLocked)for(const id of Object.keys(next.cards))changedIds.add(id);if(changedIds.size>0)this.renderCards([...changedIds]);if(next.camera!==previous.camera){this.applyCamera();this.scheduleCameraSave(next.camera);}});}
-  bindCanvas(){this.canvas.addEventListener('pointerdown',()=>this.cancelCameraAnimation(),{capture:true,signal:this.abortController.signal});this.canvas.addEventListener('click',(event)=>{if(event.target.closest('[data-card-id]'))return;store.setState({selectedCardId:null});this.backgroundTapHandler?.();},{signal:this.abortController.signal});}
-  destroy(){clearTimeout(this.cameraSaveTimer);this.cancelCameraAnimation();saveCamera().catch(()=>{});this.abortController.abort();this.unsubscribe?.();this.linksRenderer?.destroy();this.cardController?.destroy();this.detailController?.destroy();this.gestureMachine?.destroy();for(const url of this.mediaUrls.values())URL.revokeObjectURL(url);this.mediaUrls.clear();this.coverLoads.clear();}
+  constructor({canvas,world,initialSelectedCardId=null}){if(!(canvas instanceof Element)||!(world instanceof Element))throw new TypeError('WorkspaceController expects canvas and world elements.');this.canvas=canvas;this.world=world;this.initialSelectedCardId=initialSelectedCardId;this.cardTapHandler=null;this.cardEditHandler=null;this.cardDisplayHandler=null;this.backgroundTapHandler=null;this.linkSourceProvider=null;this.linkModeProvider=null;this.cameraSaveTimer=null;this.cameraAnimationFrame=null;this.gestureMachine=null;this.cardController=null;this.detailController=null;this.linksRenderer=null;this.unsubscribe=null;this.mediaUrls=new Map();this.coverLoads=new CoverLoadCoordinator();this.abortController=new AbortController();}
+  setCardTapHandler(handler){this.cardTapHandler=typeof handler==='function'?handler:null;}setCardEditHandler(handler){this.cardEditHandler=typeof handler==='function'?handler:null;}setCardDisplayHandler(handler){this.cardDisplayHandler=typeof handler==='function'?handler:null;}setBackgroundTapHandler(handler){this.backgroundTapHandler=typeof handler==='function'?handler:null;}setLinkSourceProvider(provider){this.linkSourceProvider=typeof provider==='function'?provider:null;}setLinkModeProvider(provider){this.linkModeProvider=typeof provider==='function'?provider:null;}
+  async init({onEmpty}={}){await loadWorkspace();if(Object.keys(store.getState().cards).length===0&&typeof onEmpty==='function'){await onEmpty();await loadWorkspace();}const cards=store.getState().cards;const selectedCardId=this.initialSelectedCardId&&cards[this.initialSelectedCardId]?this.initialSelectedCardId:null;store.setState({selectedCardId});this.renderCards();this.applyCamera();this.mountCore();this.bindStore();this.bindCanvas();return this;}
+  createCardElement(){const element=document.createElement('article');element.className='card';element.innerHTML='<div class="card-cover"><img alt=""><div class="card-cover-fallback" aria-hidden="true"></div></div><div class="card-head"><div class="card-type"></div><div class="card-status"></div></div><h2></h2><p></p><div class="card-meta"></div><div class="card-full"></div><div class="card-progress"><span></span></div>';return element;}
+  async applyCover(element,card,view){const mode=view.mode==='compact'?'compact':'working';const image=element.querySelector('.card-cover img');const fallback=element.querySelector('.card-cover-fallback');const mediaId=getCoverMediaId(card,mode);const request=this.coverLoads.begin(card.id,`${mode}:${mediaId??''}`);const frame=view.mode==='compact'?view.coverFrames.compact:view.coverFrames.working;image.style.transform=`scale(${frame.scale})`;image.style.objectPosition=`${frame.positionX}% ${frame.positionY}%`;element.dataset.coverShape=frame.shape;fallback.textContent=getCoverFallback(card);element.dataset.hasCover='false';image.removeAttribute('src');image.alt='';const previewUrl=getCoverPreviewUrl(card,mode);if(previewUrl){image.src=previewUrl;image.alt=card.title?`Обложка: ${card.title}`:'Обложка карточки';element.dataset.hasCover='true';return;}if(!mediaId)return;let url=this.mediaUrls.get(mediaId);if(!url){const loaded=await loadMedia(mediaId);if(!loaded?.blob||!this.coverLoads.isCurrent(request))return;url=URL.createObjectURL(loaded.blob);this.mediaUrls.set(mediaId,url);}const currentCard=store.getState().cards[card.id];if(!this.coverLoads.isCurrent(request)||element.dataset.cardId!==card.id||getCoverMediaId(currentCard,mode)!==mediaId)return;image.src=url;image.alt=card.title?`Обложка: ${card.title}`:'Обложка карточки';element.dataset.hasCover='true';}
+  cleanupUnusedMediaUrls(cards=store.getState().cards){const activeIds=collectActiveCoverMediaIds(cards);for(const[mediaId,url]of this.mediaUrls){if(activeIds.has(mediaId))continue;URL.revokeObjectURL(url);this.mediaUrls.delete(mediaId);}}
+  updateCardElement(element,card,state,linkSourceId){const meta=getNodeMeta(card);const view=normalizeNodeView(card.view);const progress=getCardProgress(card);const visible=view.visible[view.mode];element.dataset.nodeType=card.type;element.dataset.viewMode=view.mode;element.dataset.selected=String(state.selectedCardId===card.id);element.dataset.linkSource=String(linkSourceId===card.id);element.dataset.positionLocked=String(Boolean(state.cardsLocked));for(const section of CARD_VIEW_SECTIONS)element.dataset[visibilityKey(section)]=String(Boolean(visible[section]));element.style.transform=`translate3d(${card.x}px, ${card.y}px, 0)`;element.tabIndex=0;element.setAttribute('role','group');element.setAttribute('aria-keyshortcuts','Space Enter');element.setAttribute('aria-label',`${NODE_TYPE_LABELS[card.type]??card.type}: ${card.title}. Удерживайте для редактирования. Двойное нажатие открывает карточку полностью.`);element.querySelector('.card-type').textContent=NODE_TYPE_LABELS[card.type]??card.type;element.querySelector('.card-status').textContent=meta[0]??'';element.querySelector('h2').textContent=view.mode==='compact'?getCompactLabel(card,view):card.title;element.querySelector('p').textContent=card.description;element.querySelector('.card-meta').textContent=meta.slice(1).join(' • ');element.querySelector('.card-full').textContent=formatFullData(card)||'Дополнительная информация пока не заполнена';const progressElement=element.querySelector('.card-progress');progressElement.hidden=progress===null;progressElement.querySelector('span').style.width=`${progress??0}%`;this.applyCover(element,card,view).catch((error)=>console.error('Cover render failed:',error));}
+  renderCards(cardIds=null){const state=store.getState();const linkSourceId=this.linkSourceProvider?.()??null;if(cardIds===null){const existing=new Map([...this.world.querySelectorAll('[data-card-id]')].map((element)=>[element.dataset.cardId,element]));for(const card of Object.values(state.cards)){if(!shouldRenderCard(card)){existing.get(card.id)?.remove();existing.delete(card.id);continue;}let element=existing.get(card.id);if(!element){element=this.createCardElement();element.dataset.cardId=card.id;this.world.append(element);}existing.delete(card.id);this.updateCardElement(element,card,state,linkSourceId);}for(const element of existing.values()){this.coverLoads.delete(element.dataset.cardId);element.remove();}this.cleanupUnusedMediaUrls(state.cards);return;}for(const id of[...new Set(cardIds.filter(Boolean))]){const card=state.cards[id];let element=this.getCardElement(id);if(!card||!shouldRenderCard(card)){this.coverLoads.delete(id);element?.remove();continue;}if(!element){element=this.createCardElement();element.dataset.cardId=card.id;this.world.append(element);}this.updateCardElement(element,card,state,linkSourceId);}this.cleanupUnusedMediaUrls(state.cards);}
+  getCardElement(cardId){return this.world.querySelector(`[data-card-id="${CSS.escape(cardId)}"]`);}getCard(cardId){return store.getState().cards[cardId]??null;}applyCamera(){const{camera}=store.getState();this.world.style.transform=`translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`;}scheduleCameraSave(camera){clearTimeout(this.cameraSaveTimer);this.cameraSaveTimer=setTimeout(()=>saveCamera(camera).catch((error)=>console.error('Camera save failed:',error)),180);}getViewportCenter(){const{camera}=store.getState();return{x:(window.innerWidth/2-camera.x)/camera.zoom-115,y:(window.innerHeight/2-camera.y)/camera.zoom-69};}cancelCameraAnimation(){if(this.cameraAnimationFrame!==null)cancelAnimationFrame(this.cameraAnimationFrame);this.cameraAnimationFrame=null;}getHomeTargetPoint(){const header=document.querySelector('.app-header')?.getBoundingClientRect();const top=Math.max(70,(header?.bottom??70)+12);const bottom=Math.max(top+120,window.innerHeight-28);return{x:window.innerWidth/2,y:top+(bottom-top)/2};}
+  focusSelfCard(){const state=store.getState();const selfCard=getPrimarySelfNode(state.cards);if(!selfCard)return false;const element=this.getCardElement(selfCard.id);const point=this.getHomeTargetPoint();const target=getCameraForCard({card:selfCard,cardWidth:element?.offsetWidth??selfCard.width,cardHeight:element?.offsetHeight??selfCard.height,targetX:point.x,targetY:point.y});const from={...state.camera};this.gestureMachine?.cancelInteraction();this.cancelCameraAnimation();if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){store.setState({camera:target,selectedCardId:selfCard.id});return true;}const startedAt=performance.now();const animate=(now)=>{const progress=Math.min(1,(now-startedAt)/HOME_CAMERA_DURATION_MS);store.setState({camera:interpolateCamera(from,target,progress),selectedCardId:selfCard.id});if(progress<1)this.cameraAnimationFrame=requestAnimationFrame(animate);else{this.cameraAnimationFrame=null;store.setState({camera:target,selectedCardId:selfCard.id});}};this.cameraAnimationFrame=requestAnimationFrame(animate);return true;}
+  handleCardTap(cardId){const card=this.getCard(cardId);if(!card)return false;store.setState({selectedCardId:card.id});return this.cardTapHandler?.(card);}handleCardEdit(cardId){const card=this.getCard(cardId);if(!card||this.linkModeProvider?.())return false;store.setState({selectedCardId:card.id});return this.cardEditHandler?.(card);}handleCardDetail(cardId,element){const card=this.getCard(cardId);if(!card||this.linkModeProvider?.()||!(element instanceof Element))return false;store.setState({selectedCardId:card.id});return this.detailController.open(card,element);}
+  mountCore(){this.detailController=new CardDetailController({root:document.body,onEdit:(card)=>this.cardEditHandler?.(card),onDisplay:(card)=>this.cardDisplayHandler?.(card)});this.gestureMachine=new GestureMachine(this.canvas,{allowPanFromInteractive:()=>Boolean(store.getState().cardsLocked),onInteractiveTap:(cardId)=>this.handleCardTap(cardId),onInteractiveLongPress:(cardId)=>this.handleCardEdit(cardId),onInteractiveDoubleTap:(cardId,element)=>this.handleCardDetail(cardId,element)});this.cardController=new CardController(this.world,{onCommit:(card)=>updateCardNode(card.id,{x:card.x,y:card.y}),onTap:(card)=>this.cardTapHandler?.(card),onLongPress:(card)=>{if(this.linkModeProvider?.())return false;this.gestureMachine?.cancelInteraction();return this.cardEditHandler?.(card);},onDoubleTap:(card,element)=>{if(this.linkModeProvider?.())return false;this.gestureMachine?.cancelInteraction();return this.detailController.open(card,element);},canOpenFullscreen:()=>!this.linkModeProvider?.(),canMoveCard:()=>!store.getState().cardsLocked});this.linksRenderer=createLinksRenderer(this.world);}
+  bindStore(){this.unsubscribe=store.subscribe((next,previous)=>{const changedIds=new Set();if(next.cards!==previous.cards)for(const id of collectChangedCardIds(next.cards,previous.cards))changedIds.add(id);if(next.selectedCardId!==previous.selectedCardId){if(previous.selectedCardId)changedIds.add(previous.selectedCardId);if(next.selectedCardId)changedIds.add(next.selectedCardId);}if(next.cardsLocked!==previous.cardsLocked)for(const id of Object.keys(next.cards))changedIds.add(id);if(changedIds.size>0)this.renderCards([...changedIds]);if(next.camera!==previous.camera){this.applyCamera();this.scheduleCameraSave(next.camera);}});}bindCanvas(){this.canvas.addEventListener('pointerdown',()=>this.cancelCameraAnimation(),{capture:true,signal:this.abortController.signal});this.canvas.addEventListener('click',(event)=>{if(event.target.closest('[data-card-id]'))return;store.setState({selectedCardId:null});this.backgroundTapHandler?.();},{signal:this.abortController.signal});}destroy(){clearTimeout(this.cameraSaveTimer);this.cancelCameraAnimation();saveCamera().catch(()=>{});this.abortController.abort();this.unsubscribe?.();this.linksRenderer?.destroy();this.cardController?.destroy();this.detailController?.destroy();this.gestureMachine?.destroy();for(const url of this.mediaUrls.values())URL.revokeObjectURL(url);this.mediaUrls.clear();this.coverLoads.clear();}
 }
 
 export default WorkspaceController;

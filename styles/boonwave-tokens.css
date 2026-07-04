@@ -36,6 +36,15 @@
   --bw-control-gradient-danger: linear-gradient(135deg, #ff6b93, #ff9d7f);
   --bw-control-stroke: 1.8;
 
+  --bw-font-xs: 11px;
+  --bw-font-sm: 13px;
+  --bw-font-md: 16px;
+  --bw-font-lg: 22px;
+  --bw-font-xl: 34px;
+  --bw-weight-regular: 400;
+  --bw-weight-medium: 650;
+  --bw-weight-bold: 850;
+
   --bw-motion-fast: 180ms;
   --bw-motion-standard: 240ms;
 }

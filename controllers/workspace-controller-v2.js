@@ -5,48 +5,30 @@ import { CardController } from '../canvas/card-controller.js';
 import { createLinksRenderer } from '../canvas/links.js';
 import { CardDetailController } from './card-detail-controller.js';
 import { updateCardNode } from '../services/node-service.js';
-import { formatCardDetails } from '../ui/card-detail-presenter.js';
-import { formatSelfSummary } from '../services/self-node-service.js';
-import { formatProjectGraphSummary, formatGoalGraphSummary } from '../services/graph-summary-service.js';
-
-function joinSections(...sections) {
-  return sections.filter((section) => typeof section === 'string' && section.trim()).join('\n\n');
-}
 
 function clearDocumentSelection() {
   try { window.getSelection?.()?.removeAllRanges(); } catch {}
 }
 
 export class WorkspaceController extends BaseWorkspaceController {
-  updateCardElement(element, card, state, linkSourceId) {
-    super.updateCardElement(element, card, state, linkSourceId);
-    element.dataset.systemCard = String(card.type === 'self');
-    element.setAttribute('aria-label', `${card.title}. Одно нажатие открывает карточку.`);
-
-    const detailsElement = element.querySelector('.card-full');
-    if (!detailsElement) return;
-    if (card.type === 'self') {
-      detailsElement.textContent = formatSelfSummary(card, state);
-      return;
-    }
-    const graphSummary = card.type === 'project'
-      ? formatProjectGraphSummary(card, state)
-      : card.type === 'goal'
-        ? formatGoalGraphSummary(card, state)
-        : '';
-    detailsElement.textContent = joinSections(formatCardDetails(card), graphSummary)
-      || 'Дополнительная информация пока не заполнена';
+  renderCards() {
+    this.world.querySelectorAll('[data-card-id]').forEach((element) => element.remove());
   }
 
-  activateCard(cardId, element) {
-    const card = this.getCard(cardId);
-    if (!card || !(element instanceof Element)) return false;
+  focusSelfCard() {
+    return false;
+  }
 
+  updateCardElement(element, card, state, linkSourceId) {
+    super.updateCardElement(element, card, state, linkSourceId);
+  }
+
+  activateCard(cardId) {
+    const card = this.getCard(cardId);
+    if (!card) return false;
     store.setState({ selectedCardId: card.id });
     if (this.linkModeProvider?.()) return this.cardTapHandler?.(card);
-
-    this.gestureMachine?.cancelInteraction();
-    return this.detailController.open(card, element);
+    return false;
   }
 
   mountCore() {
@@ -81,7 +63,8 @@ export class WorkspaceController extends BaseWorkspaceController {
     this.canvas.addEventListener('dragstart', (event) => event.preventDefault(), { signal });
     this.canvas.addEventListener('click', (event) => {
       if (event.target.closest('[data-card-id]')) return;
-      this.backgroundTapHandler?.();
+      if (this.linkModeProvider?.()) this.backgroundTapHandler?.();
+      store.setState({ selectedCardId: null });
     }, { signal });
   }
 }

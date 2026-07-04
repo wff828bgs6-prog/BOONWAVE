@@ -17,6 +17,12 @@ export const NODE_FORM_SCHEMA = Object.freeze({
     { key: 'role', label: 'Роль', type: 'text', maxlength: 80 },
     { key: 'organization', label: 'Организация', type: 'text', maxlength: 100 },
   ],
+  persona: [
+    { key: 'role', label: 'Роль / образ', type: 'text', maxlength: 100 },
+    { key: 'archetype', label: 'Архетип', type: 'text', maxlength: 100 },
+    { key: 'domain', label: 'Пространство применения', type: 'text', maxlength: 120 },
+    { key: 'status', label: 'Статус', type: 'select', required: true, options: [['active', 'Активна'], ['draft', 'Черновик'], ['paused', 'На паузе'], ['completed', 'Завершена']] },
+  ],
   idea: [
     { key: 'status', label: 'Статус', type: 'select', required: true, options: [['draft', 'Черновик'], ['active', 'Активно'], ['completed', 'Реализовано']] },
     { key: 'category', label: 'Категория', type: 'text', maxlength: 80 },

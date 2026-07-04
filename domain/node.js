@@ -36,10 +36,11 @@ export const DEFAULT_CARD_VIEW_VISIBILITY = Object.freeze({
 });
 
 const DEFAULT_TITLES = Object.freeze({
-  self: 'Я Есмь',
+  self: 'Моя вселенная',
   project: 'Новый проект',
   process: 'Новый процесс',
-  person: 'Новый человек',
+  person: 'Новый контакт',
+  persona: 'Новая персона',
   idea: 'Новая идея',
   goal: 'Новая цель',
 });
@@ -50,6 +51,7 @@ const finiteNumber = (value, fallback) => {
 };
 
 const clamp = (value, min, max, fallback) => Math.min(max, Math.max(min, finiteNumber(value, fallback)));
+const makeId = (type) => `${type}_${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
 
 function normalizeCoverFrame(raw = {}, fallback = {}) {
   return {
@@ -91,7 +93,7 @@ export function createNode({ type, title, description = '', x = 0, y = 0, data, 
     throw new TypeError(`Unsupported BOONWAVE node type: ${type}`);
   }
 
-  const id = `${type}_${crypto.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
+  const id = makeId(type);
   const now = new Date().toISOString();
 
   return normalizeNode({
@@ -103,7 +105,7 @@ export function createNode({ type, title, description = '', x = 0, y = 0, data, 
     y,
     width: 230,
     height: 138,
-    data: data ?? getNodeDataDefaults(type),
+    data: data ?? getNodeDataDefaults(type, id),
     view,
     createdAt: now,
     updatedAt: now,
@@ -116,9 +118,10 @@ export function normalizeNode(raw = {}) {
   }
 
   const now = new Date().toISOString();
+  const nodeId = String(raw.id ?? '').trim();
   const node = {
     ...raw,
-    id: String(raw.id ?? '').trim(),
+    id: nodeId,
     type: raw.type,
     schemaVersion: NODE_SCHEMA_VERSION,
     title: String(raw.title ?? '').trim() || DEFAULT_TITLES[raw.type],
@@ -127,7 +130,7 @@ export function normalizeNode(raw = {}) {
     y: Math.round(finiteNumber(raw.y, 0)),
     width: Math.max(1, Math.round(finiteNumber(raw.width, 230))),
     height: Math.max(1, Math.round(finiteNumber(raw.height, 138))),
-    data: normalizeNodeData(raw.type, raw.data),
+    data: normalizeNodeData(raw.type, raw.data, nodeId),
     view: normalizeNodeView(raw.view),
     createdAt: raw.createdAt || now,
     updatedAt: raw.updatedAt || now,
@@ -137,6 +140,5 @@ export function normalizeNode(raw = {}) {
   if (!validation.valid) {
     throw new TypeError(`Invalid BOONWAVE node: ${validation.errors.join(' ')}`);
   }
-
   return node;
 }

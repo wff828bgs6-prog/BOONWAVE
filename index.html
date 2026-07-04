@@ -2,32 +2,44 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <meta name="theme-color" content="#070913">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="BOONWAVE">
-  <title>BOONWAVE</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050816">
+  <title>BOONWAVE Production Core</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="styles/boonwave-tokens.css">
   <link rel="stylesheet" href="styles/production-shell.css">
+  <link rel="stylesheet" href="styles/production-shell-v2.css">
+  <link rel="stylesheet" href="styles/card-detail-overrides.css">
+  <link rel="stylesheet" href="styles/card-detail-v3.css">
   <link rel="stylesheet" href="styles/card-views.css">
   <link rel="stylesheet" href="styles/one-hand-rail-v3.css">
+  <link rel="stylesheet" href="styles/contacts-screen.css">
+  <link rel="stylesheet" href="styles/contact-editor.css">
+  <link rel="stylesheet" href="styles/thumbnail-editor.css">
+  <link rel="stylesheet" href="styles/relationship-controls.css">
 </head>
 <body>
   <svg width="0" height="0" aria-hidden="true" focusable="false"><defs><linearGradient id="bwIconGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a14cff"/><stop offset="1" stop-color="#22bfff"/></linearGradient></defs></svg>
 
   <main class="app-shell">
-    <header class="app-header"><div class="app-badge"><strong>BOONWAVE</strong><span>Production Core</span></div></header>
+    <header class="app-header"><img src="data:image/png;base64,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" alt="BOONWAVE" class="app-logo app-logo--wordmark"></header>
 
     <aside class="one-hand-rail" id="utilityRail" data-position="right" aria-label="Управление одной рукой, справа">
-      <button class="utility-button rail-home" id="homeSelfButton" type="button" aria-label="Вернуться к карточке Я Есмь">
-        <svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M6 19c.8-3.3 2.8-5 6-5s5.2 1.7 6 5"/></svg>
+      <button class="utility-button rail-home" id="homeSelfButton" type="button" aria-label="Вернуть рабочий стол в центр к Моей вселенной">
+        <svg class="bw-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 4l5.4 5.4M9.4 9.4H5.8M9.4 9.4V5.8"/>
+          <path d="M20 4l-5.4 5.4M14.6 9.4h3.6M14.6 9.4V5.8"/>
+          <path d="M4 20l5.4-5.4M9.4 14.6H5.8M9.4 14.6v3.6"/>
+          <path d="M20 20l-5.4-5.4M14.6 14.6h3.6M14.6 14.6v3.6"/>
+        </svg>
       </button>
 
       <button class="rail-button rail-add" id="addCardButton" type="button" aria-label="Создать карточку">
         <svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg>
+      </button>
+
+      <button class="utility-button rail-contacts" id="contactsButton" type="button" aria-label="Открыть контакты" aria-expanded="false">
+        <svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
       </button>
 
       <div class="rail-zoom" id="zoomControl">
@@ -56,11 +68,10 @@
       <div class="tools-head"><h2 id="toolsTitle">Дополнительные действия</h2><button class="tools-close" id="closeToolsButton" type="button" aria-label="Закрыть дополнительные действия">×</button></div>
       <div class="tools-grid">
         <button class="tools-action" id="linkButton" type="button" aria-label="Связать или отвязать карточки" aria-pressed="false" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg><span>Связь</span></button>
-        <button class="tools-action" id="deleteButton" type="button" aria-label="Переместить карточку в корзину" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg><span>В корзину</span></button>
+        <button class="tools-action" id="archiveButton" type="button" aria-label="Переместить карточку в архив" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg><span>В архив</span></button>
+        <button class="tools-action" id="deleteButton" type="button" aria-label="Удалить выбранную карточку" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg><span>Удалить</span></button>
         <button class="tools-action" id="undoButton" type="button" aria-label="Отменить действие" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M16 7H9a5 5 0 0 0 0 10h6"/><path d="m12 4 4 3-4 3"/></svg><span>Отменить</span></button>
         <button class="tools-action" id="redoButton" type="button" aria-label="Повторить действие" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M8 7h7a5 5 0 0 1 0 10H9"/><path d="m12 4-4 3 4 3"/></svg><span>Повторить</span></button>
-        <button class="tools-action" type="button" aria-label="Люди" disabled><svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Люди</span></button>
-        <button class="tools-action" type="button" aria-label="Архив" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg><span>Архив</span></button>
       </div>
 
       <div class="rail-position-section">
@@ -80,7 +91,7 @@
       <div class="type-grid" id="typeGrid">
         <button class="type-button" type="button" data-node-type="project" aria-pressed="true">Проект</button>
         <button class="type-button" type="button" data-node-type="process" aria-pressed="false">Процесс</button>
-        <button class="type-button" type="button" data-node-type="person" aria-pressed="false">Человек</button>
+        <button class="type-button" type="button" data-node-type="persona" aria-pressed="false">Персона</button>
         <button class="type-button" type="button" data-node-type="idea" aria-pressed="false">Идея</button>
         <button class="type-button" type="button" data-node-type="goal" aria-pressed="false">Цель</button>
       </div>

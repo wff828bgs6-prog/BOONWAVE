@@ -1,4 +1,4 @@
-export const LINK_SCHEMA_VERSION = 2;
+export const LINK_SCHEMA_VERSION = 3;
 
 export const LINK_TYPES = Object.freeze([
   'self_goal',
@@ -10,15 +10,21 @@ export const LINK_TYPES = Object.freeze([
   'responsible',
   'client',
   'contractor',
-  'blocks',
+  'belongs_to',
+  'performs',
+  'participates_in',
+  'leads_to',
   'depends_on',
+  'parent_child_process',
+  'resource_material_contact',
+  'blocks',
   'awaiting_response',
   'related',
 ]);
 
 export const LINK_TYPE_LABELS = Object.freeze({
-  self_goal: 'цель пользователя',
-  self_project: 'активный проект пользователя',
+  self_goal: 'цель пространства',
+  self_project: 'активный проект пространства',
   goal_project: 'реализует цель',
   project_process: 'рабочий процесс проекта',
   idea_goal: 'идея развита в цель',
@@ -26,11 +32,25 @@ export const LINK_TYPE_LABELS = Object.freeze({
   responsible: 'ответственный',
   client: 'клиент',
   contractor: 'подрядчик',
-  blocks: 'блокирует',
+  belongs_to: 'относится к',
+  performs: 'исполняет',
+  participates_in: 'участвует в',
+  leads_to: 'ведёт к',
   depends_on: 'зависит от',
+  parent_child_process: 'родитель / дочерний процесс',
+  resource_material_contact: 'ресурс / материал / контакт',
+  blocks: 'блокирует',
   awaiting_response: 'ожидаем ответ',
   related: 'связано',
 });
+
+export const PRIMARY_LINK_TYPES = Object.freeze([
+  'related',
+  'belongs_to',
+  'participates_in',
+  'leads_to',
+  'depends_on',
+]);
 
 const CORE_RELATIONS = Object.freeze([
   { type: 'self_goal', sourceType: 'self', targetType: 'goal' },
@@ -42,7 +62,7 @@ const CORE_RELATIONS = Object.freeze([
   { type: 'responsible', sourceType: 'process', targetType: 'person' },
 ]);
 
-const makeId = () => `link_${crypto.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
+const makeId = () => `link_${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
 
 function findCoreRelation(sourceType, targetType, requestedType = null) {
   const candidates = requestedType
@@ -65,6 +85,8 @@ export function inferLinkType(sourceCard, targetCard) {
   if (definition) return definition.type;
   if (sourceCard?.type === 'project' && targetCard?.type === 'person') return 'client';
   if (sourceCard?.type === 'person' && targetCard?.type === 'project') return 'client';
+  if (sourceCard?.type === 'process' && targetCard?.type === 'persona') return 'participates_in';
+  if (sourceCard?.type === 'persona' && targetCard?.type === 'process') return 'participates_in';
   return 'related';
 }
 

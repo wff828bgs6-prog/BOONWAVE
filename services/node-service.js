@@ -43,7 +43,7 @@ export async function createCardNode(input, options = {}) {
   const { stateStore, storageAdapter } = resolveDependencies(options);
   const state = stateStore.getState();
   if (input?.type === 'self' && Object.values(state.cards).some((card) => card.type === 'self')) {
-    const error = new Error('Only one Я Есмь card can exist.');
+    const error = new Error('Only one Моя вселенная card can exist.');
     error.code = SELF_NODE_DUPLICATE_ERROR;
     throw error;
   }
@@ -86,13 +86,36 @@ export async function updateCardNode(cardId, patch = {}, options = {}) {
   return updatedCard;
 }
 
+export async function archiveCardNode(cardId, options = {}) {
+  const { stateStore, storageAdapter } = resolveDependencies(options);
+  const state = stateStore.getState();
+  const card = state.cards[cardId];
+  if (!card) return null;
+  if (card.type === 'self') {
+    const error = new Error('Карточка «Моя вселенная» является системной и не может быть архивирована.');
+    error.code = SELF_NODE_PROTECTED_ERROR;
+    throw error;
+  }
+  const archived = normalizeNode({
+    ...card,
+    lifecycleStatus: 'archived',
+    updatedAt: new Date().toISOString(),
+  });
+  await storageAdapter.saveCard(archived);
+  stateStore.setState({
+    cards: { ...state.cards, [cardId]: archived },
+    selectedCardId: null,
+  });
+  return archived;
+}
+
 export async function deleteCardNode(cardId, options = {}) {
   const { stateStore, storageAdapter } = resolveDependencies(options);
   const state = stateStore.getState();
   const card = state.cards[cardId];
   if (!card) return { card: null, deletedLinks: [], mediaIds: [] };
   if (card.type === 'self') {
-    const error = new Error('Карточка «Я Есмь» является системной и не может быть удалена.');
+    const error = new Error('Карточка «Моя вселенная» является системной и не может быть удалена.');
     error.code = SELF_NODE_PROTECTED_ERROR;
     throw error;
   }

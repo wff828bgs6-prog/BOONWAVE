@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { createNode } from '../domain/node.js';
 import {
   PRIMARY_SELF_NODE_ID,
+  PRIMARY_SELF_TITLE,
   ensurePrimarySelfNode,
   buildSelfSummary,
 } from '../services/self-node-service.js';
@@ -25,17 +26,17 @@ function createTestStore(initialState = {}) {
   };
 }
 
-test('Я Есмь is a valid typed node with profile and storage defaults', () => {
+test('Моя вселенная is a valid typed node with profile and storage defaults', () => {
   const card = createNode({ type: 'self' });
   assert.equal(card.type, 'self');
-  assert.equal(card.title, 'Я Есмь');
+  assert.equal(card.title, PRIMARY_SELF_TITLE);
   assert.equal(card.data.attentionStatus, 'stable');
   assert.deepEqual(card.data.focusItems, []);
   assert.deepEqual(card.data.documents, []);
   assert.deepEqual(card.data.files, []);
 });
 
-test('workspace creates exactly one persistent Я Есмь card', async () => {
+test('workspace creates exactly one persistent Моя вселенная card', async () => {
   const stateStore = createTestStore({ selectedCardId: 'existing-selection' });
   const saved = [];
   const storageAdapter = {
@@ -48,12 +49,13 @@ test('workspace creates exactly one persistent Я Есмь card', async () => {
   assert.equal(first.created, true);
   assert.equal(second.created, false);
   assert.equal(first.card.id, PRIMARY_SELF_NODE_ID);
+  assert.equal(first.card.title, PRIMARY_SELF_TITLE);
   assert.equal(saved.length, 1);
   assert.equal(Object.values(stateStore.getState().cards).filter((card) => card.type === 'self').length, 1);
   assert.equal(stateStore.getState().selectedCardId, 'existing-selection');
 });
 
-test('Я Есмь aggregates goals, projects, processes and attention signals', () => {
+test('Моя вселенная aggregates goals, projects, processes and attention signals', () => {
   const self = createNode({ type: 'self', data: { currentFocus: 'Подать документы в суд' } });
   const goal = createNode({ type: 'goal', title: 'Безопасный выезд', data: { progress: 40 } });
   const project = createNode({
@@ -87,7 +89,7 @@ test('Я Есмь aggregates goals, projects, processes and attention signals', 
   assert.match(summary.attentionItems.join('\n'), /Высокий приоритет/);
 });
 
-test('Я Есмь cannot be deleted', async () => {
+test('Моя вселенная cannot be deleted', async () => {
   const self = createNode({ type: 'self' });
   const stateStore = createTestStore({
     cards: { [self.id]: self },
