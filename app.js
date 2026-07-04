@@ -1,5 +1,6 @@
 import { bootstrapBoonwave } from './bootstrap/boonwave-bootstrap.js';
 import './contacts-panel-init.js';
+import './archive-panel-init.js';
 
 class BoonwaveApp {
   constructor() {
