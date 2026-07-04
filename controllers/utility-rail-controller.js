@@ -5,8 +5,8 @@ const POSITION_SETTING_KEY = 'utilityRailPosition';
 const LEGACY_SIDE_SETTING_KEY = 'utilityRailSide';
 const LOCK_SETTING_KEY = 'cardsLocked';
 const VALID_POSITIONS = new Set(['right', 'left', 'bottom']);
-const FADE_OUT_MS = 180;
-const FADE_IN_MS = 220;
+const GHOST_FADE_OUT_MS = 180;
+const REAL_FADE_IN_MS = 220;
 
 export class UtilityRailController {
   constructor({ rail, lockButton, homeButton, positionButtons = [], hint, onHome, onPositionChange } = {}) {
@@ -24,6 +24,7 @@ export class UtilityRailController {
     this.feedbackTimer = null;
     this.switchTimer = null;
     this.switchEndTimer = null;
+    this.transitionGhost = null;
     this.unsubscribe = null;
     this.abortController = new AbortController();
   }
@@ -83,6 +84,11 @@ export class UtilityRailController {
     }
   }
 
+  removeTransitionGhost() {
+    this.transitionGhost?.remove();
+    this.transitionGhost = null;
+  }
+
   resetPanelStyles() {
     this.rail.classList.remove('is-position-transitioning', 'is-position-fading', 'is-position-visible', 'is-switching-position');
     this.rail.style.removeProperty('display');
@@ -90,6 +96,34 @@ export class UtilityRailController {
     this.rail.style.removeProperty('opacity');
     this.rail.style.removeProperty('transition');
     this.rail.style.setProperty('transform', 'none', 'important');
+  }
+
+  createTransitionGhost() {
+    const rect = this.rail.getBoundingClientRect();
+    const ghost = this.rail.cloneNode(true);
+    ghost.removeAttribute('id');
+    ghost.setAttribute('aria-hidden', 'true');
+    ghost.classList.add('rail-transition-ghost');
+    ghost.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'));
+    ghost.querySelectorAll('button,input').forEach((element) => {
+      element.setAttribute('tabindex', '-1');
+      element.setAttribute('disabled', 'true');
+    });
+    Object.assign(ghost.style, {
+      position: 'fixed',
+      left: `${rect.left}px`,
+      top: `${rect.top}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+      margin: '0',
+      opacity: '1',
+      transform: 'none',
+      pointerEvents: 'none',
+      transition: `opacity ${GHOST_FADE_OUT_MS}ms ease`,
+    });
+    document.body.append(ghost);
+    this.transitionGhost = ghost;
+    return ghost;
   }
 
   applyPosition(position) {
@@ -115,33 +149,35 @@ export class UtilityRailController {
     const current = this.rail.dataset.position;
     clearTimeout(this.switchTimer);
     clearTimeout(this.switchEndTimer);
+    this.removeTransitionGhost();
 
     if (animate && current !== normalized) {
       this.resetPanelStyles();
-      this.rail.classList.add('is-switching-position');
-      this.rail.style.display = 'grid';
-      this.rail.style.visibility = 'visible';
-      this.rail.style.opacity = '1';
-      this.rail.style.transition = `opacity ${FADE_OUT_MS}ms ease`;
-      this.rail.offsetHeight;
+      const ghost = this.createTransitionGhost();
+
+      this.rail.style.visibility = 'hidden';
       this.rail.style.opacity = '0';
+      this.rail.style.transition = 'none';
+      this.applyPosition(normalized);
+      this.rail.offsetHeight;
+
+      requestAnimationFrame(() => {
+        ghost.style.opacity = '0';
+      });
 
       this.switchTimer = setTimeout(() => {
-        this.rail.style.visibility = 'hidden';
-        this.rail.style.display = 'none';
-        this.rail.style.transition = 'none';
-        this.applyPosition(normalized);
-        this.rail.offsetHeight;
-        this.rail.style.display = 'grid';
+        this.removeTransitionGhost();
         this.rail.style.visibility = 'visible';
         this.rail.style.opacity = '0';
+        this.rail.style.transition = `opacity ${REAL_FADE_IN_MS}ms ease`;
         this.rail.offsetHeight;
-        this.rail.style.transition = `opacity ${FADE_IN_MS}ms ease`;
-        this.rail.style.opacity = '1';
+        requestAnimationFrame(() => {
+          this.rail.style.opacity = '1';
+        });
         this.switchEndTimer = setTimeout(() => {
           this.resetPanelStyles();
-        }, FADE_IN_MS + 60);
-      }, FADE_OUT_MS + 30);
+        }, REAL_FADE_IN_MS + 60);
+      }, GHOST_FADE_OUT_MS + 30);
     } else {
       this.resetPanelStyles();
       this.applyPosition(normalized);
@@ -186,6 +222,7 @@ export class UtilityRailController {
     clearTimeout(this.feedbackTimer);
     clearTimeout(this.switchTimer);
     clearTimeout(this.switchEndTimer);
+    this.removeTransitionGhost();
     this.resetPanelStyles();
     this.unsubscribe?.();
     this.abortController.abort();
