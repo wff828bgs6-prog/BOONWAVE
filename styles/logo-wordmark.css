@@ -1,21 +1,38 @@
-/* Stable PNG BOONWAVE wordmark override. Isolated rollback layer. */
+/* Stable BOONWAVE header wordmark. No bitmap layer: prevents Safari rectangle/fallback artifacts. */
+.app-header{
+  left:14px!important;
+  right:14px!important;
+  width:auto!important;
+}
+.app-badge{
+  min-height:58px!important;
+  padding:12px 22px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+}
 .app-wordmark{
   display:block!important;
   position:relative!important;
   z-index:2!important;
-  width:142px!important;
-  height:55px!important;
-  max-width:58vw!important;
-  margin:-3px 0 -4px!important;
-  font-size:0!important;
-  line-height:0!important;
+  width:auto!important;
+  height:auto!important;
+  margin:0!important;
+  font-size:30px!important;
+  line-height:.9!important;
+  font-weight:900!important;
+  letter-spacing:-.078em!important;
+  text-transform:lowercase!important;
   color:transparent!important;
-  background-image:url('data:image/png;base64,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');
-  background-repeat:no-repeat!important;
-  background-position:left center!important;
-  background-size:contain!important;
-  -webkit-background-clip:border-box!important;
-  background-clip:border-box!important;
-  filter:drop-shadow(0 0 10px rgba(var(--bw-brand-cyan),.16)) drop-shadow(0 0 14px rgba(var(--bw-brand-violet),.12))!important;
+  background:linear-gradient(100deg,rgb(var(--bw-brand-blue)) 0%,rgb(var(--bw-brand-violet)) 62%,rgb(var(--bw-brand-magenta)) 100%)!important;
+  -webkit-background-clip:text!important;
+  background-clip:text!important;
+  filter:drop-shadow(0 0 10px rgba(var(--bw-brand-cyan),.12)) drop-shadow(0 0 14px rgba(var(--bw-brand-violet),.1))!important;
 }
-.app-subtitle{margin-top:-2px!important;padding-left:1px!important}
+.app-subtitle{
+  display:none!important;
+}
+@media(max-width:390px){
+  .app-badge{min-height:56px!important;padding:11px 20px!important}
+  .app-wordmark{font-size:28px!important}
+}
