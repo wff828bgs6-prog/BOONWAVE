@@ -1,6 +1,7 @@
 import store from '../state/store.js';
 import { normalizeNodeView } from '../domain/node.js';
 import { presentWorkProcess } from '../ui/work-process-presenter.js';
+import { getCoverPreviewUrl } from '../ui/card-presentation.js';
 
 const TRANSITION_MS = 300;
 const BACKDROP_GUARD_MS = 140;
@@ -13,15 +14,23 @@ const STATUS_LABELS = Object.freeze({
 const moneyFormatter = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
 
 function ensureStyles() {
-  if (document.getElementById('boonwave-card-detail-styles-v2')) return;
+  if (document.getElementById('boonwave-card-detail-styles-v3')) return;
+  document.getElementById('boonwave-card-detail-styles-v2')?.remove();
   const style = document.createElement('style');
-  style.id = 'boonwave-card-detail-styles-v2';
-  style.textContent = `.card-detail-overlay[hidden]{display:none}.card-detail-overlay{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:max(58px,calc(env(safe-area-inset-top) + 44px)) 18px max(18px,calc(env(safe-area-inset-bottom) + 12px));touch-action:none}.card-detail-overlay:not(.is-visible){pointer-events:none}.card-detail-backdrop{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;background:rgba(4,6,16,.66);opacity:0;transition:opacity 240ms ease-out}.card-detail-stage{--detail-from-x:0px;--detail-from-y:0px;--detail-from-scale-x:.72;--detail-from-scale-y:.72;position:relative;z-index:1;width:min(100%,520px);max-height:100%;opacity:0;pointer-events:none;transform:translate3d(var(--detail-from-x),var(--detail-from-y),0) scale(var(--detail-from-scale-x),var(--detail-from-scale-y));transform-origin:center;transition:transform ${TRANSITION_MS}ms cubic-bezier(.16,1,.3,1),opacity 240ms ease-out;will-change:transform,opacity}.card-detail-content,.card-detail-close{pointer-events:auto}.card-detail-overlay.is-visible .card-detail-backdrop{opacity:1}.card-detail-overlay.is-visible .card-detail-stage{opacity:1;transform:translate3d(0,0,0) scale(1,1)}.card-detail-close{position:absolute;top:-12px;right:-12px;z-index:8;width:44px;height:44px;padding:0;border:1px solid rgba(255,255,255,.18);border-radius:50%;background:rgba(11,14,29,.94);color:#fff;display:grid;place-items:center;font-size:25px;box-shadow:0 12px 32px rgba(0,0,0,.36)}.card-detail-copy.card{position:relative!important;inset:auto!important;width:100%!important;max-width:none;max-height:calc(100svh - 96px);margin:0;overflow:auto;transform:none!important;z-index:1;border-radius:28px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 42px rgba(var(--node-rgb),.24);-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}.card-detail-copy.card img{pointer-events:auto}.card-detail-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid rgba(var(--node-rgb),.22)}.card-detail-actions button{min-height:48px;border:1px solid rgba(var(--node-rgb),.32);border-radius:15px;background:rgba(9,12,25,.72);color:var(--bw-text-primary);font-weight:700}.card-detail-actions button:last-child{background:linear-gradient(135deg,rgba(var(--bw-brand-violet),.28),rgba(var(--bw-brand-cyan),.18))}.bw-detail{min-height:100svh;max-height:100svh;overflow:auto;padding:calc(env(safe-area-inset-top) + 28px) 18px calc(env(safe-area-inset-bottom) + 128px);background:linear-gradient(180deg,rgba(21,26,45,.98),rgba(9,13,25,.98));color:#fff;-webkit-overflow-scrolling:touch}.bw-detail__header{position:sticky;top:0;z-index:4;display:grid;gap:8px;padding:0 0 18px;background:linear-gradient(180deg,rgba(21,26,45,.98) 72%,rgba(21,26,45,0));border-bottom:1px solid rgba(125,144,181,.18)}.bw-detail__type{font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:#9ea8c1}.bw-detail__title{margin:0;font-size:clamp(34px,9vw,48px);line-height:1.02;letter-spacing:-.04em}.bw-detail__hero{position:relative;min-height:188px;margin:28px 0 24px;border:1px solid rgba(107,149,255,.34);border-radius:32px;overflow:hidden;background:radial-gradient(circle at 18% 0%,rgba(117,82,255,.2),transparent 34%),#050816;box-shadow:0 0 28px rgba(80,134,255,.16)}.bw-detail__hero img{width:100%;height:100%;min-height:188px;object-fit:cover;display:block}.bw-detail__hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 30%,rgba(5,7,14,.78) 100%)}.bw-detail__hero-copy{position:absolute;left:18px;right:18px;bottom:18px;z-index:1}.bw-detail__hero-title{font-size:28px;font-weight:900;letter-spacing:-.03em}.bw-detail__hero-meta{margin-top:7px;color:#c5ccdf;font-size:17px}.bw-detail__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:24px}.bw-detail__stats--process{grid-template-columns:1.35fr 1.15fr .7fr .7fr .7fr}.bw-detail__stat{min-height:90px;border:1px solid rgba(126,141,177,.24);border-radius:20px;background:rgba(18,23,38,.82);padding:16px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}.bw-detail__stat.is-glow{border-color:rgba(108,137,255,.55);box-shadow:0 0 20px rgba(81,112,255,.22),inset 0 0 0 1px rgba(255,255,255,.02)}.bw-detail__stat-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8e98b1}.bw-detail__stat-value{margin-top:10px;font-weight:900;font-size:20px;letter-spacing:.02em}.bw-detail__section{margin:26px 0}.bw-detail__section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.bw-detail__section h3{margin:0;font-size:26px;letter-spacing:-.03em}.bw-detail__add{min-width:54px;min-height:54px;border:1px solid rgba(126,141,177,.26);border-radius:16px;background:rgba(24,29,50,.9);color:#fff;font-size:32px}.bw-detail__box{border:1px solid rgba(126,141,177,.24);border-radius:22px;background:rgba(14,19,33,.72);padding:18px;color:#d0d5e4;font-size:20px;line-height:1.4}.bw-detail__materials{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x proximity}.bw-detail__material{flex:0 0 146px;min-height:96px;border:1px solid rgba(126,141,177,.26);border-radius:18px;background:#050711;overflow:hidden;scroll-snap-align:start}.bw-detail__material img{width:100%;height:74px;object-fit:cover;display:block}.bw-detail__material span{display:block;padding:8px 10px;text-align:center;font-size:13px;color:#dce2f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bw-detail__pill{min-height:48px;border:1px solid rgba(126,141,177,.26);border-radius:16px;background:rgba(24,29,50,.9);color:#fff;padding:0 16px;font-weight:800}.bw-detail__process-summary{border:1px solid rgba(126,141,177,.26);border-radius:21px;background:rgba(14,19,33,.72);padding:18px;color:#c9d0df;font-size:18px}.bw-detail__bottom{position:sticky;bottom:0;z-index:5;display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:18px 0 0;background:linear-gradient(180deg,rgba(9,13,25,0),rgba(9,13,25,.98) 28%)}.bw-detail__action{min-height:62px;border:1px solid rgba(126,141,177,.28);border-radius:20px;background:rgba(28,33,53,.95);color:#fff;font-weight:900;font-size:20px}.bw-detail__action.is-primary{border:0;background:linear-gradient(135deg,#7b4dff,#29c8ff);box-shadow:0 0 30px rgba(67,145,255,.22)}.bw-detail__progress{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:16px;border:1px solid rgba(126,141,177,.24);border-radius:20px;background:rgba(18,23,38,.82);padding:15px 18px;margin:14px 0 28px}.bw-detail__progress strong{font-size:26px}.bw-detail__bar{height:8px;border-radius:99px;background:rgba(57,66,91,.65);overflow:hidden}.bw-detail__bar span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#9652ff,#5fd6e8)}.bw-detail__rows{display:grid;gap:12px}.bw-detail__row{display:grid;grid-template-columns:1fr minmax(116px,46%);align-items:center;gap:12px;min-height:78px;border:1px solid rgba(126,141,177,.24);border-radius:20px;background:rgba(18,23,38,.82);padding:14px 18px}.bw-detail__row.is-selected{border-color:rgba(105,134,255,.8);box-shadow:0 0 18px rgba(80,117,255,.2)}.bw-detail__row-title{font-size:20px;font-weight:900}.bw-detail__row-meta{margin-top:6px;color:#98a2ba}.bw-detail__task{display:grid;grid-template-columns:42px 1fr 56px 56px;align-items:center;gap:12px;min-height:72px;border:1px solid rgba(126,141,177,.24);border-radius:18px;background:rgba(18,23,38,.7);padding:12px}.bw-detail__check{width:34px;height:34px;border:2px solid rgba(174,188,217,.56);border-radius:10px;display:grid;place-items:center;color:#fff;font-size:24px}.bw-detail__task-title{font-size:18px;font-weight:900}.bw-detail__task-meta{margin-top:4px;color:#98a2ba}.bw-detail__icon{width:52px;height:52px;border:1px solid rgba(126,141,177,.24);border-radius:16px;background:rgba(27,32,52,.9);color:#fff;display:grid;place-items:center;font-size:22px}.bw-detail__expense-grid{display:grid;grid-template-columns:1fr .7fr;gap:12px}.bw-detail__field{min-height:62px;border:1px solid rgba(126,141,177,.24);border-radius:18px;background:rgba(18,23,38,.7);padding:16px;color:#98a2ba}.bw-detail__empty{border:1px dashed rgba(126,141,177,.24);border-radius:18px;padding:18px;color:#98a2ba;text-align:center}@media(max-width:760px){.card-detail-overlay{padding:0}.card-detail-stage{width:100%!important;height:100svh!important;max-height:100svh!important}.card-detail-close{top:calc(env(safe-area-inset-top) + 18px)!important;right:18px!important;width:58px!important;height:58px!important;background:rgba(31,36,57,.98)!important}.bw-detail__stats--process{grid-template-columns:1fr 1fr 74px 74px 74px;gap:8px}.bw-detail__stat{min-height:82px;padding:12px}.bw-detail__stat-value{font-size:18px}.bw-detail__row{grid-template-columns:1fr}.bw-detail__task{grid-template-columns:38px 1fr 48px 48px}.bw-detail__bottom{margin:0 -18px;padding:18px 18px calc(env(safe-area-inset-bottom) + 16px)}}@media(prefers-reduced-motion:reduce){.card-detail-backdrop,.card-detail-stage{transition:none!important}.card-detail-stage{transform:none!important}}`;
+  style.id = 'boonwave-card-detail-styles-v3';
+  style.textContent = `
+    .card-detail-overlay[hidden]{display:none}.card-detail-overlay{position:fixed;inset:0;z-index:120;display:grid;place-items:center;padding:max(58px,calc(env(safe-area-inset-top) + 44px)) 18px max(18px,calc(env(safe-area-inset-bottom) + 12px));background:rgba(3,5,14,.58);backdrop-filter:blur(10px);touch-action:none}.card-detail-overlay:not(.is-visible){pointer-events:none}.card-detail-backdrop{position:absolute;inset:0;width:100%;height:100%;padding:0;border:0;background:transparent;opacity:0;transition:opacity 240ms ease-out}.card-detail-stage{--detail-from-x:0px;--detail-from-y:0px;--detail-from-scale-x:.72;--detail-from-scale-y:.72;position:relative;z-index:1;width:min(100%,520px);max-height:100%;opacity:0;pointer-events:none;transform:translate3d(var(--detail-from-x),var(--detail-from-y),0) scale(var(--detail-from-scale-x),var(--detail-from-scale-y));transform-origin:center;transition:transform ${TRANSITION_MS}ms cubic-bezier(.16,1,.3,1),opacity 240ms ease-out;will-change:transform,opacity}.card-detail-content,.card-detail-close{pointer-events:auto}.card-detail-overlay.is-visible .card-detail-backdrop{opacity:1}.card-detail-overlay.is-visible .card-detail-stage{opacity:1;transform:translate3d(0,0,0) scale(1,1)}.card-detail-close{position:absolute;top:-12px;right:-12px;z-index:8;width:46px;height:46px;padding:0;border:1px solid rgba(255,255,255,.2);border-radius:50%;background:rgba(18,23,39,.98);color:#fff;display:grid;place-items:center;font-size:25px;box-shadow:0 12px 32px rgba(0,0,0,.36)}
+    .card-detail-copy.card{position:relative!important;inset:auto!important;width:100%!important;max-width:none;max-height:calc(100svh - 96px);margin:0;overflow:auto;transform:none!important;z-index:1;border-radius:28px;box-shadow:0 30px 80px rgba(0,0,0,.5),0 0 42px rgba(var(--node-rgb),.24);-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}.card-detail-copy.card img{pointer-events:auto}.card-detail-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px;padding-top:16px;border-top:1px solid rgba(var(--node-rgb),.22)}.card-detail-actions button{min-height:48px;border:1px solid rgba(var(--node-rgb),.32);border-radius:15px;background:rgba(9,12,25,.72);color:var(--bw-text-primary);font-weight:700}.card-detail-actions button:last-child{background:linear-gradient(135deg,rgba(var(--bw-brand-violet),.28),rgba(var(--bw-brand-cyan),.18))}
+    .bw-detail{min-height:100svh;max-height:100svh;overflow:auto;padding:calc(env(safe-area-inset-top) + 28px) 18px calc(env(safe-area-inset-bottom) + 128px);background:linear-gradient(180deg,rgba(21,26,45,.98),rgba(9,13,25,.98));color:#fff;-webkit-overflow-scrolling:touch}.bw-detail__header{position:sticky;top:0;z-index:4;display:grid;gap:8px;padding:0 0 18px;background:linear-gradient(180deg,rgba(21,26,45,.98) 72%,rgba(21,26,45,0));border-bottom:1px solid rgba(125,144,181,.18)}.bw-detail__type{font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:#9ea8c1}.bw-detail__title{margin:0;font-size:clamp(34px,9vw,48px);line-height:1.02;letter-spacing:-.04em}.bw-detail__hero{position:relative;min-height:188px;margin:28px 0 24px;border:1px solid rgba(107,149,255,.34);border-radius:32px;overflow:hidden;background:#050816;box-shadow:0 0 28px rgba(80,134,255,.16)}.bw-detail__hero img{width:100%;height:100%;min-height:188px;object-fit:cover;display:block;background:#050816}.bw-detail__hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 34%,rgba(5,7,14,.82) 100%);pointer-events:none}.bw-detail__hero-copy{position:absolute;left:18px;right:18px;bottom:18px;z-index:1}.bw-detail__hero-title{font-size:28px;font-weight:900;letter-spacing:-.03em}.bw-detail__hero-meta{margin-top:7px;color:#c5ccdf;font-size:17px}
+    .bw-detail__stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:24px}.bw-detail__stats--process{grid-template-columns:1.35fr 1.15fr .7fr .7fr .7fr}.bw-detail__stat{min-height:90px;border:1px solid rgba(126,141,177,.24);border-radius:20px;background:rgba(18,23,38,.82);padding:16px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.02)}.bw-detail__stat.is-glow{border-color:rgba(108,137,255,.55);box-shadow:0 0 20px rgba(81,112,255,.22),inset 0 0 0 1px rgba(255,255,255,.02)}.bw-detail__stat-label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8e98b1}.bw-detail__stat-value{margin-top:10px;font-weight:900;font-size:20px;letter-spacing:.02em}.bw-detail__section{margin:26px 0}.bw-detail__section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.bw-detail__section h3{margin:0;font-size:26px;letter-spacing:-.03em}.bw-detail__add{min-width:54px;min-height:54px;border:1px solid rgba(126,141,177,.26);border-radius:16px;background:rgba(24,29,50,.9);color:#fff;font-size:32px}.bw-detail__box{border:1px solid rgba(126,141,177,.24);border-radius:22px;background:rgba(14,19,33,.72);padding:18px;color:#d0d5e4;font-size:20px;line-height:1.4}.bw-detail__materials{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 8px;scroll-snap-type:x proximity}.bw-detail__material{flex:0 0 146px;min-height:96px;border:1px solid rgba(126,141,177,.26);border-radius:18px;background:#050711;overflow:hidden;scroll-snap-align:start}.bw-detail__material img{width:100%;height:74px;object-fit:cover;display:block}.bw-detail__material span{display:block;padding:8px 10px;text-align:center;font-size:13px;color:#dce2f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bw-detail__pill{min-height:48px;border:1px solid rgba(126,141,177,.26);border-radius:16px;background:rgba(24,29,50,.9);color:#fff;padding:0 16px;font-weight:800}.bw-detail__process-summary{border:1px solid rgba(126,141,177,.26);border-radius:21px;background:rgba(14,19,33,.72);padding:18px;color:#c9d0df;font-size:18px}
+    .bw-detail__bottom{position:sticky;bottom:0;z-index:5;display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:18px 0 0;background:linear-gradient(180deg,rgba(9,13,25,0),rgba(9,13,25,.98) 28%)}.bw-detail__action{min-height:62px;border:1px solid rgba(126,141,177,.28);border-radius:20px;background:rgba(28,33,53,.95);color:#fff;font-weight:900;font-size:20px}.bw-detail__action.is-primary{border:0;background:linear-gradient(135deg,#7b4dff,#29c8ff);box-shadow:0 0 30px rgba(67,145,255,.22)}.bw-detail__progress{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:16px;border:1px solid rgba(126,141,177,.24);border-radius:20px;background:rgba(18,23,38,.82);padding:15px 18px;margin:14px 0 28px}.bw-detail__progress strong{font-size:26px}.bw-detail__bar{height:8px;border-radius:99px;background:rgba(57,66,91,.65);overflow:hidden}.bw-detail__bar span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#9652ff,#5fd6e8)}.bw-detail__rows{display:grid;gap:12px}.bw-detail__row{display:grid;grid-template-columns:1fr minmax(116px,46%);align-items:center;gap:12px;min-height:78px;border:1px solid rgba(126,141,177,.24);border-radius:20px;background:rgba(18,23,38,.82);padding:14px 18px}.bw-detail__row.is-selected{border-color:rgba(105,134,255,.8);box-shadow:0 0 18px rgba(80,117,255,.2)}.bw-detail__row-title{font-size:20px;font-weight:900}.bw-detail__row-meta{margin-top:6px;color:#98a2ba}.bw-detail__task{display:grid;grid-template-columns:42px 1fr 56px 56px;align-items:center;gap:12px;min-height:72px;border:1px solid rgba(126,141,177,.24);border-radius:18px;background:rgba(18,23,38,.7);padding:12px}.bw-detail__check{width:34px;height:34px;border:2px solid rgba(174,188,217,.56);border-radius:10px;display:grid;place-items:center;color:#fff;font-size:24px}.bw-detail__task-title{font-size:18px;font-weight:900}.bw-detail__task-meta{margin-top:4px;color:#98a2ba}.bw-detail__icon{width:52px;height:52px;border:1px solid rgba(126,141,177,.24);border-radius:16px;background:rgba(27,32,52,.9);color:#fff;display:grid;place-items:center;font-size:22px}.bw-detail__expense-grid{display:grid;grid-template-columns:1fr .7fr;gap:12px}.bw-detail__field{min-height:62px;border:1px solid rgba(126,141,177,.24);border-radius:18px;background:rgba(18,23,38,.7);padding:16px;color:#98a2ba}.bw-detail__empty{border:1px dashed rgba(126,141,177,.24);border-radius:18px;padding:18px;color:#98a2ba;text-align:center}
+    @media(max-width:760px){.card-detail-overlay{padding:0}.card-detail-stage{width:100%!important;height:100svh!important;max-height:100svh!important}.card-detail-close{top:calc(env(safe-area-inset-top) + 18px)!important;right:18px!important;width:58px!important;height:58px!important;background:rgba(31,36,57,.98)!important}.bw-detail__stats--process{grid-template-columns:1fr 1fr 74px 74px 74px;gap:8px}.bw-detail__stat{min-height:82px;padding:12px}.bw-detail__stat-value{font-size:18px}.bw-detail__row{grid-template-columns:1fr}.bw-detail__task{grid-template-columns:38px 1fr 48px 48px}.bw-detail__bottom{margin:0 -18px;padding:18px 18px calc(env(safe-area-inset-bottom) + 16px)}}@media(prefers-reduced-motion:reduce){.card-detail-backdrop,.card-detail-stage{transition:none!important}.card-detail-stage{transform:none!important}}
+  `;
   document.head.append(style);
 }
 
 function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
-function esc(value) { return String(value ?? '').replace(/[&<>"]/g, (ch) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[ch])); }
+function esc(value) { return String(value ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
 function formatMoney(value) { const number = Number(value); return Number.isFinite(number) ? `${moneyFormatter.format(number)} ₽` : '—'; }
 function formatDate(value) { if (!value) return '—'; const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/); return match ? `${match[3]}.${match[2]}.${match[1]}` : String(value); }
 function formatStatus(value) { return STATUS_LABELS[value] ?? value ?? '—'; }
@@ -30,200 +39,40 @@ function activeTasks(tasks = []) { return tasks.filter((task) => (task.lifecycle
 function sumExpenses(expenses = []) { return expenses.reduce((sum, expense) => sum + (Number(expense.amount) || 0), 0); }
 function htmlToElement(html) { const template = document.createElement('template'); template.innerHTML = html.trim(); return template.content.firstElementChild; }
 function getSourceImage(source) { const image = source?.querySelector?.('.card-cover img'); return image?.src || 'assets/boonwave-logo.svg'; }
+function getDetailHero(card, source) { return getCoverPreviewUrl(card, 'detail') || getCoverPreviewUrl(card, 'working') || getSourceImage(source); }
 function findProjectProcess(project, cards) { return Object.values(cards).find((card) => card.type === 'process' && card.data?.projectId === project.id) ?? Object.values(cards).find((card) => card.type === 'process'); }
-function materialItems(card, heroSrc) {
-  const data = card.data ?? {};
-  const items = [...(data.images ?? []), ...(data.documents ?? []), ...(data.files ?? [])];
-  return (items.length ? items : [{ name: 'Обложка проекта' }, { name: 'Рабочий материал' }, { name: 'Референс' }]).slice(0, 8).map((item, index) => ({ name: item.name || item.fileName || item.title || `Материал ${index + 1}`, src: item.previewUrl || heroSrc }));
-}
+function materialItems(card, heroSrc) { const data = card.data ?? {}; const items = [...(data.images ?? []), ...(data.documents ?? []), ...(data.files ?? [])]; return (items.length ? items : [{ name: 'Обложка проекта' }, { name: 'Рабочий материал' }, { name: 'Референс' }]).slice(0, 8).map((item, index) => ({ name: item.name || item.fileName || item.title || `Материал ${index + 1}`, src: item.previewUrl || heroSrc })); }
 function stat(label, value, glow = false) { return `<div class="bw-detail__stat${glow ? ' is-glow' : ''}"><div class="bw-detail__stat-label">${esc(label)}</div><div class="bw-detail__stat-value">${esc(value)}</div></div>`; }
 function progressBar(value) { const progress = clamp(Math.round(Number(value) || 0), 0, 100); return `<div class="bw-detail__bar"><span style="width:${progress}%"></span></div>`; }
 
 function createProjectDetail(card, source) {
-  const state = store.getState();
-  const data = card.data ?? {};
-  const process = findProjectProcess(card, state.cards);
-  const processData = process?.data ?? {};
-  const expenses = sumExpenses(processData.expenses ?? []);
-  const openTaskCount = activeTasks(processData.tasks ?? []).length;
-  const heroSrc = getSourceImage(source);
-  const materials = materialItems(card, heroSrc);
-  const materialCount = (data.images?.length ?? 0) + (data.documents?.length ?? 0) + (data.files?.length ?? 0);
-  const projectMeta = [data.address || 'Вселенная', data.priority ? `Приоритет: ${data.priority}` : ''].filter(Boolean).join(' · ');
-  const processSummary = process ? `${countActive(processData.stages)} этапа · ${openTaskCount} открытых задач · ${new Set((processData.participants ?? []).map((item) => item.personId)).size} человек` : 'Рабочий процесс ещё не связан';
-  return htmlToElement(`<article class="bw-detail bw-detail--project" role="document">
-    <header class="bw-detail__header"><div class="bw-detail__type">Проект</div><h1 class="bw-detail__title">${esc(card.title)}</h1></header>
-    <section class="bw-detail__hero"><img src="${esc(heroSrc)}" alt="Обложка проекта"><div class="bw-detail__hero-copy"><div class="bw-detail__hero-title">${esc(card.title)}</div><div class="bw-detail__hero-meta">${esc(projectMeta)}</div></div></section>
-    <section class="bw-detail__stats">
-      ${stat('Статус', formatStatus(data.status), true)}${stat('Ближайший срок', formatDate(processData.dueDate || data.balance?.date || data.contractDate))}
-      ${stat('Бюджет', formatMoney(data.budget))}${stat('Аванс / Остаток', `${formatMoney(data.advance?.amount)} / ${formatMoney(data.balance?.amount)}`)}
-      ${stat('Позиции', data.itemCount ?? '—')}${stat('Затраты', formatMoney(expenses))}
-    </section>
-    <section class="bw-detail__section"><h3>О проекте</h3><div class="bw-detail__box">${esc(card.description || data.preliminaryInfo || 'Описание проекта пока не заполнено.')}</div></section>
-    <section class="bw-detail__section"><div class="bw-detail__section-head"><h3>Основные материалы · ${materialCount || materials.length}</h3><button class="bw-detail__pill" type="button">+ Добавить</button></div><div class="bw-detail__materials">${materials.map((item) => `<div class="bw-detail__material"><img src="${esc(item.src)}" alt=""><span>${esc(item.name)}</span></div>`).join('')}</div></section>
-    <section class="bw-detail__section"><div class="bw-detail__section-head"><h3>Рабочий процесс</h3>${process ? `<button class="bw-detail__pill" type="button" data-open-related-process="${esc(process.id)}">Открыть</button>` : ''}</div><div class="bw-detail__process-summary">${esc(processSummary)}</div></section>
-    <div class="bw-detail__bottom"><button class="bw-detail__action" type="button" data-open-related-process="${esc(process?.id ?? '')}" ${process ? '' : 'disabled'}>Рабочий процесс</button><button class="bw-detail__action is-primary" type="button" data-detail-edit>Редактировать</button></div>
-  </article>`);
+  const state = store.getState(); const data = card.data ?? {}; const process = findProjectProcess(card, state.cards); const processData = process?.data ?? {}; const expenses = sumExpenses(processData.expenses ?? []); const openTaskCount = activeTasks(processData.tasks ?? []).length; const heroSrc = getDetailHero(card, source); const materials = materialItems(card, heroSrc); const materialCount = (data.images?.length ?? 0) + (data.documents?.length ?? 0) + (data.files?.length ?? 0); const projectMeta = [data.address || 'Вселенная', data.priority ? `Приоритет: ${data.priority}` : ''].filter(Boolean).join(' · '); const processSummary = process ? `${countActive(processData.stages)} этапа · ${openTaskCount} открытых задач · ${new Set((processData.participants ?? []).map((item) => item.personId)).size} человек` : 'Рабочий процесс ещё не связан';
+  return htmlToElement(`<article class="bw-detail bw-detail--project" role="document"><header class="bw-detail__header"><div class="bw-detail__type">Проект</div><h1 class="bw-detail__title">${esc(card.title)}</h1></header><section class="bw-detail__hero"><img src="${esc(heroSrc)}" alt="Обложка проекта"><div class="bw-detail__hero-copy"><div class="bw-detail__hero-title">${esc(card.title)}</div><div class="bw-detail__hero-meta">${esc(projectMeta)}</div></div></section><section class="bw-detail__stats">${stat('Статус', formatStatus(data.status), true)}${stat('Ближайший срок', formatDate(processData.dueDate || data.balance?.date || data.contractDate))}${stat('Бюджет', formatMoney(data.budget))}${stat('Аванс / Остаток', `${formatMoney(data.advance?.amount)} / ${formatMoney(data.balance?.amount)}`)}${stat('Позиции', data.itemCount ?? '—')}${stat('Затраты', formatMoney(expenses))}</section><section class="bw-detail__section"><h3>О проекте</h3><div class="bw-detail__box">${esc(card.description || data.preliminaryInfo || 'Описание проекта пока не заполнено.')}</div></section><section class="bw-detail__section"><div class="bw-detail__section-head"><h3>Основные материалы · ${materialCount || materials.length}</h3><button class="bw-detail__pill" type="button">+ Добавить</button></div><div class="bw-detail__materials">${materials.map((item) => `<div class="bw-detail__material"><img src="${esc(item.src)}" alt=""><span>${esc(item.name)}</span></div>`).join('')}</div></section><section class="bw-detail__section"><div class="bw-detail__section-head"><h3>Рабочий процесс</h3>${process ? `<button class="bw-detail__pill" type="button" data-open-related-process="${esc(process.id)}">Открыть</button>` : ''}</div><div class="bw-detail__process-summary">${esc(processSummary)}</div></section><div class="bw-detail__bottom"><button class="bw-detail__action" type="button" data-open-related-process="${esc(process?.id ?? '')}" ${process ? '' : 'disabled'}>Рабочий процесс</button><button class="bw-detail__action is-primary" type="button" data-detail-edit>Редактировать</button></div></article>`);
 }
 
 function createProcessDetail(card, source) {
-  const state = store.getState();
-  const data = card.data ?? {};
-  const heroSrc = getSourceImage(source);
-  const project = data.projectId ? state.cards[data.projectId] : null;
-  const presented = presentWorkProcess(card, { cardsById: state.cards });
-  const selectedStage = presented.selectedStage ?? presented.stages[0] ?? null;
-  const stages = presented.stages;
-  const tasks = presented.tasks;
-  const expenses = presented.expenses;
-  return htmlToElement(`<article class="bw-detail bw-detail--process" role="document">
-    <header class="bw-detail__header"><div class="bw-detail__type">Рабочий процесс</div><h1 class="bw-detail__title">${esc(card.title)}</h1></header>
-    <section class="bw-detail__hero"><img src="${esc(heroSrc)}" alt="Обложка процесса"><div class="bw-detail__hero-copy"><div class="bw-detail__hero-meta">Проект: ${esc(project?.title ?? 'не выбран')}</div></div></section>
-    <section class="bw-detail__stats bw-detail__stats--process">
-      ${stat('Бюджет', presented.summary.budgetLabel ?? formatMoney(data.budget), true)}${stat('Расходы', presented.summary.expensesLabel ?? '—')}${stat('Этапы', presented.summary.stageCount)}${stat('Задачи', presented.summary.taskCount)}${stat('Роли', presented.summary.participantCount, true)}
-    </section>
-    <section class="bw-detail__progress"><span class="bw-detail__stat-label">Прогресс</span><strong>${presented.summary.progress}%</strong>${progressBar(presented.summary.progress)}</section>
-    <section class="bw-detail__section"><div class="bw-detail__section-head"><h3>Этапы</h3><button class="bw-detail__add" type="button">+</button></div><div class="bw-detail__rows">${stages.length ? stages.map((stage) => `<div class="bw-detail__row${stage.isSelected ? ' is-selected' : ''}"><div><div class="bw-detail__row-title">${esc(stage.title)}</div><div class="bw-detail__row-meta">${esc(stage.dueDateLabel ?? 'Без срока')}</div></div>${progressBar(stage.progress)}</div>`).join('') : '<div class="bw-detail__empty">Этапы пока не добавлены</div>'}</div></section>
-    <section class="bw-detail__section"><div class="bw-detail__section-head"><div><div class="bw-detail__type">Задачи конкретного этапа</div><h3>${esc(selectedStage?.title ?? 'Без этапа')}</h3></div><button class="bw-detail__add" type="button">+</button></div><div class="bw-detail__rows">${tasks.length ? tasks.map((task) => `<div class="bw-detail__task"><div class="bw-detail__check">${task.completed ? '✓' : ''}</div><div><div class="bw-detail__task-title">${esc(task.title)}</div><div class="bw-detail__task-meta">${esc(task.priorityLabel)}</div></div><div class="bw-detail__icon">◉</div><div class="bw-detail__icon">●</div></div>`).join('') : '<div class="bw-detail__empty">Задачи выбранного этапа пока не добавлены</div>'}</div></section>
-    <section class="bw-detail__section"><div class="bw-detail__section-head"><div><div class="bw-detail__type">Финансы рабочего процесса</div><h3>Затраты</h3></div><button class="bw-detail__add" type="button">+</button></div>${expenses.length ? `<div class="bw-detail__rows">${expenses.map((expense) => `<div class="bw-detail__row"><div><div class="bw-detail__row-title">${esc(expense.title)}</div><div class="bw-detail__row-meta">${esc(expense.category || expense.paymentStatusLabel || '')}</div></div><strong>${esc(expense.amountLabel ?? '—')}</strong></div>`).join('')}</div>` : '<div class="bw-detail__expense-grid"><div class="bw-detail__field">Описание</div><div class="bw-detail__field">Сумма</div></div>'}</section>
-    <div class="bw-detail__bottom"><button class="bw-detail__action" type="button">Создать ветвь</button><button class="bw-detail__action is-primary" type="button" data-detail-edit>Редактировать</button></div>
-  </article>`);
+  const state = store.getState(); const data = card.data ?? {}; const heroSrc = getDetailHero(card, source); const project = data.projectId ? state.cards[data.projectId] : null; const presented = presentWorkProcess(card, { cardsById: state.cards }); const selectedStage = presented.selectedStage ?? presented.stages[0] ?? null; const stages = presented.stages; const tasks = presented.tasks; const expenses = presented.expenses;
+  return htmlToElement(`<article class="bw-detail bw-detail--process" role="document"><header class="bw-detail__header"><div class="bw-detail__type">Рабочий процесс</div><h1 class="bw-detail__title">${esc(card.title)}</h1></header><section class="bw-detail__hero"><img src="${esc(heroSrc)}" alt="Обложка процесса"><div class="bw-detail__hero-copy"><div class="bw-detail__hero-meta">Проект: ${esc(project?.title ?? 'не выбран')}</div></div></section><section class="bw-detail__stats bw-detail__stats--process">${stat('Бюджет', presented.summary.budgetLabel ?? formatMoney(data.budget), true)}${stat('Расходы', presented.summary.expensesLabel ?? '—')}${stat('Этапы', presented.summary.stageCount)}${stat('Задачи', presented.summary.taskCount)}${stat('Роли', presented.summary.participantCount, true)}</section><section class="bw-detail__progress"><span class="bw-detail__stat-label">Прогресс</span><strong>${presented.summary.progress}%</strong>${progressBar(presented.summary.progress)}</section><section class="bw-detail__section"><div class="bw-detail__section-head"><h3>Этапы</h3><button class="bw-detail__add" type="button">+</button></div><div class="bw-detail__rows">${stages.length ? stages.map((stage) => `<div class="bw-detail__row${stage.isSelected ? ' is-selected' : ''}"><div><div class="bw-detail__row-title">${esc(stage.title)}</div><div class="bw-detail__row-meta">${esc(stage.dueDateLabel ?? 'Без срока')}</div></div>${progressBar(stage.progress)}</div>`).join('') : '<div class="bw-detail__empty">Этапы пока не добавлены</div>'}</div></section><section class="bw-detail__section"><div class="bw-detail__section-head"><div><div class="bw-detail__type">Задачи конкретного этапа</div><h3>${esc(selectedStage?.title ?? 'Без этапа')}</h3></div><button class="bw-detail__add" type="button">+</button></div><div class="bw-detail__rows">${tasks.length ? tasks.map((task) => `<div class="bw-detail__task"><div class="bw-detail__check">${task.completed ? '✓' : ''}</div><div><div class="bw-detail__task-title">${esc(task.title)}</div><div class="bw-detail__task-meta">${esc(task.priorityLabel)}</div></div><div class="bw-detail__icon">◉</div><div class="bw-detail__icon">●</div></div>`).join('') : '<div class="bw-detail__empty">Задачи выбранного этапа пока не добавлены</div>'}</div></section><section class="bw-detail__section"><div class="bw-detail__section-head"><div><div class="bw-detail__type">Финансы рабочего процесса</div><h3>Затраты</h3></div><button class="bw-detail__add" type="button">+</button></div>${expenses.length ? `<div class="bw-detail__rows">${expenses.map((expense) => `<div class="bw-detail__row"><div><div class="bw-detail__row-title">${esc(expense.title)}</div><div class="bw-detail__row-meta">${esc(expense.category || expense.paymentStatusLabel || '')}</div></div><strong>${esc(expense.amountLabel ?? '—')}</strong></div>`).join('')}</div>` : '<div class="bw-detail__expense-grid"><div class="bw-detail__field">Описание</div><div class="bw-detail__field">Сумма</div></div>'}</section><div class="bw-detail__bottom"><button class="bw-detail__action" type="button">Создать ветвь</button><button class="bw-detail__action is-primary" type="button" data-detail-edit>Редактировать</button></div></article>`);
 }
 
 function prepareClone(card, source) {
   if (card.type === 'project') return createProjectDetail(card, source);
   if (card.type === 'process') return createProcessDetail(card, source);
-  const clone = source.cloneNode(true);
-  clone.classList.add('card-detail-copy');
-  clone.removeAttribute('data-card-id');
-  clone.removeAttribute('aria-keyshortcuts');
-  clone.dataset.selected = 'false';
-  clone.dataset.linkSource = 'false';
-  clone.dataset.viewMode = 'detail';
-  clone.tabIndex = -1;
-  clone.setAttribute('role', 'document');
-  clone.setAttribute('aria-label', `${card.title}. Полная карточка`);
-  for (const key of ['Cover', 'Type', 'Status', 'Title', 'Description', 'Meta', 'Progress']) clone.dataset[`show${key}`] = 'true';
-  const heading = clone.querySelector('h2');
-  if (heading) heading.textContent = card.title;
-  const frame = normalizeNodeView(card.view).coverFrames.working;
-  const image = clone.querySelector('.card-cover img');
-  if (image) { image.style.transform = `scale(${frame.scale})`; image.style.objectPosition = `${frame.positionX}% ${frame.positionY}%`; }
-  clone.dataset.coverShape = frame.shape;
-  clone.querySelectorAll('button').forEach((button) => button.remove());
-  const actions = document.createElement('div');
-  actions.className = 'card-detail-actions';
-  actions.innerHTML = '<button type="button" data-detail-edit>Редактировать</button><button type="button" data-detail-display>Формат отображения</button>';
-  clone.append(actions);
-  return clone;
+  const clone = source.cloneNode(true); clone.classList.add('card-detail-copy'); clone.removeAttribute('data-card-id'); clone.removeAttribute('aria-keyshortcuts'); clone.dataset.selected = 'false'; clone.dataset.linkSource = 'false'; clone.dataset.viewMode = 'detail'; clone.tabIndex = -1; clone.setAttribute('role', 'document'); clone.setAttribute('aria-label', `${card.title}. Полная карточка`); for (const key of ['Cover', 'Type', 'Status', 'Title', 'Description', 'Meta', 'Progress']) clone.dataset[`show${key}`] = 'true'; const heading = clone.querySelector('h2'); if (heading) heading.textContent = card.title; const frame = normalizeNodeView(card.view).coverFrames.working; const image = clone.querySelector('.card-cover img'); if (image) { image.style.transform = `scale(${frame.scale})`; image.style.objectPosition = `${frame.positionX}% ${frame.positionY}%`; } clone.dataset.coverShape = frame.shape; clone.querySelectorAll('button').forEach((button) => button.remove()); const actions = document.createElement('div'); actions.className = 'card-detail-actions'; actions.innerHTML = '<button type="button" data-detail-edit>Редактировать</button><button type="button" data-detail-display>Формат отображения</button>'; clone.append(actions); return clone;
 }
 
 export class CardDetailController {
-  constructor({ root = document.body, onEdit, onDisplay } = {}) {
-    if (!(root instanceof Element)) throw new TypeError('CardDetailController expects a root element.');
-    ensureStyles();
-    this.root = root;
-    this.onEdit = typeof onEdit === 'function' ? onEdit : null;
-    this.onDisplay = typeof onDisplay === 'function' ? onDisplay : null;
-    this.activeCard = null;
-    this.sourceElement = null;
-    this.phase = 'closed';
-    this.closeTimer = null;
-    this.openFrame = null;
-    this.revealFrame = null;
-    this.openedAt = 0;
-    this.abortController = new AbortController();
-    this.createOverlay();
-  }
-
-  createOverlay() {
-    const overlay = document.createElement('div');
-    overlay.className = 'card-detail-overlay';
-    overlay.hidden = true;
-    overlay.setAttribute('aria-hidden', 'true');
-    overlay.innerHTML = '<button class="card-detail-backdrop" type="button" aria-label="Закрыть карточку"></button><section class="card-detail-stage" role="dialog" aria-modal="true" aria-label="Полная карточка"><button class="card-detail-close" type="button" aria-label="Закрыть">×</button><div class="card-detail-content"></div></section>';
-    this.root.append(overlay);
-    this.overlay = overlay;
-    this.stage = overlay.querySelector('.card-detail-stage');
-    this.content = overlay.querySelector('.card-detail-content');
-    this.closeButton = overlay.querySelector('.card-detail-close');
-    const signal = this.abortController.signal;
-    overlay.querySelector('.card-detail-backdrop').addEventListener('click', () => {
-      if (performance.now() - this.openedAt < BACKDROP_GUARD_MS) return;
-      this.close();
-    }, { signal });
-    this.closeButton.addEventListener('click', () => this.close(), { signal });
-    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && this.isOpen()) this.close(); }, { signal });
-  }
-
+  constructor({ root = document.body, onEdit, onDisplay } = {}) { if (!(root instanceof Element)) throw new TypeError('CardDetailController expects a root element.'); ensureStyles(); this.root = root; this.onEdit = typeof onEdit === 'function' ? onEdit : null; this.onDisplay = typeof onDisplay === 'function' ? onDisplay : null; this.activeCard = null; this.sourceElement = null; this.phase = 'closed'; this.closeTimer = null; this.openFrame = null; this.revealFrame = null; this.openedAt = 0; this.abortController = new AbortController(); this.createOverlay(); }
+  createOverlay() { const overlay = document.createElement('div'); overlay.className = 'card-detail-overlay'; overlay.hidden = true; overlay.setAttribute('aria-hidden', 'true'); overlay.innerHTML = '<button class="card-detail-backdrop" type="button" aria-label="Закрыть карточку"></button><section class="card-detail-stage" role="dialog" aria-modal="true" aria-label="Полная карточка"><button class="card-detail-close" type="button" aria-label="Закрыть">×</button><div class="card-detail-content"></div></section>'; this.root.append(overlay); this.overlay = overlay; this.stage = overlay.querySelector('.card-detail-stage'); this.content = overlay.querySelector('.card-detail-content'); this.closeButton = overlay.querySelector('.card-detail-close'); const signal = this.abortController.signal; overlay.querySelector('.card-detail-backdrop').addEventListener('click', () => { if (performance.now() - this.openedAt < BACKDROP_GUARD_MS) return; this.close(); }, { signal }); this.closeButton.addEventListener('click', () => this.close(), { signal }); document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && this.isOpen()) this.close(); }, { signal }); }
   isOpen() { return this.phase === 'scheduled' || this.phase === 'opening' || this.phase === 'open'; }
   getSourceRect() { if (!this.sourceElement?.isConnected) return null; const rect = this.sourceElement.getBoundingClientRect(); return rect.width > 0 && rect.height > 0 ? rect : null; }
   setTransform(rect) { const target = this.stage.getBoundingClientRect(); if (!rect || target.width <= 0 || target.height <= 0) return; this.stage.style.setProperty('--detail-from-x', `${rect.left + rect.width / 2 - (target.left + target.width / 2)}px`); this.stage.style.setProperty('--detail-from-y', `${rect.top + rect.height / 2 - (target.top + target.height / 2)}px`); this.stage.style.setProperty('--detail-from-scale-x', String(clamp(rect.width / target.width, .08, 1.2))); this.stage.style.setProperty('--detail-from-scale-y', String(clamp(rect.height / target.height, .08, 1.2))); }
-
-  bindDetailActions() {
-    const editButton = this.content.querySelector('[data-detail-edit]');
-    const displayButton = this.content.querySelector('[data-detail-display]');
-    const processButtons = this.content.querySelectorAll('[data-open-related-process]');
-    editButton?.addEventListener('click', () => this.runAction(this.onEdit), { once: true });
-    displayButton?.addEventListener('click', () => this.runAction(this.onDisplay), { once: true });
-    for (const button of processButtons) button.addEventListener('click', () => this.openRelatedCard(button.dataset.openRelatedProcess));
-  }
-
-  openRelatedCard(cardId) {
-    const card = store.getState().cards[cardId];
-    if (!card) return false;
-    this.activeCard = card;
-    const source = document.querySelector(`[data-card-id="${CSS.escape(cardId)}"]`) ?? this.sourceElement ?? this.stage;
-    this.content.replaceChildren(prepareClone(card, source));
-    this.content.scrollTop = 0;
-    this.bindDetailActions();
-    return true;
-  }
-
-  open(card, source) {
-    if (!card || !(source instanceof Element) || this.phase !== 'closed') return false;
-    clearTimeout(this.closeTimer);
-    this.phase = 'scheduled';
-    this.activeCard = card;
-    this.sourceElement = source;
-    this.content.replaceChildren(prepareClone(card, source));
-    this.openFrame = requestAnimationFrame(() => {
-      this.openFrame = null;
-      if (this.phase !== 'scheduled') return;
-      this.phase = 'opening';
-      this.overlay.hidden = false;
-      this.overlay.setAttribute('aria-hidden', 'false');
-      this.overlay.classList.remove('is-visible');
-      this.setTransform(source.getBoundingClientRect());
-      this.bindDetailActions();
-      this.revealFrame = requestAnimationFrame(() => {
-        this.revealFrame = null;
-        if (this.phase !== 'opening') return;
-        this.openedAt = performance.now();
-        this.overlay.classList.add('is-visible');
-        document.documentElement.classList.add('card-detail-active');
-        this.phase = 'open';
-        this.closeButton.focus({ preventScroll: true });
-      });
-    });
-    return true;
-  }
-
+  bindDetailActions() { const editButton = this.content.querySelector('[data-detail-edit]'); const displayButton = this.content.querySelector('[data-detail-display]'); const processButtons = this.content.querySelectorAll('[data-open-related-process]'); editButton?.addEventListener('click', () => this.runAction(this.onEdit), { once: true }); displayButton?.addEventListener('click', () => this.runAction(this.onDisplay), { once: true }); for (const button of processButtons) button.addEventListener('click', () => this.openRelatedCard(button.dataset.openRelatedProcess)); }
+  openRelatedCard(cardId) { const card = store.getState().cards[cardId]; if (!card) return false; this.activeCard = card; const source = document.querySelector(`[data-card-id="${CSS.escape(cardId)}"]`) ?? this.sourceElement ?? this.stage; this.content.replaceChildren(prepareClone(card, source)); this.content.scrollTop = 0; this.bindDetailActions(); return true; }
+  open(card, source) { if (!card || !(source instanceof Element) || this.phase !== 'closed') return false; clearTimeout(this.closeTimer); this.phase = 'scheduled'; this.activeCard = card; this.sourceElement = source; this.content.replaceChildren(prepareClone(card, source)); this.openFrame = requestAnimationFrame(() => { this.openFrame = null; if (this.phase !== 'scheduled') return; this.phase = 'opening'; this.overlay.hidden = false; this.overlay.setAttribute('aria-hidden', 'false'); this.overlay.classList.remove('is-visible'); this.setTransform(source.getBoundingClientRect()); this.bindDetailActions(); this.revealFrame = requestAnimationFrame(() => { this.revealFrame = null; if (this.phase !== 'opening') return; this.openedAt = performance.now(); this.overlay.classList.add('is-visible'); document.documentElement.classList.add('card-detail-active'); this.phase = 'open'; this.closeButton.focus({ preventScroll: true }); }); }); return true; }
   runAction(handler) { const card = this.activeCard; if (!card || !handler) return; this.close({ immediate: true }); handler(card); }
   finishClose() { this.overlay.hidden = true; this.overlay.setAttribute('aria-hidden', 'true'); this.content.replaceChildren(); this.activeCard = null; this.sourceElement = null; this.openedAt = 0; this.phase = 'closed'; document.documentElement.classList.remove('card-detail-active'); }
-  close({ immediate = false } = {}) {
-    if (this.phase === 'closed' || this.phase === 'closing') return;
-    clearTimeout(this.closeTimer);
-    if (this.openFrame !== null) { cancelAnimationFrame(this.openFrame); this.openFrame = null; }
-    if (this.revealFrame !== null) { cancelAnimationFrame(this.revealFrame); this.revealFrame = null; }
-    document.documentElement.classList.remove('card-detail-active');
-    if (this.phase === 'scheduled') { this.finishClose(); return; }
-    this.phase = 'closing';
-    this.setTransform(this.getSourceRect());
-    this.overlay.classList.remove('is-visible');
-    if (immediate || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { this.finishClose(); return; }
-    this.closeTimer = setTimeout(() => this.finishClose(), TRANSITION_MS);
-  }
+  close({ immediate = false } = {}) { if (this.phase === 'closed' || this.phase === 'closing') return; clearTimeout(this.closeTimer); if (this.openFrame !== null) { cancelAnimationFrame(this.openFrame); this.openFrame = null; } if (this.revealFrame !== null) { cancelAnimationFrame(this.revealFrame); this.revealFrame = null; } document.documentElement.classList.remove('card-detail-active'); if (this.phase === 'scheduled') { this.finishClose(); return; } this.phase = 'closing'; this.setTransform(this.getSourceRect()); this.overlay.classList.remove('is-visible'); if (immediate || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) { this.finishClose(); return; } this.closeTimer = setTimeout(() => this.finishClose(), TRANSITION_MS); }
   destroy() { clearTimeout(this.closeTimer); if (this.openFrame !== null) cancelAnimationFrame(this.openFrame); if (this.revealFrame !== null) cancelAnimationFrame(this.revealFrame); this.finishClose(); this.abortController.abort(); this.overlay.remove(); }
 }
 
