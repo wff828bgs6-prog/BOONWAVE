@@ -10,7 +10,6 @@
   display:none!important;
 }
 
-/* Hide floating card action buttons on selection in Daily MVP */
 .card-actions{
   display:none!important;
 }
@@ -32,7 +31,6 @@
   display:none!important;
 }
 
-/* Daily MVP: only Project and Work Process creation are visible */
 [data-create-action="root-goal"],
 [data-create-action="root-person"],
 [data-create-action="root-idea"],
@@ -41,6 +39,10 @@
 [data-create-action="branch-goal"]{
   display:none!important;
 }
+
+.editor-dialog .dialog-shell{width:100vw!important;max-width:100vw!important;margin:0!important;overflow-x:hidden!important}
+#editorBody{overflow-x:hidden!important}
+.field-grid{grid-template-columns:1fr!important}
 
 @media(max-width:390px){
   .desktop-zoom-controls{
