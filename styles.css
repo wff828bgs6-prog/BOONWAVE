@@ -1,17 +1,2 @@
-:root{
-  --bg:#05060a;--surface:#0d1018;--surface2:#141925;--surface3:#1b2130;
-  --line:#2a3142;--line-soft:#1b2130;--text:#f6f7fb;--muted:#8c95a9;
-  --purple:#a14eff;--blue:#6177ff;--cyan:#55dcec;--lime:#b8ff72;--danger:#ff7285;
-  --header-h:62px;--nav-h:68px;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)
-}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Inter,Arial,sans-serif}
-body{overscroll-behavior:none}
-button,input,textarea,select{font:inherit;color:inherit}
-button{border:0;background:none;padding:0;cursor:pointer}
-input,textarea,select{outline:none}
-.hidden{display:none!important}
-.primary,.ghost{min-height:44px;padding:0 18px;border-radius:15px;font-weight:700}
-.primary{background:linear-gradient(120deg,var(--purple),var(--blue) 55%,var(--cyan));color:white;box-shadow:0 12px 28px #536fff33}
-.ghost{background:#1b2130;color:#e8ebf3;border:1px solid #30384b}
-.danger-text{color:#ff9aaa}
+@import url("./styles.base.css?v=6.0.31");
+@import url("./cleanup.css?v=6.0.31-clean1");

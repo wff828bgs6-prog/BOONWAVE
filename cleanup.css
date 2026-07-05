@@ -1,0 +1,35 @@
+/* cleanup/interface-v6.0.31 — pass 1: clean home screen */
+#todayQuickButton,
+#resultsQuickButton,
+.bottom-nav.workspace-actions{
+  display:none!important;
+}
+
+.desktop-zoom-controls{
+  bottom:calc(18px + var(--safe-bottom))!important;
+  grid-template-columns:minmax(0,1fr) 58px!important;
+}
+
+.desktop-zoom-slider{
+  grid-column:1!important;
+}
+
+#createButton{
+  grid-column:2!important;
+}
+
+#fitButton{
+  display:grid!important;
+}
+
+.account-menu [data-menu-action="logout"]{
+  display:none!important;
+}
+
+@media(max-width:390px){
+  .desktop-zoom-controls{
+    left:14px!important;
+    right:14px!important;
+    gap:10px!important;
+  }
+}
