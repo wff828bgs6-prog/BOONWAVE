@@ -1,12 +1,15 @@
 /* BOONWAVE top lux header bar.
+   Header is owned only by this stylesheet.
    Original logo file is loaded from assets/boonwave-logo-header.png.
-   No redraw, no generated logo, no text substitute. */
+   No redraw, no generated text substitute. */
 .app-header{
   left:10px!important;
   right:10px!important;
   width:auto!important;
+  pointer-events:none!important;
 }
-.app-badge{
+.app-header .app-badge{
+  position:relative!important;
   min-height:72px!important;
   height:72px!important;
   padding:0 16px!important;
@@ -15,8 +18,22 @@
   justify-content:flex-start!important;
   gap:12px!important;
   overflow:hidden!important;
+  isolation:isolate!important;
+  border-color:rgba(164,202,255,.16)!important;
+  background:linear-gradient(180deg,rgba(17,21,43,.9),rgba(8,12,28,.82))!important;
+  box-shadow:0 18px 46px rgba(0,0,0,.34),0 0 34px rgba(var(--bw-brand-cyan),.035),inset 0 1px 0 rgba(255,255,255,.065),inset 0 0 34px rgba(var(--bw-brand-violet),.026)!important;
 }
-.app-badge strong{
+.app-header .app-badge::after{
+  content:"";
+  position:absolute;
+  inset:1px;
+  z-index:0;
+  border-radius:inherit;
+  pointer-events:none;
+  background:linear-gradient(105deg,rgba(255,255,255,.055),transparent 30%,rgba(var(--bw-brand-violet),.045) 100%);
+  opacity:.72;
+}
+.app-header .app-badge strong{
   position:absolute!important;
   width:1px!important;
   height:1px!important;
@@ -24,7 +41,7 @@
   clip-path:inset(50%)!important;
   white-space:nowrap!important;
 }
-.app-logo{
+.app-header .app-badge > .app-logo{
   position:relative!important;
   z-index:2!important;
   flex:0 0 168px!important;
@@ -35,7 +52,12 @@
   height:62px!important;
   min-height:62px!important;
   max-height:62px!important;
-  background-image:url('../assets/boonwave-logo-header.png?v=top-header-logo-actions-20260705-3')!important;
+  margin:0!important;
+  padding:0!important;
+  line-height:0!important;
+  font-size:0!important;
+  color:transparent!important;
+  background-image:url('../assets/boonwave-logo-header.png?v=top-header-logo-actions-20260705-4')!important;
   background-repeat:no-repeat!important;
   background-position:left center!important;
   background-size:contain!important;
@@ -43,7 +65,7 @@
   -webkit-user-drag:none!important;
   filter:drop-shadow(0 0 10px rgba(var(--bw-brand-cyan),.13)) drop-shadow(0 0 16px rgba(var(--bw-brand-violet),.11))!important;
 }
-.app-top-actions{
+.app-header .app-top-actions{
   position:relative!important;
   z-index:2!important;
   flex:0 0 auto!important;
@@ -53,11 +75,13 @@
   justify-content:flex-end!important;
   gap:9px!important;
 }
-.app-top-action{
+.app-header .app-top-action{
   display:block!important;
   flex:0 0 36px!important;
   width:36px!important;
   height:36px!important;
+  margin:0!important;
+  padding:0!important;
   border:1px solid rgba(142,166,255,.18)!important;
   border-radius:50%!important;
   background:
@@ -65,25 +89,25 @@
     linear-gradient(135deg,rgba(var(--bw-brand-blue),.9),rgba(var(--bw-brand-violet),.72))!important;
   box-shadow:0 5px 16px rgba(0,0,0,.34),0 0 14px rgba(var(--bw-brand-blue),.14),inset 0 1px 0 rgba(255,255,255,.12),inset 0 -5px 10px rgba(8,15,46,.28)!important;
 }
-.app-top-action:nth-child(2){
+.app-header .app-top-action:nth-child(2){
   background:
     radial-gradient(circle at 34% 28%,rgba(134,214,247,.38) 0 18%,rgba(55,111,226,.88) 19% 58%,rgba(55,69,172,.67) 100%),
     linear-gradient(135deg,rgba(var(--bw-brand-blue),.88),rgba(var(--bw-brand-violet),.74))!important;
 }
-.app-top-action:nth-child(3){
+.app-header .app-top-action:nth-child(3){
   background:
     radial-gradient(circle at 34% 28%,rgba(128,204,244,.34) 0 18%,rgba(58,112,226,.86) 19% 58%,rgba(66,70,178,.68) 100%),
     linear-gradient(135deg,rgba(var(--bw-brand-blue),.86),rgba(var(--bw-brand-violet),.76))!important;
 }
 @media(max-width:430px){
   .app-header{left:7px!important;right:7px!important}
-  .app-badge{height:70px!important;min-height:70px!important;padding:0 12px!important;gap:10px!important}
-  .app-logo{flex-basis:150px!important;width:150px!important;min-width:150px!important;max-width:150px!important;height:58px!important;min-height:58px!important;max-height:58px!important}
-  .app-top-actions{gap:8px!important}
-  .app-top-action{flex-basis:34px!important;width:34px!important;height:34px!important}
+  .app-header .app-badge{height:70px!important;min-height:70px!important;padding:0 12px!important;gap:10px!important}
+  .app-header .app-badge > .app-logo{flex-basis:150px!important;width:150px!important;min-width:150px!important;max-width:150px!important;height:58px!important;min-height:58px!important;max-height:58px!important}
+  .app-header .app-top-actions{gap:8px!important}
+  .app-header .app-top-action{flex-basis:34px!important;width:34px!important;height:34px!important}
 }
 @media(max-width:360px){
-  .app-logo{flex-basis:136px!important;width:136px!important;min-width:136px!important;max-width:136px!important}
-  .app-top-actions{gap:7px!important}
-  .app-top-action{flex-basis:32px!important;width:32px!important;height:32px!important}
+  .app-header .app-badge > .app-logo{flex-basis:136px!important;width:136px!important;min-width:136px!important;max-width:136px!important}
+  .app-header .app-top-actions{gap:7px!important}
+  .app-header .app-top-action{flex-basis:32px!important;width:32px!important;height:32px!important}
 }
