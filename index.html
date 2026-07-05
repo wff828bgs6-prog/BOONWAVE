@@ -2,115 +2,209 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <meta name="theme-color" content="#070913">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#06070c" id="themeColorMeta">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="BOONWAVE">
-  <title>BOONWAVE</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles/boonwave-tokens.css">
-  <link rel="stylesheet" href="styles/production-shell.css">
-  <link rel="stylesheet" href="styles/card-views.css">
-  <link rel="stylesheet" href="styles/one-hand-rail-v3.css">
-  <link rel="stylesheet" href="styles/contacts.css">
+  <link rel="stylesheet" href="styles.css?v=6.0.31">
+  <title>BOONWAVE</title>
 </head>
 <body>
-  <svg width="0" height="0" aria-hidden="true" focusable="false"><defs><linearGradient id="bwIconGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a14cff"/><stop offset="1" stop-color="#22bfff"/></linearGradient></defs></svg>
-
-  <main class="app-shell">
-    <header class="app-header"><div class="app-badge"><strong>BOONWAVE</strong><span>Production Core</span></div></header>
-
-    <aside class="one-hand-rail" id="utilityRail" data-position="right" aria-label="Управление одной рукой, справа">
-      <button class="utility-button rail-home" id="homeSelfButton" type="button" aria-label="Вернуться к карточке Я Есмь">
-        <svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M6 19c.8-3.3 2.8-5 6-5s5.2 1.7 6 5"/></svg>
-      </button>
-
-      <button class="rail-button rail-add" id="addCardButton" type="button" aria-label="Создать карточку">
-        <svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg>
-      </button>
-
-      <div class="rail-zoom" id="zoomControl">
-        <div class="zoom-touch-area" id="zoomTouchArea">
-          <div class="zoom-visual" aria-hidden="true"><div class="zoom-fill"></div><div class="zoom-thumb"></div></div>
-          <input id="zoomRange" class="zoom-accessible-range" type="range" min="0.14" max="1.5" step="0.005" value="0.85" aria-label="Масштаб рабочего пространства" aria-orientation="vertical">
-        </div>
-      </div>
-
-      <button class="utility-button rail-lock" id="cardLockButton" type="button" aria-label="Зафиксировать расположение карточек" aria-pressed="false">
-        <svg class="bw-icon lock-closed" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v2"/></svg>
-        <svg class="bw-icon lock-open" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M16 10V7a4 4 0 0 0-7.5-2"/><path d="M12 14v2"/></svg>
-      </button>
-
-      <button class="rail-button rail-more" id="moreToolsButton" type="button" aria-label="Дополнительные действия" aria-expanded="false" aria-controls="toolsSheet">
-        <svg class="bw-icon" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/></svg>
-      </button>
-    </aside>
-
-    <section id="canvas" aria-label="Рабочее пространство BOONWAVE"><div id="world"></div></section>
-    <div class="status-live" id="hint" role="status" aria-live="polite">Выбери карточку</div>
-  </main>
-
-  <section class="tools-sheet" id="toolsSheet" hidden aria-hidden="true">
-    <div class="tools-panel" role="dialog" aria-modal="true" aria-labelledby="toolsTitle">
-      <div class="tools-head"><h2 id="toolsTitle">Дополнительные действия</h2><button class="tools-close" id="closeToolsButton" type="button" aria-label="Закрыть дополнительные действия">×</button></div>
-      <div class="tools-grid">
-        <button class="tools-action" id="linkButton" type="button" aria-label="Связать или отвязать карточки" aria-pressed="false" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg><span>Связь</span></button>
-        <button class="tools-action" id="deleteButton" type="button" aria-label="Переместить карточку в корзину" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg><span>В корзину</span></button>
-        <button class="tools-action" id="undoButton" type="button" aria-label="Отменить действие" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M16 7H9a5 5 0 0 0 0 10h6"/><path d="m12 4 4 3-4 3"/></svg><span>Отменить</span></button>
-        <button class="tools-action" id="redoButton" type="button" aria-label="Повторить действие" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M8 7h7a5 5 0 0 1 0 10H9"/><path d="m12 4-4 3 4 3"/></svg><span>Повторить</span></button>
-        <button class="tools-action" id="contactsButton" type="button" aria-label="Открыть контакты" aria-expanded="false" aria-controls="contactsSheet" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Контакты</span></button>
-        <button class="tools-action" type="button" aria-label="Архив" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg><span>Архив</span></button>
-      </div>
-
-      <div class="rail-position-section">
-        <h3>Положение панели</h3>
-        <div class="rail-position-grid" role="group" aria-label="Положение панели управления">
-          <button class="rail-position-button" type="button" data-rail-position="left" aria-pressed="false"><span aria-hidden="true">←</span><span>Слева</span></button>
-          <button class="rail-position-button" type="button" data-rail-position="right" aria-pressed="true"><span aria-hidden="true">→</span><span>Справа</span></button>
-          <button class="rail-position-button" type="button" data-rail-position="bottom" aria-pressed="false"><span aria-hidden="true">↓</span><span>Снизу</span></button>
-        </div>
-      </div>
+  <section id="splashScreen" class="splash-screen" aria-label="BOONWAVE">
+    <div class="splash-noise"></div>
+    <div class="splash-orbit orbit-a"></div>
+    <div class="splash-orbit orbit-b"></div>
+    <div class="splash-dots"></div>
+    <div class="splash-content">
+      <div class="splash-full-wrap"><img src="boonwave-mark-full.png" alt="" class="splash-full-mark"><div class="brand-wordmark" aria-label="BOONWAVE"><span>BOON</span><strong>WAVE</strong></div></div>
+      <p class="splash-tagline">Твоё пространство возможностей</p>
+      <div class="splash-progress"><span></span></div>
     </div>
   </section>
 
-  <section class="contacts-sheet" id="contactsSheet" hidden aria-hidden="true">
-    <div class="contacts-panel" role="dialog" aria-modal="true" aria-labelledby="contactsTitle">
-      <div class="contacts-head"><h2 id="contactsTitle">Контакты</h2><button class="contacts-close" id="closeContactsButton" type="button" aria-label="Закрыть контакты">×</button></div>
-      <div class="contacts-list" id="contactsList"></div>
-      <div class="contacts-empty" id="contactsEmpty">Контактов пока нет. Создай карточку типа «Человек», и она появится здесь.</div>
-      <button class="contacts-create" id="createContactButton" type="button">Новый контакт</button>
+  <section id="authScreen" class="auth-screen hidden">
+    <div class="auth-glow glow-one"></div>
+    <div class="auth-glow glow-two"></div>
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="auth-mark-wrap"><div class="auth-logo-stack"><img src="boonwave-mark-full.png" alt="" class="auth-mark"><div class="brand-wordmark auth-wordmark" aria-label="BOONWAVE"><span>BOON</span><strong>WAVE</strong></div></div></div>
+        <p class="auth-slogan">Твоё пространство возможностей</p>
+      </div>
+      <div class="auth-tabs" role="tablist">
+        <button type="button" class="active" data-auth-tab="login">Вход</button>
+        <button type="button" data-auth-tab="register">Регистрация</button>
+      </div>
+      <form id="loginForm" class="auth-form">
+        <label>Email<input name="email" type="email" autocomplete="email" placeholder="name@example.com" required></label>
+        <label>Пароль<input name="password" type="password" autocomplete="current-password" placeholder="••••••••" minlength="4" required></label>
+        <button class="primary auth-submit" type="submit">Войти</button>
+      </form>
+      <form id="registerForm" class="auth-form hidden">
+        <label>Имя<input name="name" type="text" autocomplete="name" placeholder="Ваше имя" required></label>
+        <label>Email<input name="email" type="email" autocomplete="email" placeholder="name@example.com" required></label>
+        <label>Пароль<input name="password" type="password" autocomplete="new-password" placeholder="Минимум 4 символа" minlength="4" required></label>
+        <button class="primary auth-submit" type="submit">Создать аккаунт</button>
+      </form>
+      <button id="skipAuth" class="skip-auth" type="button">Визуальное знакомство</button>
     </div>
   </section>
 
-  <section class="sheet" id="createSheet" hidden>
-    <form class="sheet-panel" id="createCardForm">
-      <div class="sheet-head"><h2>Новая карточка</h2><button class="close-button" id="closeSheetButton" type="button" aria-label="Закрыть создание карточки">×</button></div>
-      <div class="type-grid" id="typeGrid">
-        <button class="type-button" type="button" data-node-type="project" aria-pressed="true">Проект</button>
-        <button class="type-button" type="button" data-node-type="process" aria-pressed="false">Процесс</button>
-        <button class="type-button" type="button" data-node-type="person" aria-pressed="false">Человек</button>
-        <button class="type-button" type="button" data-node-type="idea" aria-pressed="false">Идея</button>
-        <button class="type-button" type="button" data-node-type="goal" aria-pressed="false">Цель</button>
+  <div id="app" class="app-hidden" aria-hidden="true">
+    <header class="app-header">
+      <button id="brandHome" class="brand-button" aria-label="Обзор пространств">
+        <img src="boonwave-mark-full.png" alt="BOONWAVE">
+      </button>
+      <div class="space-switch" role="tablist" aria-label="Пространство">
+        <button data-space="personal">Личное</button>
+        <button class="active" data-space="work">Проекты</button>
       </div>
-      <label class="field"><span>Название</span><input id="cardTitle" name="title" maxlength="80" required></label>
-      <label class="field"><span>Описание</span><textarea id="cardDescription" name="description" maxlength="240"></textarea></label>
-      <div class="typed-fields" id="createTypeFields"></div>
-      <button class="submit-button" type="submit">Создать карточку</button>
-    </form>
+      <button id="menuButton" class="round-button" aria-label="Меню">
+        <span></span><span></span><span></span>
+      </button>
+    </header>
+
+    <main id="canvasViewport" aria-label="Рабочее поле">
+      <canvas id="dotCanvas" aria-hidden="true"></canvas>
+      <div id="world">
+        <svg id="linkLayer" width="3600" height="2600" viewBox="0 0 3600 2600" aria-label="Связи между карточками"></svg>
+        <div id="cardLayer"></div>
+        <div id="linkToolbar" class="link-toolbar hidden" role="toolbar" aria-label="Действия со связью"><button type="button" id="deleteSelectedLink" aria-label="Удалить связь" title="Удалить связь"></button></div>
+      </div>
+      <div id="emptyState" class="empty-state hidden">
+        <div class="empty-symbol">≈</div>
+        <h1>Поле возможностей</h1>
+        <p>Создайте проект, цель, человека или идею.</p>
+      </div>
+      <div id="gestureHint" class="gesture-hint hidden">
+        <span>Перемещайте поле одним пальцем</span>
+        <span>Масштабируйте двумя пальцами</span>
+        <span>Удерживайте карточку 2 секунды для редактирования</span>
+        <button data-action="dismissHint">Понятно</button>
+      </div>
+      <div class="canvas-utility-stack" aria-label="Быстрые действия рабочего стола">
+        <button id="resultsQuickButton" class="canvas-utility" aria-label="Результаты" title="Результаты"><span data-icon="results"></span></button>
+        <button id="fitButton" class="canvas-utility" aria-label="Вернуть рабочий стол в центр" title="Вернуть рабочий стол в центр"></button>
+      </div>
+    </main>
+
+    <div class="desktop-zoom-controls" aria-label="Управление рабочим столом">
+      <button id="todayQuickButton" class="desktop-round-action today-action" type="button" aria-label="Сегодня">S</button>
+      <label class="desktop-zoom-slider" aria-label="Масштаб рабочего стола">
+        <span class="zoom-minus" aria-hidden="true">−</span>
+        <input id="desktopZoomRange" type="range" min="0.28" max="1.8" step="0.01" value="0.85" aria-label="Масштаб рабочего стола">
+        <span class="zoom-plus" aria-hidden="true">+</span>
+      </label>
+      <button id="createButton" class="desktop-round-action create-button" aria-label="Создать"><span></span></button>
+    </div>
+
+    <nav class="bottom-nav workspace-actions" aria-label="Создание и архив">
+      <button data-quick-create="process"><span class="nav-icon" data-icon="process"></span><small>Процесс</small></button>
+      <button data-quick-create="person"><span class="nav-icon" data-icon="person"></span><small>Человек</small></button>
+      <button data-quick-create="idea"><span class="nav-icon" data-icon="idea"></span><small>Идея</small></button>
+      <button data-quick-create="goal"><span class="nav-icon" data-icon="goal"></span><small>Цель</small></button>
+      <button data-panel="archive"><span class="nav-icon" data-icon="archive"></span><small>Архив</small></button>
+    </nav>
+  </div>
+
+  <div id="scrim" class="scrim hidden"></div>
+
+  <section id="createMenu" class="action-sheet hidden" aria-label="Создание">
+    <div class="sheet-grabber"></div>
+    <header><div><small>ДОБАВИТЬ В ПРОСТРАНСТВО</small><h2 id="createMenuTitle">Создать</h2></div><button data-close-sheet="createMenu">×</button></header>
+    <div id="createActions" class="creation-grid"></div>
   </section>
 
-  <section class="sheet" id="editSheet" hidden>
-    <form class="sheet-panel" id="editCardForm">
-      <div class="sheet-head"><h2>Редактирование</h2><button class="close-button" id="closeEditSheetButton" type="button" aria-label="Закрыть редактирование карточки">×</button></div>
-      <label class="field"><span>Название</span><input id="editCardTitle" maxlength="80" required></label>
-      <label class="field"><span>Описание</span><textarea id="editCardDescription" maxlength="240"></textarea></label>
-      <div class="typed-fields" id="editTypeFields"></div>
-      <button class="submit-button" type="submit">Сохранить изменения</button>
-    </form>
+  <section id="accountMenu" class="account-menu hidden">
+    <header><div><small>BOONWAVE</small><b id="accountLabel">Локальный аккаунт</b></div><button data-close-sheet="accountMenu">×</button></header>
+    <button class="menu-row" data-menu-action="export"><span data-icon="export"></span><div><b>Экспорт</b><small>Сохранить резервную копию JSON</small></div></button>
+    <button class="menu-row" data-menu-action="import"><span data-icon="import"></span><div><b>Импорт</b><small>Восстановить структуру из файла</small></div></button>
+    <button class="menu-row theme-menu-row" data-menu-action="theme"><span data-icon="sun"></span><div><b id="themeMenuTitle">Светлая тема</b><small id="themeMenuHint">Переключить оформление интерфейса</small></div><i class="theme-switch" aria-hidden="true"><i></i></i></button>
+    <button class="menu-row" data-menu-action="fit"><span data-icon="focus"></span><div><b>Вписать всё</b><small>Вернуть все карточки в обзор</small></div></button>
+    <button class="menu-row" data-menu-action="logout"><span data-icon="logout"></span><div><b>Выйти</b><small>Проекты останутся на устройстве</small></div></button>
+    <button class="menu-row danger" data-menu-action="reset"><span data-icon="trash"></span><div><b>Полный сброс</b><small>Удалить локальные данные и вложения</small></div></button>
+    <footer>BOONWAVE 6.0.31 · LIGHT THEME</footer>
   </section>
 
-  <script type="module" src="app.js"></script>
+  <section id="sidePanel" class="side-panel hidden">
+    <header><div><small id="panelEyebrow">BOONWAVE</small><h2 id="panelTitle">Сегодня</h2></div><button data-close-sheet="sidePanel">×</button></header>
+    <div id="panelBody" class="panel-body"></div>
+  </section>
+
+  <dialog id="detailDialog" class="app-dialog">
+    <form method="dialog" class="dialog-shell">
+      <header class="dialog-header"><div><small id="detailType">ПРОЕКТ</small><h2 id="detailTitle">Название</h2></div><button type="button" id="detailClose" aria-label="Закрыть">×</button></header>
+      <div id="detailBody" class="dialog-body"></div>
+      <footer class="dialog-footer" id="detailFooter"><button type="button" class="ghost" id="detailBranchButton">Создать ветвь</button><button type="button" class="footer-task-archive-button hidden" id="detailTaskArchiveButton" aria-label="Открыть общий архив задач" title="Общий архив задач"><span data-icon="archiveList"></span></button><button type="button" class="footer-node-archive-button hidden" id="detailNodeArchiveButton" aria-label="Отправить рабочий процесс в архив" title="Отправить рабочий процесс в архив"><span data-icon="archiveSend"></span></button><button type="button" class="primary" id="detailEditButton">Редактировать</button><div id="processActionLock" class="process-action-lock hidden" aria-label="Разблокировать действия"><div class="process-lock-track"><i class="process-lock-thumb"></i></div></div></footer>
+    </form>
+  </dialog>
+
+  <dialog id="editorDialog" class="app-dialog editor-dialog">
+    <form id="editorForm" class="dialog-shell">
+      <header class="dialog-header"><div><small id="editorType">РЕДАКТИРОВАНИЕ</small><h2 id="editorTitle">Карточка</h2></div><button type="button" data-editor-close aria-label="Закрыть">×</button></header>
+      <div id="editorBody" class="dialog-body"></div>
+      <footer class="dialog-footer"><button type="button" class="danger-text" id="archiveNodeButton">В архив</button><span></span><button type="button" class="ghost" data-editor-close>Отмена</button><button type="submit" class="primary">Сохранить</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="assetViewer" class="asset-viewer">
+    <header><div><small id="assetTypeLabel">МАТЕРИАЛ</small><b id="assetTitle">Файл</b></div><button id="assetClose">×</button></header>
+    <div id="assetStage"></div>
+    <footer><button id="assetPrev" aria-label="Предыдущий">‹</button><button id="assetShare">Поделиться</button><button id="assetDownload">Скачать</button><button id="assetDelete" class="danger-text">Удалить</button><button id="assetNext" aria-label="Следующий">›</button></footer>
+  </dialog>
+
+
+  <dialog id="taskEditorDialog" class="app-dialog task-editor-dialog">
+    <form id="taskEditorForm" class="dialog-shell">
+      <header class="dialog-header"><div><small>ЗАДАЧА ЭТАПА</small><h2 id="taskEditorTitle">Новая задача</h2></div><button type="button" id="taskEditorClose" aria-label="Закрыть">×</button></header>
+      <div class="dialog-body">
+        <div class="field"><label>Название</label><input id="taskTitle" required></div>
+        <div class="field task-note-editor"><label>Заметка <span id="taskNoteCounter">0 / 400</span></label><textarea id="taskNote" maxlength="400" aria-describedby="taskNoteCounter"></textarea></div>
+        <div class="field"><label>Приоритет</label><select id="taskPriority"><option value="high">Высокий</option><option value="medium">Средний</option><option value="low">Низкий</option></select></div>
+        <div class="editor-group"><div class="detail-section-head"><h3>Назначить роль</h3></div><div id="taskContactPicker" class="task-contact-picker task-role-picker"></div></div>
+        <div class="editor-group"><h3>Время выполнения</h3><div class="field"><label>Режим</label><select id="taskScheduleMode"><option value="interval">Интервал выполнения</option><option value="date">Конкретная дата и время</option></select></div><div id="taskIntervalFields" class="field-grid"><div class="field"><label>Начало</label><input id="taskIntervalStart" type="datetime-local"></div><div class="field"><label>Окончание</label><input id="taskIntervalEnd" type="datetime-local"></div></div><div id="taskDateField" class="field"><label>Дата и время</label><input id="taskDateTime" type="datetime-local"></div><div class="task-reminder-row"><div class="field"><label>За сколько напомнить</label><select id="taskReminder"><option value="0">В момент начала</option><option value="15">За 15 минут</option><option value="60">За 1 час</option><option value="1440">За 1 день</option></select></div><label class="task-bell-toggle" title="Уведомление"><input id="taskNotify" type="checkbox"><span>🔔</span></label></div></div>
+        
+      </div>
+      <footer class="dialog-footer"><span></span><button type="button" class="ghost" id="taskEditorCancel">Отмена</button><button type="submit" class="primary">Сохранить</button></footer>
+    </form>
+  </dialog>
+
+  <dialog id="taskRoleDialog" class="mini-editor-dialog task-role-dialog"><form><header><div><small>ЗАДАЧА ЭТАПА</small><h3>Назначить роль</h3></div><button type="button" id="taskRoleDialogClose">×</button></header><div id="taskRoleDialogList" class="task-role-dialog-list"></div><div class="confirm-actions"><button type="button" class="ghost" id="taskRoleDialogCancel">Отмена</button><button type="button" class="primary" id="taskRoleDialogApply">Применить</button></div></form></dialog>
+
+  <dialog id="stageEditorDialog" class="mini-editor-dialog"><form id="stageEditorForm"><header><h3>Редактировать этап</h3><button type="button" id="stageEditorClose">×</button></header><div class="field"><label>Название</label><input id="stageEditTitle" required></div><div class="field"><label>Календарь</label><input id="stageEditDate" type="date"></div><div class="stage-editor-actions"><button type="button" class="danger-text stage-delete-button" id="stageDeleteButton">Удалить этап</button><button class="primary" type="submit">Сохранить</button></div></form></dialog>
+  <dialog id="stageDeleteDialog" class="mini-editor-dialog confirm-dialog"><form><header><h3>Удалить этап?</h3><button type="button" id="stageDeleteClose">×</button></header><p>При удалении этапа будут удалены все связанные с ним задачи. Вы уверены?</p><div class="confirm-actions"><button type="button" class="ghost" id="stageDeleteNo">Нет</button><button type="button" class="primary" id="stageDeleteYes">Да</button></div></form></dialog>
+  <dialog id="budgetEditorDialog" class="mini-editor-dialog"><form id="budgetEditorForm"><header><h3>Планируемый бюджет</h3><button type="button" id="budgetEditorClose">×</button></header><div class="field"><label>Сумма</label><input id="budgetEditValue" inputmode="numeric" pattern="[0-9 ]*" maxlength="10" autocomplete="off" aria-label="Планируемый бюджет" placeholder="До 99 000 000"></div><button class="primary" type="submit">Сохранить</button></form></dialog>
+  <dialog id="coverQuickMenu" class="mini-editor-dialog cover-quick-menu"><form><header><h3>Настроить рабочий процесс</h3><button type="button" id="coverQuickClose" aria-label="Закрыть">×</button></header><section class="quick-process-section"><button type="button" class="ghost quick-process-row" id="coverQuickTitleToggle" aria-expanded="false"><span class="quick-process-row-icon" aria-hidden="true">✎</span><span>Изменить название</span><span class="quick-process-chevron" aria-hidden="true">⌄</span></button><div id="coverQuickTitlePanel" class="quick-process-title-panel hidden"><label for="coverQuickTitleInput">Название рабочего процесса</label><div class="quick-process-title-input-wrap"><input id="coverQuickTitleInput" maxlength="26" autocomplete="off" enterkeyhint="done" aria-describedby="coverQuickTitleHint coverQuickTitleCounter"><span id="coverQuickTitleCounter">0 / 26</span></div><small id="coverQuickTitleHint">Максимум 26 символов, включая пробелы</small><div class="quick-process-title-actions"><button type="button" class="ghost" id="coverQuickTitleCancel">Отмена</button><button type="button" class="primary" id="coverQuickTitleSave">Сохранить</button></div></div></section><button type="button" class="ghost quick-process-row" id="coverQuickNew"><span class="quick-process-row-icon" aria-hidden="true">▧</span><span>Загрузить новую обложку</span></button><button type="button" class="ghost quick-process-row" id="coverQuickPosition"><span class="quick-process-row-icon" aria-hidden="true">⌗</span><span>Настроить обложку</span></button></form></dialog>
+  <dialog id="taskArchiveConfirmDialog" class="mini-editor-dialog task-archive-confirm-dialog"><form><header><div><small>АРХИВАЦИЯ ЗАДАЧИ</small><h3>Отправить в общий архив?</h3></div><button type="button" id="taskArchiveConfirmClose" aria-label="Закрыть">×</button></header><p id="taskArchiveConfirmText">Вы точно хотите отправить задачу в общий архив?</p><div class="confirm-actions"><button type="button" class="ghost" id="taskArchiveConfirmNo">Нет</button><button type="button" class="primary" id="taskArchiveConfirmYes">Да</button></div></form></dialog>
+  <dialog id="taskArchiveDialog" class="app-dialog task-archive-dialog"><div class="dialog-shell"><header class="dialog-header"><div><small>РАБОЧИЙ ПРОЦЕСС</small><h2>Общий архив</h2></div><button type="button" id="taskArchiveClose" aria-label="Закрыть">×</button></header><div class="dialog-body task-archive-body"><div id="taskArchiveBody"></div></div></div></dialog>
+
+  <dialog id="phonebookDialog" class="app-dialog phonebook-dialog"><div class="dialog-shell"><header class="dialog-header"><div><small>РАБОЧИЙ ПРОЦЕСС</small><h2>Телефонная книга</h2></div><button type="button" id="phonebookClose">×</button></header><div class="dialog-body"><button type="button" class="primary phonebook-add" id="phonebookAdd">＋ Добавить контакт</button><div id="phonebookBody" class="phonebook-list"></div></div></div></dialog>
+
+  <dialog id="phonebookEditorDialog" class="phonebook-editor-dialog"><form id="phonebookEditorForm" class="phonebook-editor-form"><header><div><small>ТЕЛЕФОННАЯ КНИГА</small><h3 id="phonebookEditorTitle">Контакт</h3></div><button type="button" id="phonebookEditorClose" aria-label="Закрыть">×</button></header><div class="phonebook-editor-scroll"><div class="field-grid"><div class="field"><label>Роль</label><input id="phonebookRole"></div><div class="field"><label>Имя</label><input id="phonebookName" required></div></div><div class="field"><label>Номер телефона</label><input id="phonebookPhone" type="tel"></div><div class="communication-editor"><label>Связь</label><div class="communication-row"><div id="phonebookMessengers" class="messenger-picker" aria-label="Выберите мессенджеры"><button type="button" data-messenger-toggle="telegram" aria-pressed="false" title="Telegram" aria-label="Telegram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 11.5 19.2 5.2c.8-.3 1.4.3 1.2 1.1l-2.5 12c-.2.9-.9 1.2-1.6.7l-4.1-3.1-2 2c-.3.3-.7.1-.8-.3l.2-4.2 7.4-6.5-9 5.5-3.5-1.1Z"/></svg></button><button type="button" data-messenger-toggle="whatsapp" aria-pressed="false" title="WhatsApp" aria-label="WhatsApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.8a8 8 0 0 1-11.9 7L4 20l1.3-4A8 8 0 1 1 20 11.8Z"/><path d="M9.1 8.5c.2-.4.5-.5.9-.4l.8.2.9 2.1c.1.3 0 .6-.2.8l-.8.8c.8 1.4 1.9 2.5 3.4 3.2l.9-.9c.2-.2.5-.3.8-.1l2 .9c.3.1.4.4.4.7-.1.9-.6 1.7-1.4 2.1-1 .5-2.4.2-3.6-.4-1.6-.8-3.1-2.1-4.2-3.6-1-1.4-1.7-3.2-1.2-4.5.2-.4.6-.7 1.3-.9Z"/></svg></button><button type="button" data-messenger-toggle="max" aria-pressed="false" title="MAX" aria-label="MAX"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.8a8 8 0 0 1-11.9 7L4 20l1.3-4A8 8 0 1 1 20 11.8Z"/><path d="M8.5 15.5V9l3.5 4 3.5-4v6.5"/></svg></button></div><div class="link-editor-control"><input id="phonebookWebsite" type="url" inputmode="url" placeholder="Сайт / ссылка" aria-label="Сайт или ссылка"></div></div></div><div class="field"><label>Номер машины</label><input id="phonebookCar"></div><div class="field"><label>Адрес</label><input id="phonebookAddress"></div><div class="field"><label>Комментарий</label><textarea id="phonebookComment"></textarea></div></div><footer><button type="button" class="ghost" id="phonebookEditorCancel">Отмена</button><button type="submit" class="primary">Сохранить</button></footer></form></dialog>
+
+  <dialog id="phonebookRelationsDialog" class="mini-editor-dialog phonebook-relations-dialog"><form><header><div><small>СВЯЗИ КОНТАКТА</small><h3 id="phonebookRelationsTitle">Контакт</h3></div><button type="button" id="phonebookRelationsClose" aria-label="Закрыть">×</button></header><div id="phonebookRelationsBody" class="phonebook-relations-body"></div></form></dialog>
+
+  <dialog id="messengerActionDialog" class="mini-editor-dialog messenger-action-dialog"><form><header><div><small id="messengerActionLabel">МЕССЕНДЖЕР</small><h3 id="messengerActionTitle">Связаться</h3></div><button type="button" id="messengerActionClose">×</button></header><button type="button" class="ghost" id="messengerActionWrite">Написать</button><button type="button" class="ghost" id="messengerActionCall">Позвонить</button></form></dialog>
+
+  <dialog id="processCoverDialog" class="cover-position-dialog">
+    <form class="cover-position-shell">
+      <header><div><small>ОБЛОЖКА РАБОЧЕГО ПРОЦЕССА</small><h2>Позиционирование</h2></div><button type="button" id="processCoverClose" aria-label="Закрыть">×</button></header>
+      <div class="cover-size-switch" role="tablist" aria-label="Размер блока">
+        <button type="button" data-cover-mode="1" aria-label="Компактный блок"><span class="cover-size-icon compact-icon"></span><small>Компактный</small></button>
+        <button type="button" data-cover-mode="2" class="active" aria-label="Рабочий блок"><span class="cover-size-icon medium-icon"></span><small>Рабочий</small></button>
+        <button type="button" data-cover-mode="3" aria-label="Развёрнутый блок"><span class="cover-size-icon expanded-icon"></span><small>Развёрнутый</small></button>
+      </div>
+      <div id="processCoverFrame" class="cover-position-frame mode-2"><img id="processCoverPreview" alt=""></div>
+      <div class="cover-position-controls"><label>Масштаб<input id="processCoverScale" type="range" min="1" max="2.5" step="0.01" value="1"></label><button type="button" class="ghost" id="processCoverReset">Сбросить</button><button type="button" class="primary" id="processCoverApply">Сохранить</button></div>
+    </form>
+  </dialog>
+  <input id="processCoverInput" type="file" accept="image/*" hidden>
+  <input id="assetInput" type="file" multiple accept="image/*,.pdf,.svg,.ai,.eps,.cdr,.dxf,.dwg,.stl,.obj,.3mf,.step,.stp" hidden>
+  <input id="importInput" type="file" accept="application/json,.json" hidden>
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js?v=6.0.31"></script>
 </body>
 </html>

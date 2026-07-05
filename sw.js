@@ -1,51 +1,51 @@
-const CACHE = 'boonwave-core-18';
+const VERSION = "6.0.31";
+const CACHE = `boonwave-clean-${VERSION}`;
 const CORE = [
-  './',
-  './index.html',
-  './app.js',
-  './styles/boonwave-tokens.css',
-  './styles/production-shell.css',
-  './styles/production-shell-v2.css',
-  './styles/card-detail-overrides.css',
-  './styles/card-views.css',
-  './styles/one-hand-rail-v3.css',
-  './manifest.webmanifest',
-  './icon-192.png',
-  './icon-512.png',
+  "./",
+  "./index.html",
+  "./styles.css?v=6.0.31",
+  "./app.js?v=6.0.31",
+  "./manifest.webmanifest",
+  "./boonwave-approved-splash.png",
+  "./boonwave-mark-full.png",
+  "./boonwave-approved.png",
+  "./boonwave-full.png",
+  "./boonwave-mark.png",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
-
-self.addEventListener('install', (event) => {
+self.addEventListener("install", event => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(CORE)));
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)));
 });
-
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(
-        keys
-          .filter((key) => key.startsWith('boonwave-') && key !== CACHE)
-          .map((key) => caches.delete(key)),
-      ))
-      .then(() => self.clients.claim()),
-  );
+self.addEventListener("activate", event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)));
+    await self.clients.claim();
+  })());
 });
-
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  const url = new URL(event.request.url);
-  if (url.origin !== location.origin) return;
-
-  event.respondWith(
-    fetch(event.request, { cache: 'no-store' })
-      .then((response) => {
-        if (!response || response.status !== 200 || response.type === 'opaque') return response;
-        const copy = response.clone();
-        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+self.addEventListener("fetch", event => {
+  const request = event.request;
+  if (request.method !== "GET") return;
+  if (request.mode === "navigate") {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(request, { cache: "no-store" });
+        const cache = await caches.open(CACHE); cache.put("./index.html", response.clone());
         return response;
-      })
-      .catch(() => caches.match(event.request).then(
-        (cached) => cached || (event.request.mode === 'navigate' ? caches.match('./index.html') : undefined),
-      )),
-  );
+      } catch {
+        return (await caches.match("./index.html")) || (await caches.match("./"));
+      }
+    })());
+    return;
+  }
+  event.respondWith((async () => {
+    const cached = await caches.match(request);
+    const freshPromise = fetch(request, { cache: "no-store" }).then(async response => {
+      if (response.ok) { const cache = await caches.open(CACHE); cache.put(request, response.clone()); }
+      return response;
+    }).catch(() => null);
+    return cached || (await freshPromise) || new Response("Offline", { status: 503 });
+  })());
 });
