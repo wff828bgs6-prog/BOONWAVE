@@ -52,7 +52,7 @@ export async function bootstrapBoonwave({ canvas, world, root = document, initia
     homeButton: getRequiredElement(root, 'homeSelfButton'),
     positionButtons: root.querySelectorAll('[data-rail-position]'),
     hint,
-    onHome: () => workspace.focusSelfCard(),
+    onHome: () => workspace.focusHomeOverview(),
     onPositionChange: () => requestAnimationFrame(() => zoomController?.refreshLayout()),
   });
   await utilityRailController.init();

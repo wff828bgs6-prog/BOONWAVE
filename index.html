@@ -10,25 +10,32 @@
   <title>BOONWAVE</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles/boonwave-tokens.css">
-  <link rel="stylesheet" href="styles/production-shell.css">
-  <link rel="stylesheet" href="styles/card-views.css">
-  <link rel="stylesheet" href="styles/one-hand-rail-v3.css">
-  <link rel="stylesheet" href="styles/contacts.css">
+  <link rel="stylesheet" href="styles/boonwave-tokens.css?v=wordmark-png-1">
+  <link rel="stylesheet" href="styles/production-shell.css?v=wordmark-png-1">
+  <link rel="stylesheet" href="styles/card-views.css?v=wordmark-png-1">
+  <link rel="stylesheet" href="styles/one-hand-rail-v3.css?v=wordmark-png-1">
+  <link rel="stylesheet" href="styles/control-panel-microinteractions.css?v=wordmark-png-1">
+  <link rel="stylesheet" href="styles/contacts.css?v=wordmark-png-1">
+  <link rel="stylesheet" href="styles/lux-final-polish.css?v=wordmark-png-1">
+  <link rel="stylesheet" href="styles/brand-control-bar.css?v=wordmark-png-1">
 </head>
 <body>
   <svg width="0" height="0" aria-hidden="true" focusable="false"><defs><linearGradient id="bwIconGradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a14cff"/><stop offset="1" stop-color="#22bfff"/></linearGradient></defs></svg>
 
   <main class="app-shell">
-    <header class="app-header"><div class="app-badge"><strong>BOONWAVE</strong><span>Production Core</span></div></header>
+    <header class="brand-control-bar" aria-label="BOONWAVE"><div class="brand-control-shell"><div class="brand-logo-mark" role="img" aria-label="BOONWAVE"></div><div class="brand-action-cluster" aria-hidden="true"><span class="brand-action-dot"></span><span class="brand-action-dot"></span><span class="brand-action-dot"></span></div></div></header>
 
     <aside class="one-hand-rail" id="utilityRail" data-position="right" aria-label="Управление одной рукой, справа">
-      <button class="utility-button rail-home" id="homeSelfButton" type="button" aria-label="Вернуться к карточке Я Есмь">
-        <svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M6 19c.8-3.3 2.8-5 6-5s5.2 1.7 6 5"/></svg>
+      <button class="rail-button rail-home" id="homeSelfButton" type="button" aria-label="Вернуться к главному обзору рабочего стола">
+        <svg class="bw-icon" viewBox="0 0 24 24"><path d="M5 5l5 5"/><path d="M6 10h4V6"/><path d="M19 5l-5 5"/><path d="M14 6v4h4"/><path d="M5 19l5-5"/><path d="M10 18v-4H6"/><path d="M19 19l-5-5"/><path d="M18 14h-4v4"/></svg>
       </button>
 
       <button class="rail-button rail-add" id="addCardButton" type="button" aria-label="Создать карточку">
         <svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg>
+      </button>
+
+      <button class="rail-button rail-contacts" id="contactsButton" type="button" aria-label="Открыть контакты" aria-expanded="false" aria-controls="contactsSheet">
+        <svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
       </button>
 
       <div class="rail-zoom" id="zoomControl">
@@ -38,7 +45,7 @@
         </div>
       </div>
 
-      <button class="utility-button rail-lock" id="cardLockButton" type="button" aria-label="Зафиксировать расположение карточек" aria-pressed="false">
+      <button class="rail-button rail-lock" id="cardLockButton" type="button" aria-label="Зафиксировать расположение карточек" aria-pressed="false">
         <svg class="bw-icon lock-closed" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v2"/></svg>
         <svg class="bw-icon lock-open" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M16 10V7a4 4 0 0 0-7.5-2"/><path d="M12 14v2"/></svg>
       </button>
@@ -56,12 +63,12 @@
     <div class="tools-panel" role="dialog" aria-modal="true" aria-labelledby="toolsTitle">
       <div class="tools-head"><h2 id="toolsTitle">Дополнительные действия</h2><button class="tools-close" id="closeToolsButton" type="button" aria-label="Закрыть дополнительные действия">×</button></div>
       <div class="tools-grid">
-        <button class="tools-action" id="linkButton" type="button" aria-label="Связать или отвязать карточки" aria-pressed="false" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg><span>Связь</span></button>
-        <button class="tools-action" id="deleteButton" type="button" aria-label="Переместить карточку в корзину" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg><span>В корзину</span></button>
-        <button class="tools-action" id="undoButton" type="button" aria-label="Отменить действие" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M16 7H9a5 5 0 0 0 0 10h6"/><path d="m12 4 4 3-4 3"/></svg><span>Отменить</span></button>
+        <button class="tools-action" id="linkButton" type="button" aria-label="Связать карточки" aria-pressed="false" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1"/><path d="M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg><span>Связь</span></button>
+        <button class="tools-action" id="archiveSelectedButton" type="button" aria-label="Архивировать выбранную карточку" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16v13H4z"/><path d="M3 4h18v3H3z"/><path d="M9 11h6"/></svg><span>Архивировать</span></button>
+        <button class="tools-action" id="archiveLibraryButton" type="button" aria-label="Открыть архив" aria-expanded="false" aria-controls="archiveSheet"><svg class="bw-icon" viewBox="0 0 24 24"><path d="M5 6h14"/><path d="M7 6v14h10V6"/><path d="M9 10h6M9 14h6"/></svg><span>Архив</span></button>
+        <button class="tools-action" id="undoButton" type="button" aria-label="Отменить действие" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M16 7H9a5 5 0 0 0 010h6"/><path d="m12 4 4 3-4 3"/></svg><span>Отменить</span></button>
         <button class="tools-action" id="redoButton" type="button" aria-label="Повторить действие" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M8 7h7a5 5 0 0 1 0 10H9"/><path d="m12 4-4 3 4 3"/></svg><span>Повторить</span></button>
-        <button class="tools-action" id="contactsButton" type="button" aria-label="Открыть контакты" aria-expanded="false" aria-controls="contactsSheet" data-close-tools-after-action><svg class="bw-icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 20a7 7 0 0 1 14 0"/></svg><span>Контакты</span></button>
-        <button class="tools-action" type="button" aria-label="Архив" disabled><svg class="bw-icon" viewBox="0 0 24 24"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg><span>Архив</span></button>
+        <button id="deleteButton" type="button" hidden aria-hidden="true" tabindex="-1"></button>
       </div>
 
       <div class="rail-position-section">
@@ -75,11 +82,19 @@
     </div>
   </section>
 
+  <section class="archive-sheet" id="archiveSheet" hidden aria-hidden="true">
+    <div class="archive-panel" role="dialog" aria-modal="true" aria-labelledby="archiveTitle">
+      <div class="archive-head"><h2 id="archiveTitle">Архив</h2><button class="archive-close" id="closeArchiveButton" type="button" aria-label="Закрыть архив">×</button></div>
+      <div class="archive-list" id="archiveList"></div>
+      <div class="archive-empty" id="archiveEmpty">В архиве пока нет карточек.</div>
+    </div>
+  </section>
+
   <section class="contacts-sheet" id="contactsSheet" hidden aria-hidden="true">
     <div class="contacts-panel" role="dialog" aria-modal="true" aria-labelledby="contactsTitle">
       <div class="contacts-head"><h2 id="contactsTitle">Контакты</h2><button class="contacts-close" id="closeContactsButton" type="button" aria-label="Закрыть контакты">×</button></div>
       <div class="contacts-list" id="contactsList"></div>
-      <div class="contacts-empty" id="contactsEmpty">Контактов пока нет. Создай карточку типа «Человек», и она появится здесь.</div>
+      <div class="contacts-empty" id="contactsEmpty">Контактов пока нет. Раздел будет отделён от карточки «Человек» в следующем этапе.</div>
       <button class="contacts-create" id="createContactButton" type="button">Новый контакт</button>
     </div>
   </section>
@@ -94,8 +109,8 @@
         <button class="type-button" type="button" data-node-type="idea" aria-pressed="false">Идея</button>
         <button class="type-button" type="button" data-node-type="goal" aria-pressed="false">Цель</button>
       </div>
-      <label class="field"><span>Название</span><input id="cardTitle" name="title" maxlength="80" required></label>
-      <label class="field"><span>Описание</span><textarea id="cardDescription" name="description" maxlength="240"></textarea></label>
+      <label class="field"><span>Название</span><input id="cardTitle" name="title" maxlength="80" placeholder="Введите название" required></label>
+      <label class="field"><span>Описание</span><textarea id="cardDescription" maxlength="240" name="description" placeholder="Добавьте описание (необязательно)"></textarea></label>
       <div class="typed-fields" id="createTypeFields"></div>
       <button class="submit-button" type="submit">Создать карточку</button>
     </form>
@@ -104,13 +119,13 @@
   <section class="sheet" id="editSheet" hidden>
     <form class="sheet-panel" id="editCardForm">
       <div class="sheet-head"><h2>Редактирование</h2><button class="close-button" id="closeEditSheetButton" type="button" aria-label="Закрыть редактирование карточки">×</button></div>
-      <label class="field"><span>Название</span><input id="editCardTitle" maxlength="80" required></label>
-      <label class="field"><span>Описание</span><textarea id="editCardDescription" maxlength="240"></textarea></label>
+      <label class="field"><span>Название</span><input id="editCardTitle" maxlength="80" placeholder="Введите название" required></label>
+      <label class="field"><span>Описание</span><textarea id="editCardDescription" maxlength="240" placeholder="Добавьте описание (необязательно)"></textarea></label>
       <div class="typed-fields" id="editTypeFields"></div>
       <button class="submit-button" type="submit">Сохранить изменения</button>
     </form>
   </section>
 
-  <script type="module" src="app.js"></script>
+  <script type="module" src="app.js?v=wordmark-png-1"></script>
 </body>
 </html>

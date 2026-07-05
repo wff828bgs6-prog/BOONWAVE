@@ -9,12 +9,14 @@ import { updateCardNode } from '../services/node-service.js';
 import { getPrimarySelfNode } from '../services/self-node-service.js';
 import { loadMedia } from '../services/media-service.js';
 import { loadWorkspace, saveCamera } from '../services/workspace-service.js';
+import { BASE_ZOOM, MAX_ZOOM, MIN_ZOOM } from '../canvas/camera.js';
 import { HOME_CAMERA_DURATION_MS, getCameraForCard, interpolateCamera } from '../canvas/camera-navigation.js';
 import { getCoverMediaId, collectActiveCoverMediaIds, getCoverFallback, getCardProgress } from '../ui/card-presentation.js';
 import { CoverLoadCoordinator } from '../ui/cover-load-coordinator.js';
 
 const STATUS_LABELS=Object.freeze({preparation:'Подготовка',planned:'Запланировано',active:'Активно',draft:'Черновик',in_progress:'В работе',paused:'На паузе',completed:'Завершено'});
 const visibilityKey=(section)=>`show${section[0].toUpperCase()}${section.slice(1)}`;
+const HOME_OVERVIEW_PADDING=96;
 
 function getNodeMeta(card){
   const data=card.data??{};
@@ -28,6 +30,7 @@ function getNodeMeta(card){
 function getCompactLabel(card,view){return view.compactLabel||String(card.title??'').trim().split(/\s+/)[0]||NODE_TYPE_LABELS[card.type];}
 function formatFullData(card){return Object.entries(card.data??{}).filter(([,value])=>value!==''&&value!==null&&value!==undefined).filter(([key])=>!['coverMediaId','avatarMediaId','images','documents','files','attachments'].includes(key)).map(([key,value])=>`${key}: ${typeof value==='object'?JSON.stringify(value):value}`).join('\n');}
 function collectChangedCardIds(nextCards={},previousCards={}){const ids=new Set([...Object.keys(nextCards),...Object.keys(previousCards)]);return[...ids].filter((id)=>nextCards[id]!==previousCards[id]);}
+function clampHomeZoom(value){return Math.min(MAX_ZOOM,Math.max(MIN_ZOOM,value));}
 
 export class WorkspaceController{
   constructor({canvas,world,initialSelectedCardId=null}){
@@ -104,6 +107,41 @@ export class WorkspaceController{
   getViewportCenter(){const{camera}=store.getState();return{x:(window.innerWidth/2-camera.x)/camera.zoom-115,y:(window.innerHeight/2-camera.y)/camera.zoom-69};}
   cancelCameraAnimation(){if(this.cameraAnimationFrame!==null)cancelAnimationFrame(this.cameraAnimationFrame);this.cameraAnimationFrame=null;}
   getHomeTargetPoint(){const header=document.querySelector('.app-header')?.getBoundingClientRect();const top=Math.max(70,(header?.bottom??70)+12);const bottom=Math.max(top+120,window.innerHeight-28);return{x:window.innerWidth/2,y:top+(bottom-top)/2};}
+
+  getHomeOverviewCamera(){
+    const cards=Object.values(store.getState().cards).filter((card)=>card.type!=='self');
+    const visibleCards=cards.length?cards:Object.values(store.getState().cards);
+    if(!visibleCards.length)return{x:0,y:0,zoom:BASE_ZOOM};
+    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+    for(const card of visibleCards){
+      const element=this.getCardElement(card.id);
+      const width=element?.offsetWidth||card.width||230;
+      const height=element?.offsetHeight||card.height||138;
+      minX=Math.min(minX,card.x);
+      minY=Math.min(minY,card.y);
+      maxX=Math.max(maxX,card.x+width);
+      maxY=Math.max(maxY,card.y+height);
+    }
+    const contentWidth=Math.max(maxX-minX,1);
+    const contentHeight=Math.max(maxY-minY,1);
+    const availableWidth=Math.max(window.innerWidth-HOME_OVERVIEW_PADDING*2,1);
+    const availableHeight=Math.max(window.innerHeight-HOME_OVERVIEW_PADDING*2,1);
+    const zoom=clampHomeZoom(Math.min(BASE_ZOOM,availableWidth/contentWidth,availableHeight/contentHeight));
+    const centerX=(minX+maxX)/2;
+    const centerY=(minY+maxY)/2;
+    return{x:window.innerWidth/2-centerX*zoom,y:window.innerHeight/2-centerY*zoom,zoom};
+  }
+
+  focusHomeOverview(){
+    const state=store.getState();
+    const target=this.getHomeOverviewCamera();
+    const from={...state.camera};
+    this.gestureMachine?.cancelInteraction();this.cancelCameraAnimation();
+    if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches){store.setState({camera:target,selectedCardId:null});return true;}
+    const startedAt=performance.now();
+    const animate=(now)=>{const progress=Math.min(1,(now-startedAt)/HOME_CAMERA_DURATION_MS);store.setState({camera:interpolateCamera(from,target,progress),selectedCardId:null});if(progress<1)this.cameraAnimationFrame=requestAnimationFrame(animate);else{this.cameraAnimationFrame=null;store.setState({camera:target,selectedCardId:null});}};
+    this.cameraAnimationFrame=requestAnimationFrame(animate);return true;
+  }
 
   focusSelfCard(){
     const state=store.getState();const selfCard=getPrimarySelfNode(state.cards);if(!selfCard)return false;const element=this.getCardElement(selfCard.id);const point=this.getHomeTargetPoint();const target=getCameraForCard({card:selfCard,cardWidth:element?.offsetWidth??selfCard.width,cardHeight:element?.offsetHeight??selfCard.height,targetX:point.x,targetY:point.y});const from={...state.camera};

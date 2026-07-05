@@ -1,13 +1,15 @@
 .contacts-sheet[hidden]{display:none}
-.contacts-sheet{position:fixed;inset:0;z-index:92;display:grid;align-items:end;background:rgba(3,4,10,.72)}
-.contacts-panel{max-height:86svh;overflow:auto;padding:18px 18px calc(18px + env(safe-area-inset-bottom));border:1px solid var(--bw-border-soft);border-radius:28px 28px 0 0;background:var(--bw-bg-surface-strong)}
+.contacts-sheet{position:fixed;inset:0;z-index:92;display:grid;align-items:end;background:rgba(2,3,9,.78);backdrop-filter:blur(14px) saturate(116%);-webkit-backdrop-filter:blur(14px) saturate(116%)}
+.contacts-panel{max-height:86svh;overflow:auto;padding:20px 18px calc(20px + env(safe-area-inset-bottom));border:1px solid rgba(162,198,255,.16);border-radius:30px 30px 0 0;background:linear-gradient(180deg,rgba(17,20,39,.94),rgba(8,11,25,.935));box-shadow:0 -20px 58px rgba(0,0,0,.44),0 0 34px rgba(var(--bw-brand-cyan),.04),inset 0 1px 0 rgba(255,255,255,.055),inset 0 0 36px rgba(116,138,255,.024)}
 .contacts-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.contacts-head h2{margin:0;font-size:20px}
-.contacts-close{width:44px;height:44px;border:0;border-radius:50%;background:var(--bw-bg-control);color:var(--bw-text-primary);font-size:24px}
-.contacts-list{display:grid;gap:10px;margin-top:14px}
-.contact-row{width:100%;min-height:76px;padding:12px 14px;border:1px solid var(--bw-border-soft);border-radius:18px;background:var(--bw-bg-control);color:var(--bw-text-primary);text-align:left;display:grid;gap:4px}
+.contacts-head h2{margin:0;font-size:22px;letter-spacing:-.025em}
+.contacts-close{width:46px;height:46px;border:1px solid rgba(184,196,232,.105);border-radius:50%;background:linear-gradient(180deg,rgba(22,25,44,.62),rgba(11,14,29,.58));color:var(--bw-text-primary);font-size:25px;box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 0 24px rgba(var(--bw-brand-violet),.08)}
+.contacts-list{display:grid;gap:10px;margin-top:16px}
+.contact-row{width:100%;min-height:76px;padding:12px 14px;border:1px solid rgba(184,196,232,.105);border-radius:18px;background:linear-gradient(180deg,rgba(22,25,44,.62),rgba(14,17,32,.58));color:var(--bw-text-primary);text-align:left;display:grid;gap:4px;box-shadow:inset 0 1px 0 rgba(255,255,255,.032)}
 .contact-row strong{font-size:16px;line-height:1.18}
 .contact-row span{color:var(--bw-text-secondary);font-size:12px}
 .contact-row small{color:var(--bw-text-muted);font-size:12px;line-height:1.25}
-.contacts-empty{margin:16px 0 0;padding:16px;border:1px dashed var(--bw-border-soft);border-radius:18px;color:var(--bw-text-secondary);font-size:13px;line-height:1.45}
-.contacts-create{width:100%;min-height:50px;margin-top:14px;border:0;border-radius:16px;background:linear-gradient(135deg,rgb(var(--bw-brand-violet)),rgb(var(--bw-brand-cyan)));color:#fff;font-weight:700}
+.contacts-empty{position:relative;margin:18px 0 0;padding:22px 18px 20px;border:1px dashed rgba(184,196,232,.18);border-radius:20px;color:rgba(207,214,242,.86);font-size:13px;line-height:1.5;text-align:center;background:radial-gradient(circle at 50% 22%,rgba(var(--bw-brand-violet),.055),transparent 48%),rgba(10,13,28,.22)}
+.contacts-empty::before{content:"";display:block;width:36px;height:36px;margin:0 auto 11px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238d6dff' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='3'/%3E%3Cpath d='M5 20a7 7 0 0 1 14 0'/%3E%3C/svg%3E") center/contain no-repeat;filter:drop-shadow(0 0 10px rgba(var(--bw-brand-violet),.42)) drop-shadow(0 0 9px rgba(var(--bw-brand-cyan),.22))}
+.contacts-create{width:100%;min-height:54px;margin-top:16px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:linear-gradient(135deg,rgba(var(--bw-brand-violet),.86),rgba(89,139,255,.82) 52%,rgba(var(--bw-brand-cyan),.76));color:#fff;font-weight:760;letter-spacing:-.01em;box-shadow:0 12px 30px rgba(var(--bw-brand-violet),.16),0 0 28px rgba(var(--bw-brand-cyan),.12),inset 0 1px 0 rgba(255,255,255,.16)}
+.contacts-create:active{filter:saturate(1.06) brightness(1.04)}

@@ -3,6 +3,7 @@ import { BASE_ZOOM, MAX_ZOOM, MIN_ZOOM, zoomAt } from '../canvas/camera.js';
 
 const RANGE_STEP = 0.005;
 const TRACK_INSET_PX = 12;
+const ZOOM_ACTIVE_CLASS = 'is-zoom-active';
 
 export class ZoomController {
   constructor({ range, getCenter }) {
@@ -39,6 +40,7 @@ export class ZoomController {
       this.touchArea.addEventListener('pointermove', (event) => this.onPointerMove(event), { signal });
       this.touchArea.addEventListener('pointerup', (event) => this.onPointerUp(event), { signal });
       this.touchArea.addEventListener('pointercancel', (event) => this.onPointerUp(event), { signal });
+      this.touchArea.addEventListener('lostpointercapture', () => this.setZoomActive(false), { signal });
       this.touchArea.addEventListener('contextmenu', (event) => event.preventDefault(), { signal });
     }
 
@@ -53,11 +55,17 @@ export class ZoomController {
     return this.rail?.dataset.position === 'bottom';
   }
 
+  setZoomActive(active) {
+    this.visualRoot?.classList.toggle(ZOOM_ACTIVE_CLASS, Boolean(active));
+    this.touchArea?.classList.toggle(ZOOM_ACTIVE_CLASS, Boolean(active));
+  }
+
   onPointerDown(event) {
     if (event.button !== undefined && event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
     this.activePointerId = event.pointerId;
+    this.setZoomActive(true);
     try { this.touchArea.setPointerCapture?.(event.pointerId); } catch {}
     this.applyFromPointer(event);
   }
@@ -79,6 +87,7 @@ export class ZoomController {
       }
     } catch {}
     this.activePointerId = null;
+    this.setZoomActive(false);
   }
 
   applyFromPointer(event) {
@@ -147,6 +156,7 @@ export class ZoomController {
     this.abortController.abort();
     this.unsubscribe?.();
     this.activePointerId = null;
+    this.setZoomActive(false);
   }
 }
 

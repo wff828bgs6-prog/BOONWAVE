@@ -1,11 +1,14 @@
 import { bootstrapBoonwave } from './bootstrap/boonwave-bootstrap.js';
+import { PanelFeedbackController } from './controllers/panel-feedback-controller.js';
 import './contacts-panel-init.js';
+import './archive-panel-init.js';
 
 class BoonwaveApp {
   constructor() {
     this.runtime = null;
     this.mounting = null;
     this.observer = null;
+    this.panelFeedbackController = null;
   }
 
   findElements() {
@@ -25,6 +28,10 @@ class BoonwaveApp {
         this.observer.observe(document.body, { childList: true, subtree: true });
       }
       return null;
+    }
+
+    if (!this.panelFeedbackController) {
+      this.panelFeedbackController = new PanelFeedbackController({ root: document }).init();
     }
 
     if (!this.runtime && !this.mounting) {
@@ -52,6 +59,8 @@ class BoonwaveApp {
 
   destroy() {
     this.observer?.disconnect();
+    this.panelFeedbackController?.destroy();
+    this.panelFeedbackController = null;
     this.runtime?.destroy();
     this.runtime = null;
   }

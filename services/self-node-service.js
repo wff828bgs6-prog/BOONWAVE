@@ -30,8 +30,8 @@ export async function ensurePrimarySelfNode(options = {}) {
   const position = getInitialSelfPosition(state.cards);
   const generated = createNode({
     type: 'self',
-    title: 'Я Есмь',
-    description: 'Личный центр управления жизнью и проектами',
+    title: 'Моя Вселенная',
+    description: 'Личный центр управления жизнью, проектами и идеями',
     x: position.x,
     y: position.y,
     data: {
@@ -124,6 +124,6 @@ export function formatSelfSummary(card, state = store.getState()) {
   } else {
     lines.push('Требует внимания: явных критических сигналов нет');
   }
-  if (!summary.structured) lines.push('Структура: свяжи «Я Есмь» с целями или проектами');
+  if (!summary.structured) lines.push('Структура: свяжи «Моя Вселенная» с целями или проектами');
   return lines.join('\n');
 }
