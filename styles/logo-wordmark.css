@@ -1,36 +1,78 @@
-/* Stable BOONWAVE header wordmark. No bitmap layer: prevents Safari rectangle/fallback artifacts. */
+/* BOONWAVE top lux header bar.
+   Original logo file is loaded from assets/boonwave-logo-header.png.
+   No redraw, no generated logo, no text substitute. */
 .app-header{
   left:10px!important;
   right:10px!important;
   width:auto!important;
 }
 .app-badge{
-  min-height:58px!important;
-  padding:12px 22px!important;
+  min-height:72px!important;
+  height:72px!important;
+  padding:0 18px!important;
   display:flex!important;
   align-items:center!important;
-  justify-content:flex-start!important;
+  justify-content:space-between!important;
+  gap:14px!important;
+  overflow:hidden!important;
 }
-.app-wordmark{
-  display:block!important;
+.app-badge strong{
+  position:absolute!important;
+  width:1px!important;
+  height:1px!important;
+  overflow:hidden!important;
+  clip-path:inset(50%)!important;
+  white-space:nowrap!important;
+}
+.app-logo{
   position:relative!important;
   z-index:2!important;
-  width:auto!important;
+  flex:0 1 auto!important;
+  display:block!important;
+  width:180px!important;
+  max-width:46vw!important;
   height:auto!important;
-  margin:0!important;
-  font-size:30px!important;
-  line-height:.9!important;
-  font-weight:900!important;
-  letter-spacing:-.078em!important;
-  text-transform:lowercase!important;
-  color:transparent!important;
-  background:linear-gradient(100deg,rgb(var(--bw-brand-blue)) 0%,rgb(var(--bw-brand-violet)) 62%,rgb(var(--bw-brand-magenta)) 100%)!important;
-  -webkit-background-clip:text!important;
-  background-clip:text!important;
-  filter:drop-shadow(0 0 10px rgba(var(--bw-brand-cyan),.12)) drop-shadow(0 0 14px rgba(var(--bw-brand-violet),.1))!important;
+  max-height:64px!important;
+  object-fit:contain!important;
+  object-position:left center!important;
+  user-select:none!important;
+  -webkit-user-drag:none!important;
+  filter:drop-shadow(0 0 10px rgba(var(--bw-brand-cyan),.13)) drop-shadow(0 0 16px rgba(var(--bw-brand-violet),.11))!important;
+}
+.app-top-actions{
+  position:relative!important;
+  z-index:2!important;
+  flex:0 0 auto!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:10px!important;
+}
+.app-top-action{
+  display:block!important;
+  width:38px!important;
+  height:38px!important;
+  border:1px solid rgba(142,166,255,.18)!important;
+  border-radius:50%!important;
+  background:
+    radial-gradient(circle at 34% 28%,rgba(141,222,248,.42) 0 18%,rgba(57,120,229,.9) 19% 58%,rgba(39,66,163,.66) 100%),
+    linear-gradient(135deg,rgba(var(--bw-brand-blue),.9),rgba(var(--bw-brand-violet),.72))!important;
+  box-shadow:0 5px 16px rgba(0,0,0,.34),0 0 14px rgba(var(--bw-brand-blue),.14),inset 0 1px 0 rgba(255,255,255,.12),inset 0 -5px 10px rgba(8,15,46,.28)!important;
+}
+.app-top-action:nth-child(2){
+  background:
+    radial-gradient(circle at 34% 28%,rgba(134,214,247,.38) 0 18%,rgba(55,111,226,.88) 19% 58%,rgba(55,69,172,.67) 100%),
+    linear-gradient(135deg,rgba(var(--bw-brand-blue),.88),rgba(var(--bw-brand-violet),.74))!important;
+}
+.app-top-action:nth-child(3){
+  background:
+    radial-gradient(circle at 34% 28%,rgba(128,204,244,.34) 0 18%,rgba(58,112,226,.86) 19% 58%,rgba(66,70,178,.68) 100%),
+    linear-gradient(135deg,rgba(var(--bw-brand-blue),.86),rgba(var(--bw-brand-violet),.76))!important;
 }
 @media(max-width:390px){
   .app-header{left:7px!important;right:7px!important}
-  .app-badge{min-height:56px!important;padding:11px 20px!important}
-  .app-wordmark{font-size:28px!important}
+  .app-badge{height:70px!important;min-height:70px!important;padding:0 14px!important;gap:10px!important}
+  .app-logo{width:156px!important;max-width:45vw!important;max-height:60px!important}
+  .app-top-actions{gap:8px!important}
+  .app-top-action{width:36px!important;height:36px!important}
 }
