@@ -1,4 +1,4 @@
-/* cleanup/interface-v6.0.31 — pass 2: clean home screen */
+/* cleanup/interface-v6.0.31 — pass 3: Daily MVP */
 #todayQuickButton,
 #resultsQuickButton,
 #fitButton,
@@ -24,6 +24,16 @@
 }
 
 .account-menu [data-menu-action="logout"]{
+  display:none!important;
+}
+
+/* Daily MVP: only Project and Work Process creation are visible */
+[data-create-action="root-goal"],
+[data-create-action="root-person"],
+[data-create-action="root-idea"],
+[data-create-action="branch-person"],
+[data-create-action="branch-idea"],
+[data-create-action="branch-goal"]{
   display:none!important;
 }
 
