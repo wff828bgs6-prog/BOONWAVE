@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>BOONWAVE reset</title>
+  <style>
+    html,body{margin:0;height:100%;background:#05060a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Arial,sans-serif;display:grid;place-items:center;text-align:center}
+    main{padding:24px;max-width:360px}
+    img{width:86px;height:auto;margin-bottom:18px}
+    h1{font-size:22px;margin:0 0 10px}
+    p{font-size:14px;color:#9aa4b8;line-height:1.45;margin:0}
+  </style>
+</head>
+<body>
+  <main>
+    <img src="boonwave-mark-full.png" alt="BOONWAVE">
+    <h1>Обновляю BOONWAVE</h1>
+    <p>Очищаю старый кэш Safari и загружаю чистый интерфейс.</p>
+  </main>
+  <script>
+    (async function(){
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(reg => reg.unregister()));
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(key => caches.delete(key)));
+        }
+      } catch (error) {
+        console.warn('BOONWAVE reset warning', error);
+      }
+      location.replace('./?v=clean-home-2-reset-' + Date.now());
+    })();
+  </script>
+</body>
+</html>
