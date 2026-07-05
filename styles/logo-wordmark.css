@@ -32,10 +32,13 @@
   width:168px!important;
   min-width:168px!important;
   max-width:168px!important;
-  height:auto!important;
+  height:62px!important;
+  min-height:62px!important;
   max-height:62px!important;
-  object-fit:contain!important;
-  object-position:left center!important;
+  background-image:url('../assets/boonwave-logo-header.png?v=top-header-logo-actions-20260705-3')!important;
+  background-repeat:no-repeat!important;
+  background-position:left center!important;
+  background-size:contain!important;
   user-select:none!important;
   -webkit-user-drag:none!important;
   filter:drop-shadow(0 0 10px rgba(var(--bw-brand-cyan),.13)) drop-shadow(0 0 16px rgba(var(--bw-brand-violet),.11))!important;
@@ -75,7 +78,7 @@
 @media(max-width:430px){
   .app-header{left:7px!important;right:7px!important}
   .app-badge{height:70px!important;min-height:70px!important;padding:0 12px!important;gap:10px!important}
-  .app-logo{flex-basis:150px!important;width:150px!important;min-width:150px!important;max-width:150px!important;max-height:58px!important}
+  .app-logo{flex-basis:150px!important;width:150px!important;min-width:150px!important;max-width:150px!important;height:58px!important;min-height:58px!important;max-height:58px!important}
   .app-top-actions{gap:8px!important}
   .app-top-action{flex-basis:34px!important;width:34px!important;height:34px!important}
 }
