@@ -1,4 +1,4 @@
-/* cleanup/interface-v6.0.31 — pass 3: Daily MVP */
+/* cleanup/interface-v6.0.31 — pass 4: Daily MVP */
 #todayQuickButton,
 #resultsQuickButton,
 #fitButton,
@@ -7,6 +7,11 @@
 }
 
 .canvas-utility-stack{
+  display:none!important;
+}
+
+/* Hide floating card action buttons on selection in Daily MVP */
+.card-actions{
   display:none!important;
 }
 
