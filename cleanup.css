@@ -1,7 +1,12 @@
-/* cleanup/interface-v6.0.31 — pass 1: clean home screen */
+/* cleanup/interface-v6.0.31 — pass 2: clean home screen */
 #todayQuickButton,
 #resultsQuickButton,
+#fitButton,
 .bottom-nav.workspace-actions{
+  display:none!important;
+}
+
+.canvas-utility-stack{
   display:none!important;
 }
 
@@ -16,10 +21,6 @@
 
 #createButton{
   grid-column:2!important;
-}
-
-#fitButton{
-  display:grid!important;
 }
 
 .account-menu [data-menu-action="logout"]{
