@@ -37,18 +37,18 @@
 .brand-logo-mark{
   position:relative;
   z-index:2;
-  flex:0 0 170px;
+  flex:0 0 150px;
   display:block;
-  width:170px;
-  min-width:170px;
-  max-width:170px;
-  height:58px;
-  min-height:58px;
-  max-height:58px;
+  width:150px;
+  min-width:150px;
+  max-width:150px;
+  height:50px;
+  min-height:50px;
+  max-height:50px;
   margin:0;
   padding:0;
   border:0;
-  background-image:url('../assets/brand/boonwave-mark-original-420.png?v=original-png-1');
+  background-image:url('../assets/brand/boonwave-mark-original-420.png?v=original-png-2');
   background-repeat:no-repeat;
   background-position:left center;
   background-size:contain;
@@ -83,7 +83,7 @@
   background:radial-gradient(circle at 34% 28%,rgba(128,204,244,.34) 0 18%,rgba(58,112,226,.86) 19% 58%,rgba(66,70,178,.68) 100%),linear-gradient(135deg,rgba(var(--bw-brand-blue),.86),rgba(var(--bw-brand-violet),.76));
 }
 @media(max-width:360px){
-  .brand-logo-mark{flex-basis:150px;width:150px;min-width:150px;max-width:150px}
+  .brand-logo-mark{flex-basis:136px;width:136px;min-width:136px;max-width:136px;height:46px;min-height:46px;max-height:46px}
   .brand-action-cluster{gap:7px}
   .brand-action-dot{flex-basis:32px;width:32px;height:32px}
 }
