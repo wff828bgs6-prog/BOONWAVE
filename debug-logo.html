@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <title>BOONWAVE Logo Debug</title>
+  <style>
+    :root{color-scheme:dark;--bg:#060812;--panel:#11162a;--line:rgba(155,180,255,.22);--text:#f4f6ff;--muted:#9ba5c8;--cyan:64,210,235;--violet:139,92,246}
+    body{margin:0;min-height:100svh;background:radial-gradient(circle at 50% 4%,rgba(73,52,140,.18),transparent 32%),var(--bg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;color:var(--text);padding:calc(env(safe-area-inset-top) + 24px) 14px 32px}
+    h1{font-size:24px;margin:0 0 10px;letter-spacing:-.03em}.note{color:var(--muted);font-size:14px;line-height:1.45;margin:0 0 18px}.grid{display:grid;gap:14px}.card{border:1px solid var(--line);border-radius:22px;background:linear-gradient(180deg,rgba(18,23,43,.92),rgba(8,12,27,.84));box-shadow:0 16px 38px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.06);padding:14px}.label{font-size:13px;color:var(--muted);margin-bottom:10px}.stage{min-height:78px;border:1px dashed rgba(150,170,220,.22);border-radius:16px;display:flex;align-items:center;justify-content:flex-start;padding:10px;overflow:hidden;background:rgba(0,0,0,.16)}
+    img{display:block;width:180px;max-width:70vw;height:auto;object-fit:contain;border:1px solid rgba(255,255,255,.08)}
+    .bg-logo{width:180px;max-width:70vw;height:64px;border:1px solid rgba(255,255,255,.08);background-repeat:no-repeat;background-position:left center;background-size:contain}
+    .bg-relative{background-image:url('assets/boonwave-logo-header.png?v=debug-logo-1')}.bg-rawgh{background-image:url('https://raw.githack.com/wff828bgs6-prog/BOONWAVE/codex/control-panel-standard/assets/boonwave-logo-header.png?v=debug-logo-1')}.bg-rawgit{background-image:url('https://raw.githubusercontent.com/wff828bgs6-prog/BOONWAVE/codex/control-panel-standard/assets/boonwave-logo-header.png?v=debug-logo-1')}
+    .text-test{font-size:28px;font-weight:800;letter-spacing:-.04em;background:linear-gradient(90deg,#1468d8,#8a5cf6,#d154e8);-webkit-background-clip:text;background-clip:text;color:transparent}.ok{font-size:12px;color:rgb(var(--cyan));margin-top:8px}.path{font-size:11px;color:#727da8;word-break:break-all;margin-top:8px}
+  </style>
+</head>
+<body>
+  <h1>Logo render diagnostic</h1>
+  <p class="note">Если где-то виден логотип — файл живой, проблема в конкретном способе вывода. Если нигде не виден — проблема в PNG/asset.</p>
+  <div class="grid">
+    <section class="card"><div class="label">0. Текстовый контроль</div><div class="stage"><div class="text-test">boonwave</div></div><div class="ok">Этот блок должен быть виден всегда.</div></section>
+    <section class="card"><div class="label">1. Relative IMG</div><div class="stage"><img src="assets/boonwave-logo-header.png?v=debug-logo-1" alt="relative img"></div><div class="path">assets/boonwave-logo-header.png</div></section>
+    <section class="card"><div class="label">2. RawGitHack IMG</div><div class="stage"><img src="https://raw.githack.com/wff828bgs6-prog/BOONWAVE/codex/control-panel-standard/assets/boonwave-logo-header.png?v=debug-logo-1" alt="rawgithack img"></div><div class="path">raw.githack.com/.../assets/boonwave-logo-header.png</div></section>
+    <section class="card"><div class="label">3. Raw GitHub IMG</div><div class="stage"><img src="https://raw.githubusercontent.com/wff828bgs6-prog/BOONWAVE/codex/control-panel-standard/assets/boonwave-logo-header.png?v=debug-logo-1" alt="raw github img"></div><div class="path">raw.githubusercontent.com/.../assets/boonwave-logo-header.png</div></section>
+    <section class="card"><div class="label">4. Relative CSS background</div><div class="stage"><div class="bg-logo bg-relative"></div></div><div class="path">background-image: assets/boonwave-logo-header.png</div></section>
+    <section class="card"><div class="label">5. RawGitHack CSS background</div><div class="stage"><div class="bg-logo bg-rawgh"></div></div><div class="path">background-image: raw.githack.com</div></section>
+    <section class="card"><div class="label">6. Raw GitHub CSS background</div><div class="stage"><div class="bg-logo bg-rawgit"></div></div><div class="path">background-image: raw.githubusercontent.com</div></section>
+  </div>
+</body>
+</html>
