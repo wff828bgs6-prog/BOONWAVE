@@ -1,54 +1,16 @@
-const VERSION = "6.0.31-clean2";
-const CACHE = `boonwave-clean-${VERSION}`;
-const CORE = [
-  "./",
-  "./index.html",
-  "./styles.css?v=6.0.31",
-  "./styles.css?v=6.0.31-clean2",
-  "./styles.base.css?v=6.0.31",
-  "./cleanup.css?v=6.0.31-clean2",
-  "./app.js?v=6.0.31",
-  "./manifest.webmanifest",
-  "./boonwave-approved-splash.png",
-  "./boonwave-mark-full.png",
-  "./boonwave-approved.png",
-  "./boonwave-full.png",
-  "./boonwave-mark.png",
-  "./icon-192.png",
-  "./icon-512.png"
-];
-self.addEventListener("install", event => {
-  self.skipWaiting();
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(CORE)));
-});
-self.addEventListener("activate", event => {
-  event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)));
-    await self.clients.claim();
-  })());
-});
-self.addEventListener("fetch", event => {
-  const request = event.request;
-  if (request.method !== "GET") return;
-  if (request.mode === "navigate") {
-    event.respondWith((async () => {
-      try {
-        const response = await fetch(request, { cache: "no-store" });
-        const cache = await caches.open(CACHE); cache.put("./index.html", response.clone());
-        return response;
-      } catch {
-        return (await caches.match("./index.html")) || (await caches.match("./"));
-      }
-    })());
-    return;
-  }
-  event.respondWith((async () => {
-    const cached = await caches.match(request);
-    const freshPromise = fetch(request, { cache: "no-store" }).then(async response => {
-      if (response.ok) { const cache = await caches.open(CACHE); cache.put(request, response.clone()); }
-      return response;
-    }).catch(() => null);
-    return cached || (await freshPromise) || new Response("Offline", { status: 503 });
-  })());
-});
+const VERSION="6.0.31-daily3";
+const CACHE=`boonwave-clean-${VERSION}`;
+const CORE=["./","./index.html","./styles.css?v=6.0.31","./styles.css?v=6.0.31-clean2","./styles.base.css?v=6.0.31","./cleanup.css?v=6.0.31-clean2","./app.js?v=6.0.31","./manifest.webmanifest","./boonwave-approved-splash.png","./boonwave-mark-full.png","./boonwave-approved.png","./boonwave-full.png","./boonwave-mark.png","./icon-192.png","./icon-512.png"];
+const PATCH=`
+(function(){try{
+if(window.__bwDaily3)return;window.__bwDaily3=1;
+const od=openDetail;openDetail=function(n){od(n);const b=$("#detailBranchButton");if(b&&n&&n.type==="process")b.textContent="Затраты списком"};
+const cb=createBranchFor;createBranchFor=function(n){if(n&&n.type==="process"){const p=$(".expense-panel",$("#detailBody"));if(p)p.scrollIntoView({behavior:"smooth",block:"start"});toast("Показаны затраты выбранного этапа");return}return cb(n)};
+const oh=heroHtml;heroHtml=function(n,s){if(n&&n.type==="project"&&n.coverAssetId)return '<div class="detail-hero process-detail-hero" data-detail-cover-shell="1" title="Двойное нажатие для настройки обложки">'+processCoverMediaHtml(n)+'<div class="detail-hero-content"><h3>'+esc(n.title)+'</h3><p>'+esc(s||nodeSubtitle(n))+'</p></div></div>';return oh(n,s)};
+const hpf=handleProcessCoverFile;handleProcessCoverFile=async function(e){const f=e.target.files?.[0];e.target.value="";if(!f||!state.editDraft||!(state.editDraft.type==="process"||state.editDraft.type==="project"))return;const old=state.editDraft.coverAssetId,id=uid(),m={id:id,name:f.name,type:f.type||"image/jpeg",size:f.size,createdAt:Date.now()};await putAsset(Object.assign({},m,{blob:f}));state.editDraft.assets=state.editDraft.assets||[];if(old&&!state.quickCoverNodeId){state.editDraft.assets=state.editDraft.assets.filter(a=>a.id!==old);releaseObjectUrl(old);await deleteAssetRecord(old).catch(()=>{})}state.editDraft.assets.push(m);if(state.quickCoverNodeId)state.quickCoverPendingAssetId=id;state.editDraft.coverAssetId=id;state.editDraft.coverPosition={x:0,y:0,scale:1};state.editDraft.coverPositions=normalizedProcessCoverPositions({});if(state.quickCoverNodeId)openProcessCoverPositionDialog(id);else{renderEditorBody();openProcessCoverPositionDialog(id)}};
+expenseListHtml=function(n){const sid=state.selectedProcessStageId,first=(n.stages||[])[0]?.id||"";const list=(n.expenses||[]).filter(x=>!sid||((x.stageId||first)===sid));if(!list.length)return '<div class="note-block">Затраты выбранного этапа ещё не добавлены.</div>';return list.slice().reverse().map(x=>{const sel=state.selectedExpenseIds.has(x.id);return '<label class="expense-item '+(state.expenseSelectionMode?'selecting ':'')+(sel?'selected':'')+'" data-expense-id="'+esc(x.id)+'">'+(state.expenseSelectionMode?'<input type="checkbox" data-expense-select="'+esc(x.id)+'" '+(sel?'checked':'')+'>':'')+'<div><b>'+esc(x.title)+'</b><small>'+esc(x.date||'')+'</small></div><strong>'+money(x.amount)+'</strong></label>'}).join('')};
+setTimeout(()=>{const d=$("#detailBody");if(!d)return;d.addEventListener("dblclick",e=>{const sh=e.target.closest("[data-detail-cover-shell]");const n=nodeById(state.activeNodeId);if(sh&&n&&n.type==="project"){e.preventDefault();e.stopImmediatePropagation();openCoverQuickMenu(n)}},true);d.addEventListener("click",e=>{const q=e.target.closest('[data-detail-action="quickExpense"]'),n=nodeById(state.activeNodeId);if(!q||!n||n.type!=="process")return;e.preventDefault();e.stopImmediatePropagation();const t=$("#detailExpenseTitle")?.value.trim(),a=Number(String($("#detailExpenseAmount")?.value||"").replace(",","."));if(!t||!a)return toast("Введите описание и сумму");n.expenses=n.expenses||[];n.expenses.push({id:uid(),title:t,amount:a,date:todayISO(),stageId:state.selectedProcessStageId||((n.stages||[])[0]?.id||"")});state.expenseSelectionMode=false;state.selectedExpenseIds.clear();saveData();renderDetailBody(n);render();toast("Добавлено в затраты выбранного этапа")},true)},0);
+}catch(e){console.warn("daily patch",e)}})();`;
+self.addEventListener("install",e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)))});
+self.addEventListener("activate",e=>{e.waitUntil((async()=>{const k=await caches.keys();await Promise.all(k.filter(x=>x!==CACHE).map(x=>caches.delete(x)));await self.clients.claim()})())});
+self.addEventListener("fetch",e=>{const r=e.request;if(r.method!=="GET")return;const u=new URL(r.url);if(u.pathname.endsWith("app.js")){e.respondWith((async()=>{const res=await fetch(r,{cache:"no-store"}).catch(()=>caches.match(r));const txt=res?await res.text():"";return new Response(txt+"\n"+PATCH,{headers:{"content-type":"application/javascript;charset=utf-8","cache-control":"no-store"}})})());return}if(r.mode==="navigate"){e.respondWith((async()=>{try{const res=await fetch(r,{cache:"no-store"});const c=await caches.open(CACHE);c.put("./index.html",res.clone());return res}catch{return await caches.match("./index.html")||await caches.match("./")}})());return}e.respondWith((async()=>{const c=await caches.match(r);const f=fetch(r,{cache:"no-store"}).then(async res=>{if(res.ok){const ca=await caches.open(CACHE);ca.put(r,res.clone())}return res}).catch(()=>null);return c||await f||new Response("Offline",{status:503})})())});
