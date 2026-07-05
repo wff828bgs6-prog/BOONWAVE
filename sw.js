@@ -1,4 +1,4 @@
-const CACHE = 'boonwave-core-20';
+const CACHE = 'boonwave-core-21';
 const CORE = [
   './',
   './index.html',
@@ -13,7 +13,7 @@ const CORE = [
   './styles/contacts.css',
   './styles/lux-final-polish.css',
   './styles/brand-control-bar.css',
-  './assets/boonwave-logo-header.png',
+  './assets/brand/bwave-header-original-clean.svg',
   './manifest.webmanifest',
   './icon-192.png',
   './icon-512.png',
