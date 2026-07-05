@@ -1,4 +1,4 @@
-/* cleanup/interface-v6.0.31 — pass 6: Daily MVP controls */
+/* cleanup/interface-v6.0.31 — pass 7: Daily MVP controls */
 #todayQuickButton,
 #resultsQuickButton,
 #fitButton,
@@ -19,7 +19,7 @@
   left:14px!important;
   right:14px!important;
   gap:10px!important;
-  grid-template-columns:minmax(0,1fr) minmax(104px,28vw)!important;
+  grid-template-columns:minmax(0,1fr) 72px!important;
   align-items:center!important;
 }
 
@@ -30,16 +30,16 @@
 
 #createButton{
   grid-column:2!important;
-  width:100%!important;
+  width:72px!important;
   height:64px!important;
-  min-width:104px!important;
+  min-width:72px!important;
   border-radius:32px!important;
 }
 
 #createButton span,
 #createButton span::before,
 #createButton span::after{
-  width:30px!important;
+  width:28px!important;
 }
 
 .account-menu [data-menu-action="logout"]{
@@ -63,6 +63,10 @@
   .desktop-zoom-controls{
     left:12px!important;
     right:12px!important;
-    grid-template-columns:minmax(0,1fr) 108px!important;
+    grid-template-columns:minmax(0,1fr) 70px!important;
+  }
+  #createButton{
+    width:70px!important;
+    min-width:70px!important;
   }
 }
