@@ -1,0 +1,89 @@
+/* BOONWAVE isolated brand control bar.
+   This component deliberately avoids legacy app-header/app-badge/app-logo/app-wordmark selectors. */
+.brand-control-bar{
+  position:fixed;
+  top:calc(env(safe-area-inset-top) + 32px);
+  left:7px;
+  right:7px;
+  z-index:40;
+  pointer-events:none;
+}
+.brand-control-shell{
+  position:relative;
+  min-height:70px;
+  height:70px;
+  padding:0 12px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:10px;
+  overflow:hidden;
+  isolation:isolate;
+  border:1px solid rgba(164,202,255,.16);
+  border-radius:28px;
+  background:linear-gradient(180deg,rgba(17,21,43,.9),rgba(8,12,28,.82));
+  box-shadow:0 18px 46px rgba(0,0,0,.34),0 0 34px rgba(var(--bw-brand-cyan),.035),inset 0 1px 0 rgba(255,255,255,.065),inset 0 0 34px rgba(var(--bw-brand-violet),.026);
+}
+.brand-control-shell::after{
+  content:"";
+  position:absolute;
+  inset:1px;
+  z-index:0;
+  border-radius:inherit;
+  pointer-events:none;
+  background:linear-gradient(105deg,rgba(255,255,255,.055),transparent 30%,rgba(var(--bw-brand-violet),.045) 100%);
+  opacity:.72;
+}
+.brand-logo-mark{
+  position:relative;
+  z-index:2;
+  flex:0 0 150px;
+  display:block;
+  width:150px;
+  min-width:150px;
+  max-width:150px;
+  height:58px;
+  min-height:58px;
+  max-height:58px;
+  margin:0;
+  padding:0;
+  border:0;
+  background-image:url('../assets/boonwave-logo-header.png?v=brand-control-bar-20260705-1');
+  background-repeat:no-repeat;
+  background-position:left center;
+  background-size:contain;
+  filter:drop-shadow(0 0 10px rgba(var(--bw-brand-cyan),.13)) drop-shadow(0 0 16px rgba(var(--bw-brand-violet),.11));
+}
+.brand-action-cluster{
+  position:relative;
+  z-index:2;
+  flex:0 0 auto;
+  margin-left:auto;
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+}
+.brand-action-dot{
+  display:block;
+  flex:0 0 34px;
+  width:34px;
+  height:34px;
+  margin:0;
+  padding:0;
+  border:1px solid rgba(142,166,255,.18);
+  border-radius:50%;
+  background:radial-gradient(circle at 34% 28%,rgba(141,222,248,.42) 0 18%,rgba(57,120,229,.9) 19% 58%,rgba(39,66,163,.66) 100%),linear-gradient(135deg,rgba(var(--bw-brand-blue),.9),rgba(var(--bw-brand-violet),.72));
+  box-shadow:0 5px 16px rgba(0,0,0,.34),0 0 14px rgba(var(--bw-brand-blue),.14),inset 0 1px 0 rgba(255,255,255,.12),inset 0 -5px 10px rgba(8,15,46,.28);
+}
+.brand-action-dot:nth-child(2){
+  background:radial-gradient(circle at 34% 28%,rgba(134,214,247,.38) 0 18%,rgba(55,111,226,.88) 19% 58%,rgba(55,69,172,.67) 100%),linear-gradient(135deg,rgba(var(--bw-brand-blue),.88),rgba(var(--bw-brand-violet),.74));
+}
+.brand-action-dot:nth-child(3){
+  background:radial-gradient(circle at 34% 28%,rgba(128,204,244,.34) 0 18%,rgba(58,112,226,.86) 19% 58%,rgba(66,70,178,.68) 100%),linear-gradient(135deg,rgba(var(--bw-brand-blue),.86),rgba(var(--bw-brand-violet),.76));
+}
+@media(max-width:360px){
+  .brand-logo-mark{flex-basis:136px;width:136px;min-width:136px;max-width:136px}
+  .brand-action-cluster{gap:7px}
+  .brand-action-dot{flex-basis:32px;width:32px;height:32px}
+}
