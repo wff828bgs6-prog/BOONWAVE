@@ -1,6 +1,6 @@
 (()=>{
-  if(window.__boonwaveDailyPatch14)return;
-  window.__boonwaveDailyPatch14=true;
+  if(window.__boonwaveDailyPatch15)return;
+  window.__boonwaveDailyPatch15=true;
 
   const safe=(fn)=>{try{return fn()}catch(e){console.warn('daily patch',e)}};
 
@@ -36,6 +36,8 @@
   }
   function applyReminderPulse(){safe(()=>{$$('.node-card').forEach(c=>{c.classList.remove('reminder-soft','reminder-medium','reminder-high','reminder-urgent','reminder-overdue');const n=nodeById(c.dataset.id),cl=pulseClass(n);if(cl)c.classList.add(cl)})})}
   function stageTitle(n,id){return (n.stages||[]).find(s=>s.id===id)?.title||'Без этапа'}
+  function polishDetailLabels(){safe(()=>{$$('#detailBody small').forEach(s=>{if((s.textContent||'').trim()==='РОЛИ')s.textContent='ЛЮДИ'})})}
+  function hideTaskRoleHeading(){safe(()=>{$$('#taskEditorDialog h2,#taskEditorDialog h3,#taskEditorDialog .section-title,#taskEditorDialog .editor-section-title,#taskEditorDialog label').forEach(el=>{if((el.textContent||'').trim()==='Назначить роль')el.style.display='none'})})}
 
   safe(()=>{const rr=render;render=function(){rr();setTimeout(applyReminderPulse,0)}});
   setInterval(applyReminderPulse,30000);
@@ -58,7 +60,8 @@
   }
   function openExpenseOverview(n){$('#taskArchiveDialog .dialog-header h2').textContent='Затраты списком';$('#taskArchiveBody').innerHTML=expensesByStageHtml(n);const d=$('#taskArchiveDialog');if(!d.open)d.showModal()}
 
-  safe(()=>{const od=openDetail;openDetail=function(n){od(n);const b=$('#detailBranchButton');if(b&&n&&n.type==='process')b.textContent='Затраты списком'}});
+  safe(()=>{const od=openDetail;openDetail=function(n){od(n);const b=$('#detailBranchButton');if(b&&n&&n.type==='process')b.textContent='Затраты списком';polishDetailLabels()}});
+  safe(()=>{const rd=renderDetailBody;renderDetailBody=function(n){rd(n);polishDetailLabels()}});
   safe(()=>{const cb=createBranchFor;createBranchFor=function(n){if(n&&n.type==='process'){openExpenseOverview(n);return}return cb(n)}});
   safe(()=>{const oh=heroHtml;heroHtml=function(n,s){if(n&&n.type==='project')return '<div class="detail-hero process-detail-hero" data-detail-cover-shell="1" title="Двойное нажатие для настройки обложки">'+processCoverMediaHtml(n)+'<div class="detail-hero-content"><h3>'+esc(n.title)+'</h3><p>'+esc(s||nodeSubtitle(n))+'</p></div></div>';return oh(n,s)}});
 
@@ -74,6 +77,7 @@
 
   safe(()=>{const ot=openTaskEditor;openTaskEditor=function(n,t){
     ot(n,t);
+    hideTaskRoleHeading();
     const d=state.taskDraft;if(!d)return;
     state.taskReturnProcessId=n.id;state.taskReturnStageId=state.selectedProcessStageId;state.taskReturnScrollTop=$('#detailBody')?.scrollTop||0;
     const box=$('#taskContactPicker');if(!box)return;
@@ -82,6 +86,7 @@
     const sync=()=>{const v=ph.value.trim();$('#taskContactCall').href=v?'tel:'+v:'#';const tg=box.querySelector('[data-msg="telegram"]'),wa=box.querySelector('[data-msg="whatsapp"]'),mx=box.querySelector('[data-msg="max"]');if(tg)tg.href=tgLink(v);if(wa)wa.href=waLink(v);if(mx)mx.href=maxLink(v)};
     ph?.addEventListener('input',sync);
     box.querySelectorAll('[data-msg]').forEach(a=>a.addEventListener('click',()=>{state.taskDraft.contactMessengerLast=a.dataset.msg;box.querySelectorAll('[data-msg]').forEach(x=>x.classList.remove('active'));a.classList.add('active')}));
+    setTimeout(hideTaskRoleHeading,50);
   }});
 
   function restoreTaskReturn(){const node=nodeById(state.taskReturnProcessId||state.activeNodeId);if(!node||node.type!=='process')return;setTimeout(()=>{state.activeNodeId=node.id;state.selectedProcessStageId=state.taskReturnStageId||state.selectedProcessStageId;const d=$('#detailDialog');if(!d.open)openDetail(node);else renderDetailBody(node);requestAnimationFrame(()=>{const body=$('#detailBody');if(body)body.scrollTop=state.taskReturnScrollTop||0});applyReminderPulse()},50)}
@@ -90,7 +95,7 @@
   safe(()=>{const sth=stageTaskHtml;stageTaskHtml=function(n,t){let html=sth(n,t);if(t.contactName||t.contactPhone||t.contactWebsite||t.contactEmail){const info='<div class="task-contact-view"><small>КОНТАКТ</small><article class="task-contact-card"><div class="task-contact-copy"><b>'+esc(t.contactName||'Контакт')+'</b>'+(t.contactPhone?'<a class="task-contact-number" href="tel:'+esc(t.contactPhone)+'">'+esc(t.contactPhone)+'</a>':'')+(t.contactWebsite?'<a class="task-contact-number" href="'+esc(t.contactWebsite)+'" target="_blank">'+esc(t.contactWebsite)+'</a>':'')+(t.contactEmail?'<a class="task-contact-number" href="mailto:'+esc(t.contactEmail)+'">'+esc(t.contactEmail)+'</a>':'')+'</div></article></div>';html=html.replace('<div class="task-time-view">',info+'<div class="task-time-view">')}return html}});
 
   setTimeout(()=>{
-    applyReminderPulse();
+    applyReminderPulse();polishDetailLabels();
     const d=$('#detailBody');if(!d)return;
     d.addEventListener('dblclick',e=>{const sh=e.target.closest('[data-detail-cover-shell]');const n=nodeById(state.activeNodeId);if(sh&&n&&n.type==='project'){e.preventDefault();e.stopImmediatePropagation();openCoverQuickMenu(n)}},true);
     d.addEventListener('click',e=>{const q=e.target.closest('[data-detail-action="quickExpense"]'),n=nodeById(state.activeNodeId);if(!q||!n||n.type!=='process')return;e.preventDefault();e.stopImmediatePropagation();const t=$('#detailExpenseTitle')?.value.trim(),a=Number(String($('#detailExpenseAmount')?.value||'').replace(',','.'));if(!t||!a)return toast('Введите описание и сумму');const sid=state.selectedProcessStageId||((n.stages||[])[0]?.id||'');n.expenses=n.expenses||[];n.expenses.push({id:uid(),title:t,amount:a,date:todayISO(),stageId:sid});state.expenseSelectionMode=false;state.selectedExpenseIds.clear();const st=$('#detailBody')?.scrollTop||0;saveData();renderDetailBody(n);$('#detailBody').scrollTop=st;render();toast('Добавлено в этап: '+stageTitle(n,sid))},true);
