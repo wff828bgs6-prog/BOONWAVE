@@ -1,4 +1,4 @@
-const VERSION = "6.0.31-daily19";
+const VERSION = "6.0.31-daily20";
 const CACHE = `boonwave-clean-${VERSION}`;
 const CORE = [
   "./",
@@ -10,6 +10,7 @@ const CORE = [
   "./app.js?v=6.0.31",
   "./daily-patch.js?v=16",
   "./daily-fix-expenses.js?v=19",
+  "./daily-fix-archive.js?v=20",
   "./manifest.webmanifest",
   "./boonwave-approved-splash.png",
   "./boonwave-mark-full.png",
@@ -41,7 +42,7 @@ self.addEventListener("fetch", event => {
     event.respondWith((async () => {
       const response = await fetch(request, { cache: "no-store" }).catch(() => caches.match(request));
       const text = response ? await response.text() : "";
-      return new Response(text + "\nimport('./daily-patch.js?v=16');\nimport('./daily-fix-expenses.js?v=19');\n", { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store" } });
+      return new Response(text + "\nimport('./daily-patch.js?v=16');\nimport('./daily-fix-expenses.js?v=19');\nimport('./daily-fix-archive.js?v=20');\n", { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store" } });
     })());
     return;
   }
