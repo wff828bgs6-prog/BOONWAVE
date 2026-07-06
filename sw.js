@@ -1,4 +1,4 @@
-const VERSION = "6.0.31-daily22";
+const VERSION = "6.0.31-daily23";
 const CACHE = `boonwave-clean-${VERSION}`;
 const CORE = [
   "./",
