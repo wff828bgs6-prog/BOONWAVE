@@ -1,4 +1,4 @@
-/* cleanup/interface-v6.0.31 — pass 13: compact bottom controls */
+/* cleanup/interface-v6.0.31 — pass 14: iPhone PWA editor single column */
 #todayQuickButton,
 #resultsQuickButton,
 #fitButton,
@@ -92,7 +92,6 @@
   text-align:center!important;
 }
 
-/* Remove old add-material tile artifacts */
 .micro-gallery > button,
 .micro-gallery > .asset-tile,
 .micro-gallery > .asset-tile.empty,
@@ -169,7 +168,6 @@
   font-weight:500!important;
 }
 
-/* Strict center for add-material tile */
 .asset-tile.empty,
 .asset-tile.add,
 button.asset-tile,
@@ -224,10 +222,71 @@ button.asset-tile small,
   position:static!important;
 }
 
-#editorBody .asset-add-button,
-#editorBody [data-editor-action="addAssets"],
-#editorBody [data-detail-action="addAssets"],
-#editorBody button{
+/* Project editor strict one-column layout */
+.editor-dialog .dialog-shell{
+  width:100vw!important;
+  max-width:100vw!important;
+  margin:0!important;
+  overflow-x:hidden!important;
+}
+
+#editorBody{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:18px!important;
+  overflow-x:hidden!important;
+  box-sizing:border-box!important;
+  padding-left:18px!important;
+  padding-right:18px!important;
+  max-width:100vw!important;
+}
+
+#editorBody > *,
+#editorBody .field,
+#editorBody .field-grid,
+#editorBody .editor-group,
+#editorBody .detail-section,
+#editorBody .asset-editor,
+#editorBody .project-materials,
+#editorBody label,
+#editorBody form,
+#editorBody section,
+#editorBody div{
+  max-width:100%!important;
+  box-sizing:border-box!important;
+}
+
+#editorBody .field,
+#editorBody label.field,
+#editorBody .editor-field{
+  display:flex!important;
+  flex-direction:column!important;
+  width:100%!important;
+  gap:8px!important;
+}
+
+#editorBody .field-grid,
+#editorBody .grid,
+#editorBody [class*="grid"]{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  width:100%!important;
+  max-width:100%!important;
+  gap:18px!important;
+}
+
+#editorBody input,
+#editorBody textarea,
+#editorBody select{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  display:block!important;
+}
+
+#editorBody button:not(.dialog-header button):not(.danger-text):not(.primary):not(.ghost){
+  max-width:100%!important;
   box-sizing:border-box!important;
 }
 
@@ -238,52 +297,6 @@ button.asset-tile small,
   justify-content:center!important;
   white-space:normal!important;
   line-height:1.2!important;
-}
-
-/* Project editor alignment */
-.editor-dialog .dialog-shell{
-  width:100vw!important;
-  max-width:100vw!important;
-  margin:0!important;
-  overflow-x:hidden!important;
-}
-
-#editorBody{
-  overflow-x:hidden!important;
-  box-sizing:border-box!important;
-  padding-left:18px!important;
-  padding-right:18px!important;
-}
-
-#editorBody .field,
-#editorBody .field-grid,
-#editorBody .editor-group,
-#editorBody .detail-section,
-#editorBody .asset-editor,
-#editorBody .project-materials,
-#editorBody label{
-  max-width:100%!important;
-  box-sizing:border-box!important;
-}
-
-#editorBody input,
-#editorBody textarea,
-#editorBody select,
-#editorBody button:not(.dialog-header button):not(.danger-text):not(.primary):not(.ghost){
-  max-width:100%!important;
-  box-sizing:border-box!important;
-}
-
-#editorBody input,
-#editorBody textarea,
-#editorBody select{
-  width:100%!important;
-}
-
-.field-grid{
-  grid-template-columns:1fr!important;
-  width:100%!important;
-  max-width:100%!important;
 }
 
 .account-menu [data-menu-action="logout"]{
