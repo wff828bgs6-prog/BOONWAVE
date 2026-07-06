@@ -1,4 +1,4 @@
-/* cleanup/interface-v6.0.31 — pass 12: Daily MVP artifact cleanup */
+/* cleanup/interface-v6.0.31 — pass 13: compact bottom controls */
 #todayQuickButton,
 #resultsQuickButton,
 #fitButton,
@@ -15,31 +15,47 @@
 }
 
 .desktop-zoom-controls{
-  bottom:calc(2px + var(--safe-bottom))!important;
-  left:14px!important;
-  right:14px!important;
+  bottom:calc(-6px + var(--safe-bottom))!important;
+  left:16px!important;
+  right:16px!important;
   gap:10px!important;
-  grid-template-columns:minmax(0,1fr) 72px!important;
+  grid-template-columns:minmax(0,1fr) 58px!important;
   align-items:center!important;
+  max-width:none!important;
 }
 
 .desktop-zoom-slider{
   grid-column:1!important;
-  height:64px!important;
+  height:56px!important;
+  min-height:56px!important;
+  border-radius:24px!important;
+  padding-left:14px!important;
+  padding-right:14px!important;
+}
+
+.desktop-zoom-slider input,
+.desktop-zoom-slider .zoom-range,
+.desktop-zoom-slider .range-track{
+  max-height:36px!important;
 }
 
 #createButton{
   grid-column:2!important;
-  width:72px!important;
-  height:64px!important;
-  min-width:72px!important;
-  border-radius:32px!important;
+  width:58px!important;
+  height:58px!important;
+  min-width:58px!important;
+  min-height:58px!important;
+  border-radius:50%!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  align-self:center!important;
 }
 
 #createButton span,
 #createButton span::before,
 #createButton span::after{
-  width:28px!important;
+  width:25px!important;
 }
 
 #detailEditButton.primary{
@@ -285,13 +301,30 @@ button.asset-tile small,
 
 @media(max-width:390px){
   .desktop-zoom-controls{
-    left:12px!important;
-    right:12px!important;
-    grid-template-columns:minmax(0,1fr) 70px!important;
+    left:14px!important;
+    right:14px!important;
+    grid-template-columns:minmax(0,1fr) 56px!important;
+    gap:9px!important;
+    bottom:calc(-6px + var(--safe-bottom))!important;
+  }
+  .desktop-zoom-slider{
+    height:54px!important;
+    min-height:54px!important;
+    border-radius:23px!important;
+    padding-left:13px!important;
+    padding-right:13px!important;
   }
   #createButton{
-    width:70px!important;
-    min-width:70px!important;
+    width:56px!important;
+    height:56px!important;
+    min-width:56px!important;
+    min-height:56px!important;
+    border-radius:50%!important;
+  }
+  #createButton span,
+  #createButton span::before,
+  #createButton span::after{
+    width:24px!important;
   }
   #editorBody{
     padding-left:16px!important;
