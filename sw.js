@@ -1,4 +1,4 @@
-const VERSION = "6.0.31-daily15";
+const VERSION = "6.0.31-daily16";
 const CACHE = `boonwave-clean-${VERSION}`;
 const CORE = [
   "./",
@@ -8,7 +8,7 @@ const CORE = [
   "./styles.base.css?v=6.0.31",
   "./cleanup.css?v=6.0.31-clean2",
   "./app.js?v=6.0.31",
-  "./daily-patch.js?v=15",
+  "./daily-patch.js?v=16",
   "./manifest.webmanifest",
   "./boonwave-approved-splash.png",
   "./boonwave-mark-full.png",
@@ -36,21 +36,14 @@ self.addEventListener("fetch", event => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
-
   if (url.pathname.endsWith("app.js")) {
     event.respondWith((async () => {
       const response = await fetch(request, { cache: "no-store" }).catch(() => caches.match(request));
       const text = response ? await response.text() : "";
-      return new Response(text + "\nimport('./daily-patch.js?v=15');\n", {
-        headers: {
-          "content-type": "application/javascript; charset=utf-8",
-          "cache-control": "no-store"
-        }
-      });
+      return new Response(text + "\nimport('./daily-patch.js?v=16');\n", { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store" } });
     })());
     return;
   }
-
   if (request.mode === "navigate") {
     event.respondWith((async () => {
       try {
@@ -64,7 +57,6 @@ self.addEventListener("fetch", event => {
     })());
     return;
   }
-
   event.respondWith((async () => {
     const cached = await caches.match(request);
     const fresh = fetch(request, { cache: "no-store" }).then(async response => {
