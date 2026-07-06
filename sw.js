@@ -1,14 +1,15 @@
-const VERSION="6.0.31-daily7";
+const VERSION="6.0.31-daily8";
 const CACHE=`boonwave-clean-${VERSION}`;
 const CORE=["./","./index.html","./styles.css?v=6.0.31","./styles.css?v=6.0.31-clean2","./styles.base.css?v=6.0.31","./cleanup.css?v=6.0.31-clean2","./app.js?v=6.0.31","./manifest.webmanifest","./boonwave-approved-splash.png","./boonwave-mark-full.png","./boonwave-approved.png","./boonwave-full.png","./boonwave-mark.png","./icon-192.png","./icon-512.png"];
 const PATCH=`
 (function(){try{
-if(window.__bwDaily7)return;window.__bwDaily7=1;
+if(window.__bwDaily8)return;window.__bwDaily8=1;
 (function(){const s=document.createElement("style");s.textContent='@keyframes bwPulse{0%,92%,100%{box-shadow:0 0 0 rgba(85,220,236,0);filter:none}96%{box-shadow:0 0 34px rgba(95,140,255,.55),0 0 58px rgba(161,78,255,.25);filter:brightness(1.16)}}.node-card.reminder-soft{animation:bwPulse 180s infinite}.node-card.reminder-medium{animation:bwPulse 60s infinite}.node-card.reminder-high{animation:bwPulse 20s infinite}.node-card.reminder-urgent{animation:bwPulse 8.6s infinite}.node-card.reminder-overdue{animation:bwPulse 14s infinite}.node-card[class*=reminder-] .card-status-dot{box-shadow:0 0 18px rgba(85,220,236,.75)}';document.head.appendChild(s)})();
 function pulseTime(t){const v=t.dateTime||t.intervalStart||t.due;if(!v)return null;const d=new Date(v);return Number.isNaN(d.getTime())?null:d}
 function pulseClass(n){if(!n||n.type!=="process")return"";let min=null;(n.tasks||[]).forEach(t=>{if(t.done||t.archived)return;const d=pulseTime(t);if(!d)return;const h=(d-Date.now())/36e5;if(min===null||h<min)min=h});if(min===null||min>24)return"";if(min<0)return"reminder-overdue";if(min<=1)return"reminder-urgent";if(min<=6)return"reminder-high";if(min<=12)return"reminder-medium";return"reminder-soft"}
 function applyReminderPulse(){try{$$(".node-card").forEach(c=>{c.classList.remove("reminder-soft","reminder-medium","reminder-high","reminder-urgent","reminder-overdue");const n=nodeById(c.dataset.id),cl=pulseClass(n);if(cl)c.classList.add(cl)})}catch(e){}}
 const rr=render;render=function(){rr();setTimeout(applyReminderPulse,0)};setInterval(applyReminderPulse,30000);
+createProcessForProject=function(project){if(!project||project.type!=="project")return;const count=state.data.nodes.filter(n=>n.type==="process"&&n.projectId===project.id&&!n.archived).length+1;const point=branchPosition(project);const p={id:uid(),type:"process",space:project.space,projectId:project.id,x:point.x,y:point.y,level:2,title:count===1?`Рабочий процесс · ${project.title}`:`Рабочий процесс ${count} · ${project.title}`,status:"active",progress:0,stages:[],tasks:[],phonebook:[],peopleIds:[],expenses:[],assets:[],archived:false};state.data.nodes.push(p);state.data.links.push({id:uid(),a:project.id,b:p.id,kind:"process"});state.selectedId=p.id;saveData();render();focusNode(p);setTimeout(()=>openEditor(p),220);toast("Создан новый рабочий процесс")};
 const od=openDetail;openDetail=function(n){od(n);const b=$("#detailBranchButton");if(b&&n&&n.type==="process")b.textContent="Затраты списком"};
 function stageTitle(n,id){return (n.stages||[]).find(s=>s.id===id)?.title||"Без этапа"}
 function roleList(n,sid){const tasks=(n.tasks||[]).filter(t=>!t.archived&&(!sid||t.stageId===sid));const rows=tasks.map(t=>[t.contactName,t.contactPhone,t.contactWebsite,t.contactEmail].filter(Boolean).join(" · ")).filter(Boolean);return rows.length?rows.map(esc).join("<br>"):"Назначения не добавлены"}
