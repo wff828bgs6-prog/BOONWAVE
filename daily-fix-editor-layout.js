@@ -1,6 +1,6 @@
 (()=>{
-  if(window.__boonwaveEditorLayoutFix25)return;
-  window.__boonwaveEditorLayoutFix25=true;
+  if(window.__boonwaveEditorLayoutFix26)return;
+  window.__boonwaveEditorLayoutFix26=true;
 
   const style=document.createElement('style');
   style.textContent=`
@@ -45,11 +45,17 @@
       padding-right:18px!important;
     }
 
+    #editorDialog .dialog-body{
+      padding-bottom:calc(156px + var(--safe-bottom, env(safe-area-inset-bottom)))!important;
+      scroll-padding-bottom:calc(156px + var(--safe-bottom, env(safe-area-inset-bottom)))!important;
+    }
+
     #editorBody{
       display:flex!important;
       flex-direction:column!important;
       align-items:stretch!important;
       gap:18px!important;
+      padding-bottom:calc(156px + var(--safe-bottom, env(safe-area-inset-bottom)))!important;
     }
 
     #editorBody > *,
@@ -102,6 +108,7 @@
       gap:10px!important;
       padding-left:18px!important;
       padding-right:18px!important;
+      padding-bottom:calc(14px + var(--safe-bottom, env(safe-area-inset-bottom)))!important;
     }
 
     #editorDialog .dialog-footer button{
@@ -126,6 +133,7 @@
   function applyEditorLayoutFix(){
     const body=document.getElementById('editorBody');
     if(!body)return;
+    body.style.paddingBottom='calc(156px + var(--safe-bottom, env(safe-area-inset-bottom)))';
     body.querySelectorAll('input, textarea, select').forEach(el=>{
       el.style.width='100%';
       el.style.maxWidth='100%';
