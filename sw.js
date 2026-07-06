@@ -1,8 +1,9 @@
-const VERSION = "6.0.31-daily29";
+const VERSION = "6.0.31-daily30";
 const CACHE = `boonwave-clean-${VERSION}`;
 const CORE = [
   "./",
   "./index.html",
+  "./pwa-start.html?build=daily30",
   "./styles.css?v=6.0.31",
   "./styles.css?v=6.0.31-clean2",
   "./styles.base.css?v=6.0.31",
