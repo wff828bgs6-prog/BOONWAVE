@@ -1,4 +1,4 @@
-const VERSION = "6.0.31-daily30";
+const VERSION = "6.0.31-daily33";
 const CACHE = `boonwave-clean-${VERSION}`;
 const CORE = [
   "./",
@@ -9,6 +9,7 @@ const CORE = [
   "./styles.base.css?v=6.0.31",
   "./cleanup.css?v=6.0.31-clean2",
   "./app.js?v=6.0.31",
+  "./daily-force-clean.js?v=33",
   "./daily-patch.js?v=16",
   "./daily-fix-expenses.js?v=19",
   "./daily-fix-archive.js?v=20",
@@ -46,7 +47,7 @@ self.addEventListener("fetch", event => {
     event.respondWith((async () => {
       const response = await fetch(request, { cache: "no-store" }).catch(() => caches.match(request));
       const text = response ? await response.text() : "";
-      return new Response(text + "\nimport('./daily-patch.js?v=16');\nimport('./daily-fix-expenses.js?v=19');\nimport('./daily-fix-archive.js?v=20');\nimport('./daily-fix-pwa-persist.js?v=22');\nimport('./daily-fix-editor-layout.js?v=26');\nimport('./daily-fix-project-cover.js?v=29');\n", { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store" } });
+      return new Response(text + "\nimport('./daily-force-clean.js?v=33');\nimport('./daily-patch.js?v=16');\nimport('./daily-fix-expenses.js?v=19');\nimport('./daily-fix-archive.js?v=20');\nimport('./daily-fix-pwa-persist.js?v=22');\nimport('./daily-fix-editor-layout.js?v=26');\nimport('./daily-fix-project-cover.js?v=29');\n", { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store" } });
     })());
     return;
   }
