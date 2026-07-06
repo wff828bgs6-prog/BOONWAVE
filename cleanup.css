@@ -1,4 +1,4 @@
-/* cleanup/interface-v6.0.31 — pass 7: Daily MVP controls */
+/* cleanup/interface-v6.0.31 — pass 8: Daily MVP controls */
 #todayQuickButton,
 #resultsQuickButton,
 #fitButton,
@@ -40,6 +40,18 @@
 #createButton span::before,
 #createButton span::after{
   width:28px!important;
+}
+
+#detailEditButton.primary{
+  background:rgba(31,38,58,.92)!important;
+  color:#dbe5ff!important;
+  border:1px solid rgba(120,142,190,.32)!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.24)!important;
+}
+
+#detailEditButton.primary::before,
+#detailEditButton.primary::after{
+  opacity:0!important;
 }
 
 .account-menu [data-menu-action="logout"]{
