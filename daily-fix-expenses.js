@@ -1,6 +1,6 @@
 (()=>{
-  if(window.__boonwaveExpenseLive18)return;
-  window.__boonwaveExpenseLive18=true;
+  if(window.__boonwaveExpenseLive19)return;
+  window.__boonwaveExpenseLive19=true;
 
   const safe=(fn)=>{try{return fn()}catch(e){console.warn('expense live fix',e)}};
   const currentProcess=()=>nodeById(state.activeNodeId);
@@ -10,9 +10,12 @@
     return Boolean(d?.open && h && h.textContent.trim()==='Затраты списком');
   };
 
+  const style=document.createElement('style');
+  style.textContent='.expense-overview-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}.expense-overview-delete{width:42px;height:42px;border-radius:15px;border:1px solid rgba(255,145,160,.28);background:rgba(56,29,42,.72);color:#ff9aa8;font-size:18px}.expense-overview-delete:active{transform:scale(.96)}';
+  document.head.appendChild(style);
+
   function getExpenseGroups(node){
     const stages=node.stages&&node.stages.length?node.stages:[];
-    const stageIds=new Set(stages.map(stage=>stage.id));
     const groups=stages.map(stage=>({id:stage.id,title:stage.title||'Без этапа',items:[]}));
     const unassigned={id:'__unassigned__',title:'Без этапа / не привязано',items:[]};
 
@@ -34,8 +37,7 @@
   function updateProcessExpenseMetric(node){
     safe(()=>{
       if(!node||node.type!=='process')return;
-      const metrics=$$('#detailBody .process-metric');
-      metrics.forEach(metric=>{
+      $$('#detailBody .process-metric').forEach(metric=>{
         const label=(metric.querySelector('small')?.textContent||'').trim();
         if(label==='РАСХОДЫ'){
           const value=metric.querySelector('b');
@@ -45,6 +47,10 @@
     });
   }
 
+  function expenseRow(expense){
+    return '<article class="task-archive-item expanded expense-overview-row"><button type="button" class="task-archive-item-main"><div><b>'+esc(expense.title||'Затрата')+'</b><small>'+esc(expense.date||'')+'</small></div><strong>'+money(expense.amount)+'</strong></button><button type="button" class="expense-overview-delete" data-expense-overview-delete="'+esc(expense.id)+'" aria-label="Удалить затрату">🗑</button></article>';
+  }
+
   function expensesByStageHtml(node){
     const groups=getExpenseGroups(node);
     const totalAll=processExpensesTotal(node);
@@ -52,7 +58,7 @@
       groups.map(group=>{
         const total=group.items.reduce((sum,x)=>sum+Number(x.amount||0),0);
         return '<section class="task-archive-group"><header><div><small>ЭТАП</small><h3>'+esc(group.title)+'</h3></div><span>'+money(total)+'</span></header><div class="task-archive-list">'+
-          (group.items.length?group.items.slice().reverse().map(x=>'<article class="task-archive-item expanded"><button type="button" class="task-archive-item-main"><div><b>'+esc(x.title||'Затрата')+'</b><small>'+esc(x.date||'')+'</small></div><strong>'+money(x.amount)+'</strong></button></article>').join(''):'<div class="task-archive-empty">Затрат нет.</div>')+
+          (group.items.length?group.items.slice().reverse().map(expenseRow).join(''):'<div class="task-archive-empty">Затрат нет.</div>')+
           '</div></section>';
       }).join('');
   }
@@ -97,14 +103,38 @@
 
   setTimeout(()=>{
     const body=$('#detailBody');
-    if(!body)return;
-    body.addEventListener('click',event=>{
-      if(event.target.closest('[data-detail-action="quickExpense"], [data-detail-action="toggleExpenseDelete"], [data-expense-select]')){
-        setTimeout(refreshExpenseOverview,80);
-        setTimeout(refreshExpenseOverview,250);
-        setTimeout(refreshExpenseOverview,700);
-      }
-    },true);
+    if(body){
+      body.addEventListener('click',event=>{
+        if(event.target.closest('[data-detail-action="quickExpense"], [data-detail-action="toggleExpenseDelete"], [data-expense-select]')){
+          setTimeout(refreshExpenseOverview,80);
+          setTimeout(refreshExpenseOverview,250);
+          setTimeout(refreshExpenseOverview,700);
+        }
+      },true);
+    }
+
+    const archiveBody=$('#taskArchiveBody');
+    if(archiveBody){
+      archiveBody.addEventListener('click',event=>{
+        const button=event.target.closest('[data-expense-overview-delete]');
+        if(!button)return;
+        event.preventDefault();
+        event.stopPropagation();
+        const node=currentProcess();
+        if(!node||node.type!=='process')return;
+        const id=button.dataset.expenseOverviewDelete;
+        const expense=(node.expenses||[]).find(item=>item.id===id);
+        if(!expense)return;
+        if(!confirm('Удалить затрату «'+(expense.title||'Затрата')+'»?'))return;
+        node.expenses=(node.expenses||[]).filter(item=>item.id!==id);
+        state.selectedExpenseIds?.delete?.(id);
+        saveData();
+        renderDetailBody(node);
+        render();
+        refreshExpenseOverview();
+        toast('Затрата удалена');
+      },true);
+    }
     refreshExpenseOverview();
   },0);
 
