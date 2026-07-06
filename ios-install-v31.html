@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#050812">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BOONWAVE">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>BOONWAVE iOS</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;background:#050812;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;overflow:hidden}
+    body{display:grid;place-items:center;background:radial-gradient(circle at 50% 42%,rgba(105,120,255,.24),transparent 42%),#050812}
+    .box{width:min(78vw,340px);text-align:center}.mark{font-size:58px;color:#8ca5ff;margin-bottom:18px}.title{font-size:24px;font-weight:800;letter-spacing:.06em}.sub{margin-top:12px;color:#9aa6bd;font-size:14px;line-height:1.45}.bar{height:4px;border-radius:99px;background:rgba(255,255,255,.12);margin-top:24px;overflow:hidden}.bar i{display:block;width:45%;height:100%;border-radius:99px;background:linear-gradient(90deg,#8b5cf6,#67d8ff);animation:move 1s infinite ease-in-out}@keyframes move{0%{transform:translateX(-120%)}100%{transform:translateX(260%)}}
+  </style>
+</head>
+<body>
+  <div class="box"><div class="mark">≈</div><div class="title">BOONWAVE</div><div class="sub" id="status">Подготовка чистого запуска для iPhone…</div><div class="bar"><i></i></div></div>
+  <script>
+    (async function(){
+      const BUILD='daily-mvp-31-ios-clean';
+      const CLEAN_FLAG='boonwave_ios_clean_done_v31';
+      const status=document.getElementById('status');
+      const standalone=Boolean(window.navigator.standalone)||window.matchMedia('(display-mode: standalone)').matches;
+      try{
+        status.textContent='Очищаю старый PWA-кэш…';
+        if('serviceWorker' in navigator){
+          const regs=await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r=>r.unregister().catch(()=>{})));
+        }
+        if('caches' in window){
+          const keys=await caches.keys();
+          await Promise.all(keys.map(k=>caches.delete(k).catch(()=>{})));
+        }
+        if(standalone || localStorage.getItem(CLEAN_FLAG)!=='1'){
+          status.textContent='Удаляю старый гостевой мусор…';
+          Object.keys(localStorage).forEach(function(key){
+            if(key.indexOf('boonwave_v6_data_visual-demo')===0 || key.indexOf('boonwave_v6_guest_autobackup')===0 || key==='boonwave_v6_session') localStorage.removeItem(key);
+          });
+          localStorage.setItem(CLEAN_FLAG,'1');
+        }
+      }catch(e){console.warn(e)}
+      status.textContent='Открываю актуальную версию…';
+      setTimeout(function(){location.replace('./?v='+BUILD+'&ios=clean31&t='+Date.now())},500);
+    })();
+  </script>
+</body>
+</html>
