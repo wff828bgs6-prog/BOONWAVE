@@ -1,4 +1,4 @@
-/* cleanup/interface-v6.0.31 — pass 11: Daily MVP editor polish */
+/* cleanup/interface-v6.0.31 — pass 12: Daily MVP artifact cleanup */
 #todayQuickButton,
 #resultsQuickButton,
 #fitButton,
@@ -60,11 +60,86 @@
   letter-spacing:-.01em!important;
 }
 
+.micro-gallery{
+  overflow:visible!important;
+}
+
+.micro-gallery > *,
 .asset-tile,
 .asset-tile.empty,
 .asset-tile.add,
+.asset-tile.add-asset,
+.asset-add-tile,
+.add-asset-tile,
 [data-detail-action="addAssets"]{
+  box-sizing:border-box!important;
   text-align:center!important;
+}
+
+/* Remove old add-material tile artifacts */
+.micro-gallery > button,
+.micro-gallery > .asset-tile,
+.micro-gallery > .asset-tile.empty,
+.micro-gallery > .asset-tile.add,
+.micro-gallery > .asset-add-tile,
+.micro-gallery > .add-asset-tile,
+#detailGallery > button,
+#detailGallery > .asset-tile,
+#detailGallery > .asset-add-tile,
+#detailGallery > .add-asset-tile{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  padding:12px!important;
+  gap:8px!important;
+  overflow:hidden!important;
+}
+
+.micro-gallery > button *,
+.micro-gallery > .asset-tile *,
+.micro-gallery > .asset-add-tile *,
+.micro-gallery > .add-asset-tile *,
+#detailGallery > button *,
+#detailGallery > .asset-tile *,
+#detailGallery > .asset-add-tile *,
+#detailGallery > .add-asset-tile *{
+  position:static!important;
+  float:none!important;
+  inset:auto!important;
+  transform:none!important;
+  text-align:center!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  line-height:1.22!important;
+}
+
+.micro-gallery > button > svg,
+.micro-gallery > .asset-tile > svg,
+.micro-gallery > .asset-add-tile > svg,
+.micro-gallery > .add-asset-tile > svg,
+#detailGallery > button > svg,
+#detailGallery > .asset-tile > svg{
+  display:block!important;
+  margin:0 auto 6px!important;
+  flex:0 0 auto!important;
+}
+
+.micro-gallery > button small,
+.micro-gallery > .asset-tile small,
+.micro-gallery > .asset-add-tile small,
+.micro-gallery > .add-asset-tile small,
+#detailGallery > button small,
+#detailGallery > .asset-tile small{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  color:var(--muted)!important;
+  font-size:11px!important;
+  font-weight:400!important;
+  text-align:center!important;
+  white-space:normal!important;
 }
 
 .asset-tile .asset-placeholder,
