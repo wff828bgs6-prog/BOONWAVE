@@ -1,13 +1,13 @@
 {
   "name": "BOONWAVE — визуальный планировщик",
   "short_name": "BOONWAVE",
-  "description": "Визуальное пространство для проектов, целей, людей и идей.",
-  "start_url": "./",
+  "description": "Визуальное пространство для проектов, процессов, задач и материалов.",
+  "start_url": "./?v=daily-mvp-24-pwa",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f5f7fb",
-  "theme_color": "#f5f7fb",
+  "background_color": "#050812",
+  "theme_color": "#050812",
   "lang": "ru",
   "icons": [
     {
