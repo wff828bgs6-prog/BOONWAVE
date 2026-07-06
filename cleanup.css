@@ -1,4 +1,4 @@
-/* cleanup/interface-v6.0.31 — pass 10: Daily MVP editor polish */
+/* cleanup/interface-v6.0.31 — pass 11: Daily MVP editor polish */
 #todayQuickButton,
 #resultsQuickButton,
 #fitButton,
@@ -76,6 +76,61 @@
   margin-left:auto!important;
   margin-right:auto!important;
   font-weight:500!important;
+}
+
+/* Strict center for add-material tile */
+.asset-tile.empty,
+.asset-tile.add,
+button.asset-tile,
+#editorBody .asset-tile,
+#editorBody .asset-tile.empty,
+#editorBody .asset-tile.add{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  padding:0!important;
+}
+
+.asset-tile.empty .asset-placeholder,
+.asset-tile.add .asset-placeholder,
+button.asset-tile .asset-placeholder,
+#editorBody .asset-tile .asset-placeholder,
+#editorBody .asset-tile.empty .asset-placeholder,
+#editorBody .asset-tile.add .asset-placeholder{
+  width:100%!important;
+  min-height:100%!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:10px!important;
+  text-align:center!important;
+  margin:0 auto!important;
+  padding:12px!important;
+  box-sizing:border-box!important;
+}
+
+.asset-tile.empty .asset-placeholder *,
+.asset-tile.add .asset-placeholder *,
+button.asset-tile .asset-placeholder *,
+#editorBody .asset-tile .asset-placeholder *{
+  text-align:center!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  font-weight:400!important;
+  line-height:1.22!important;
+}
+
+.asset-tile.empty small,
+.asset-tile.add small,
+button.asset-tile small,
+#editorBody .asset-tile small{
+  display:block!important;
+  width:100%!important;
+  text-align:center!important;
+  transform:none!important;
+  position:static!important;
 }
 
 #editorBody .asset-add-button,
