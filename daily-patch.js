@@ -1,6 +1,6 @@
 (()=>{
-  if(window.__boonwaveDailyPatch15)return;
-  window.__boonwaveDailyPatch15=true;
+  if(window.__boonwaveDailyPatch16)return;
+  window.__boonwaveDailyPatch16=true;
 
   const safe=(fn)=>{try{return fn()}catch(e){console.warn('daily patch',e)}};
 
@@ -19,6 +19,8 @@
   document.head.appendChild(style);
 
   function digits(v){return String(v||'').replace(/[^0-9+]/g,'').replace(/^\+/,'')}
+  function contactKey(t){const phone=digits(t.contactPhone);const name=String(t.contactName||'').trim().toLowerCase();return phone?('p:'+phone):(name?('n:'+name):'')}
+  function taskPeopleCount(node){const set=new Set();(node.tasks||[]).forEach(t=>{if(t.archived)return;const key=contactKey(t);if(key)set.add(key)});return set.size}
   function tgLink(phone){const d=digits(phone);return d?'tg://resolve?phone='+encodeURIComponent(d):'#'}
   function waLink(phone){const d=digits(phone);return d?'whatsapp://send?phone='+encodeURIComponent(d):'#'}
   function maxLink(phone){const d=digits(phone);return d?'max://chat?phone='+encodeURIComponent(d):'#'}
@@ -36,7 +38,14 @@
   }
   function applyReminderPulse(){safe(()=>{$$('.node-card').forEach(c=>{c.classList.remove('reminder-soft','reminder-medium','reminder-high','reminder-urgent','reminder-overdue');const n=nodeById(c.dataset.id),cl=pulseClass(n);if(cl)c.classList.add(cl)})})}
   function stageTitle(n,id){return (n.stages||[]).find(s=>s.id===id)?.title||'Без этапа'}
-  function polishDetailLabels(){safe(()=>{$$('#detailBody small').forEach(s=>{if((s.textContent||'').trim()==='РОЛИ')s.textContent='ЛЮДИ'})})}
+  function polishDetailLabels(node){safe(()=>{
+    $$('#detailBody small').forEach(s=>{if((s.textContent||'').trim()==='РОЛИ')s.textContent='ЛЮДИ'});
+    const active=node||nodeById(state.activeNodeId);
+    if(active&&active.type==='process'){
+      const buttons=$$('#detailBody .process-phonebook-button,#detailBody [data-detail-action="phonebook"]');
+      buttons.forEach(btn=>{const small=btn.querySelector('small');const b=btn.querySelector('b');if(small)small.textContent='ЛЮДИ';if(b)b.textContent=String(taskPeopleCount(active));});
+    }
+  })}
   function hideTaskRoleHeading(){safe(()=>{$$('#taskEditorDialog h2,#taskEditorDialog h3,#taskEditorDialog .section-title,#taskEditorDialog .editor-section-title,#taskEditorDialog label').forEach(el=>{if((el.textContent||'').trim()==='Назначить роль')el.style.display='none'})})}
 
   safe(()=>{const rr=render;render=function(){rr();setTimeout(applyReminderPulse,0)}});
@@ -60,8 +69,8 @@
   }
   function openExpenseOverview(n){$('#taskArchiveDialog .dialog-header h2').textContent='Затраты списком';$('#taskArchiveBody').innerHTML=expensesByStageHtml(n);const d=$('#taskArchiveDialog');if(!d.open)d.showModal()}
 
-  safe(()=>{const od=openDetail;openDetail=function(n){od(n);const b=$('#detailBranchButton');if(b&&n&&n.type==='process')b.textContent='Затраты списком';polishDetailLabels()}});
-  safe(()=>{const rd=renderDetailBody;renderDetailBody=function(n){rd(n);polishDetailLabels()}});
+  safe(()=>{const od=openDetail;openDetail=function(n){od(n);const b=$('#detailBranchButton');if(b&&n&&n.type==='process')b.textContent='Затраты списком';polishDetailLabels(n)}});
+  safe(()=>{const rd=renderDetailBody;renderDetailBody=function(n){rd(n);polishDetailLabels(n)}});
   safe(()=>{const cb=createBranchFor;createBranchFor=function(n){if(n&&n.type==='process'){openExpenseOverview(n);return}return cb(n)}});
   safe(()=>{const oh=heroHtml;heroHtml=function(n,s){if(n&&n.type==='project')return '<div class="detail-hero process-detail-hero" data-detail-cover-shell="1" title="Двойное нажатие для настройки обложки">'+processCoverMediaHtml(n)+'<div class="detail-hero-content"><h3>'+esc(n.title)+'</h3><p>'+esc(s||nodeSubtitle(n))+'</p></div></div>';return oh(n,s)}});
 
