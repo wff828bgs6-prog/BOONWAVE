@@ -1,8 +1,8 @@
 {
-  "name": "BOONWAVE — визуальный планировщик",
+  "name": "BOONWAVE",
   "short_name": "BOONWAVE",
-  "description": "Визуальное пространство для проектов, процессов, задач и материалов.",
-  "start_url": "./?v=daily-mvp-24-pwa",
+  "description": "BOONWAVE workspace",
+  "start_url": "./pwa-start.html?build=daily30",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
