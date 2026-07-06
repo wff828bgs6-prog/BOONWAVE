@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#050812">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BOONWAVE">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>BOONWAVE</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;background:#050812;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;overflow:hidden}
+    body{display:grid;place-items:center;background:radial-gradient(circle at 50% 40%,rgba(99,102,241,.25),transparent 42%),#050812}
+    .box{width:min(82vw,360px);text-align:center}.mark{font-size:60px;color:#8ca5ff;margin-bottom:18px}.title{font-size:24px;font-weight:800;letter-spacing:.07em}.sub{margin-top:14px;color:#a7b0c4;font-size:14px;line-height:1.5}.button{margin-top:24px;border:1px solid rgba(130,150,220,.35);border-radius:20px;padding:14px 18px;background:rgba(255,255,255,.08);color:#fff;font-weight:700}.mini{margin-top:14px;color:#6f7b91;font-size:12px;line-height:1.4}.bar{height:4px;border-radius:99px;background:rgba(255,255,255,.12);margin-top:24px;overflow:hidden}.bar i{display:block;width:45%;height:100%;border-radius:99px;background:linear-gradient(90deg,#8b5cf6,#67d8ff);animation:move 1s infinite ease-in-out}@keyframes move{0%{transform:translateX(-120%)}100%{transform:translateX(260%)}}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="mark">≈</div>
+    <div class="title">BOONWAVE</div>
+    <div class="sub" id="status">Эта страница предназначена именно для добавления BOONWAVE на экран iPhone.</div>
+    <button class="button" id="openNow" type="button">Открыть актуальную версию</button>
+    <div class="mini" id="hint">В Safari нажми «Поделиться» → «На экран Домой». Не жди автоматического перехода до добавления иконки.</div>
+    <div class="bar" id="bar" hidden><i></i></div>
+  </div>
+  <script>
+    (function(){
+      const BUILD='daily-mvp-32-ios-home';
+      const CLEAN_FLAG='boonwave_ios_home_clean_done_v32';
+      const status=document.getElementById('status');
+      const hint=document.getElementById('hint');
+      const bar=document.getElementById('bar');
+      const standalone=Boolean(window.navigator.standalone)||window.matchMedia('(display-mode: standalone)').matches;
+
+      async function cleanAndOpen(){
+        bar.hidden=false;
+        try{
+          status.textContent='Очищаю старую оболочку BOONWAVE…';
+          if('serviceWorker' in navigator){
+            const regs=await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r=>r.unregister().catch(()=>{})));
+          }
+          if('caches' in window){
+            const keys=await caches.keys();
+            await Promise.all(keys.map(k=>caches.delete(k).catch(()=>{})));
+          }
+          status.textContent='Удаляю старую гостевую сессию…';
+          Object.keys(localStorage).forEach(function(key){
+            if(key==='boonwave_v6_session'||key.indexOf('boonwave_v6_data_visual-demo')===0||key.indexOf('boonwave_v6_guest_autobackup')===0)localStorage.removeItem(key);
+          });
+          localStorage.setItem(CLEAN_FLAG,'1');
+        }catch(e){console.warn(e)}
+        status.textContent='Открываю актуальную сборку…';
+        setTimeout(function(){location.replace('./?v='+BUILD+'&ios_home=32&t='+Date.now())},450);
+      }
+
+      document.getElementById('openNow').addEventListener('click',cleanAndOpen);
+      if(standalone){
+        hint.textContent='Запуск из иконки. Подготовка актуальной версии…';
+        cleanAndOpen();
+      }
+    })();
+  </script>
+</body>
+</html>
