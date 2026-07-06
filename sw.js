@@ -1,4 +1,4 @@
-const VERSION = "6.0.31-daily24";
+const VERSION = "6.0.31-daily25";
 const CACHE = `boonwave-clean-${VERSION}`;
 const CORE = [
   "./",
@@ -12,6 +12,7 @@ const CORE = [
   "./daily-fix-expenses.js?v=19",
   "./daily-fix-archive.js?v=20",
   "./daily-fix-pwa-persist.js?v=22",
+  "./daily-fix-editor-layout.js?v=25",
   "./manifest.webmanifest",
   "./boonwave-approved-splash.png",
   "./boonwave-mark-full.png",
@@ -43,7 +44,7 @@ self.addEventListener("fetch", event => {
     event.respondWith((async () => {
       const response = await fetch(request, { cache: "no-store" }).catch(() => caches.match(request));
       const text = response ? await response.text() : "";
-      return new Response(text + "\nimport('./daily-patch.js?v=16');\nimport('./daily-fix-expenses.js?v=19');\nimport('./daily-fix-archive.js?v=20');\nimport('./daily-fix-pwa-persist.js?v=22');\n", { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store" } });
+      return new Response(text + "\nimport('./daily-patch.js?v=16');\nimport('./daily-fix-expenses.js?v=19');\nimport('./daily-fix-archive.js?v=20');\nimport('./daily-fix-pwa-persist.js?v=22');\nimport('./daily-fix-editor-layout.js?v=25');\n", { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store" } });
     })());
     return;
   }
