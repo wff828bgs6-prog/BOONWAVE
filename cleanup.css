@@ -1,4 +1,4 @@
-/* cleanup/interface-v6.0.31 — pass 8: Daily MVP controls */
+/* cleanup/interface-v6.0.31 — pass 9: Daily MVP polish */
 #todayQuickButton,
 #resultsQuickButton,
 #fitButton,
@@ -52,6 +52,29 @@
 #detailEditButton.primary::before,
 #detailEditButton.primary::after{
   opacity:0!important;
+}
+
+/* Project materials polish */
+.detail-section-head h3{
+  font-weight:650!important;
+  letter-spacing:-.015em!important;
+}
+
+.asset-tile,
+.asset-tile.empty,
+.asset-tile.add,
+[data-detail-action="addAssets"]{
+  text-align:center!important;
+}
+
+.asset-tile .asset-placeholder,
+.asset-tile b,
+.asset-tile small{
+  text-align:center!important;
+  justify-content:center!important;
+  align-items:center!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
 }
 
 .account-menu [data-menu-action="logout"]{
